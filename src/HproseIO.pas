@@ -2677,7 +2677,7 @@ begin
     htDate: Result := ReadDateWithoutTag;
     htTime: Result := ReadTimeWithoutTag;
     htBytes: Result := ReadBytesWithoutTag;
-    htUTF8Char: Result := ReadUTF8CharWithoutTag;
+    htUTF8Char: Result := WideString(ReadUTF8CharWithoutTag);
     htString: Result := ReadStringWithoutTag;
     htGuid: Result := ReadGuidWithoutTag;
     htList: Result := ReadListWithoutTag;
