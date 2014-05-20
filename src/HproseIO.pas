@@ -15,7 +15,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: May 17, 2014                             *
+ * LastModified: May 20, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -70,10 +70,18 @@ const
 
 type
 
+  IReaderRefer = interface
+  ['{22C0727C-A00B-4283-B4E1-BF1629116526}']
+    function SetRef(const V: Variant): Integer; overload;
+    procedure SetRef(I: Integer; const V: Variant); overload;
+    function ReadRef(I: Integer): Variant;
+    procedure Reset;
+  end;
+
   THproseReader = class
   private
     FStream: TStream;
-    FRefList: IList;
+    FRefer: IReaderRefer;
     FClassRefList: IList;
     FAttrRefMap: IMap;
     function UnexpectedTag(Tag: AnsiChar;
@@ -144,7 +152,10 @@ type
     procedure ReadGuidRaw(const OStream: TStream);
     procedure ReadComplexRaw(const OStream: TStream);
   public
-    constructor Create(AStream: TStream);
+    constructor Create(AStream: TStream; Simple: Boolean = False);
+{$IFDEF BCB}
+    constructor Create1(AStream: TStream);
+{$ENDIF}
     procedure CheckTag(expectTag: AnsiChar);
     function CheckTags(const expectTags: RawByteString): AnsiChar;
     function ReadUntil(Tag: AnsiChar): string;
@@ -191,12 +202,19 @@ type
     property Stream: TStream read FStream;
   end;
 
+  IWriterRefer = interface
+  ['{71734211-0FB5-483A-BF61-992CE616482C}']
+    procedure AddCount(Count: Integer);
+    procedure SetRef(const V: Variant);
+    function WriteRef(const V:Variant): Boolean;
+    procedure Reset;
+  end;
+
   THproseWriter = class
   private
     FStream: TStream;
-    FRefList: IList;
+    FRefer: IWriterRefer;
     FClassRefList: IList;
-    procedure WriteRef(Value: Integer);
     function WriteClass(const Instance: TObject): Integer;
     procedure WriteRawByteString(const S: RawByteString);
     procedure WriteShortIntArray(var P; Count: Integer);
@@ -233,7 +251,10 @@ type
               KeyTypeInfo, ValueTypeInfo: Pointer);
 {$ENDIF}
   public
-    constructor Create(AStream: TStream);
+    constructor Create(AStream: TStream; Simple: Boolean = False);
+{$IFDEF BCB}
+    constructor Create1(AStream: TStream);
+{$ENDIF}
     procedure Serialize(const Value: Variant); overload;
     procedure Serialize(const Value: array of const); overload;
     procedure WriteInteger(I: Integer);
@@ -294,22 +315,23 @@ type
 
   THproseFormatter = class
   public
-    class function Serialize(const Value: Variant): RawByteString; overload;
-    class function Serialize(const Value: array of const): RawByteString; overload;
+    class function Serialize(const Value: Variant; Simple: Boolean = False): RawByteString; overload;
+    class function Serialize(const Value: array of const; Simple: Boolean = False): RawByteString; overload;
 {$IFDEF Supports_Generics}
-    class function Serialize<T>(const Value: T): RawByteString; overload;
-    class function Unserialize<T>(const Data:RawByteString): T; overload;
+    class function Serialize<T>(const Value: T; Simple: Boolean = False): RawByteString; overload;
+    class function Unserialize<T>(const Data:RawByteString; Simple: Boolean = False): T; overload;
 {$ELSE}
-    class function Serialize(const Value: TObject): RawByteString; overload;
+    class function Serialize(const Value: TObject; Simple: Boolean = False): RawByteString; overload;
 {$ENDIF}
-    class function Unserialize(const Data:RawByteString): Variant; overload;
-    class function Unserialize(const Data:RawByteString; TypeInfo: Pointer): Variant; overload;
+    class function Unserialize(const Data:RawByteString; Simple: Boolean = False): Variant; overload;
+    class function Unserialize(const Data:RawByteString; TypeInfo: Pointer; Simple: Boolean = False): Variant; overload;
   end;
 
-function HproseSerialize(const Value: TObject): RawByteString; overload;
-function HproseSerialize(const Value: Variant): RawByteString; overload;
-function HproseSerialize(const Value: array of const): RawByteString; overload;
-function HproseUnserialize(const Data:RawByteString; TypeInfo: Pointer = nil): Variant;
+function HproseSerialize(const Value: TObject; Simple: Boolean = False): RawByteString; overload;
+function HproseSerialize(const Value: Variant; Simple: Boolean = False): RawByteString; overload;
+function HproseSerialize(const Value: array of const; Simple: Boolean = False): RawByteString; overload;
+function HproseUnserialize(const Data:RawByteString; TypeInfo: Pointer; Simple: Boolean = False): Variant; overload;
+function HproseUnserialize(const Data:RawByteString; Simple: Boolean = True): Variant; overload;
 
 implementation
 
@@ -915,15 +937,86 @@ begin
   Result := (C < #$0100) and (AnsiChar(C) in CharSet);
 end;
 
+type
+  TFakeReaderRefer = class(TInterfacedObject, IReaderRefer)
+  public
+    function SetRef(const V: Variant): Integer; overload;
+    procedure SetRef(I: Integer; const V: Variant); overload;
+    function ReadRef(I: Integer): Variant;
+    procedure Reset;
+  end;
+
+{ TFakeReaderRefer }
+
+function TFakeReaderRefer.ReadRef(I: Integer): Variant;
+begin
+  raise EHproseException.Create('Unexpected serialize tag "r" in stream');
+end;
+
+procedure TFakeReaderRefer.Reset;
+begin
+end;
+
+function TFakeReaderRefer.SetRef(const V: Variant): Integer;
+begin
+  Result := 0;
+end;
+
+procedure TFakeReaderRefer.SetRef(I: Integer; const V: Variant);
+begin
+end;
+
+type
+  TRealReaderRefer = class(TInterfacedObject, IReaderRefer)
+  private
+    FRefList: IList;
+  public
+    function SetRef(const V: Variant): Integer; overload;
+    procedure SetRef(I: Integer; const V: Variant); overload;
+    function ReadRef(I: Integer): Variant;
+    procedure Reset;
+  end;
+
+{ TRealReaderRefer }
+
+function TRealReaderRefer.ReadRef(I: Integer): Variant;
+begin
+  Result := FRefList[I];
+end;
+
+procedure TRealReaderRefer.Reset;
+begin
+  if FRefList <> nil then FRefList.Clear;
+end;
+
+function TRealReaderRefer.SetRef(const V: Variant): Integer;
+begin
+  if FRefList = nil then FRefList := TArrayList.Create(False);
+  Result := FRefList.Add(V);
+end;
+
+procedure TRealReaderRefer.SetRef(I: Integer; const V: Variant);
+begin
+  FRefList[I] := V;
+end;
+
 { THproseReader }
 
-constructor THproseReader.Create(AStream: TStream);
+constructor THproseReader.Create(AStream: TStream; Simple: Boolean);
 begin
   FStream := AStream;
-  FRefList := TArrayList.Create(False);
+  if Simple then FRefer := TFakeReaderRefer.Create
+  else FRefer := TRealReaderRefer.Create;
   FClassRefList := TArrayList.Create(False);
   FAttrRefMap := THashMap.Create(False);
 end;
+
+{$IFDEF BCB}
+constructor THproseReader.Create1(AStream: TStream);
+begin
+  Create(AStream);
+end;
+{$ENDIF}
 
 function THproseReader.UnexpectedTag(Tag: AnsiChar;
   const ExpectTags: string): EHproseException;
@@ -1126,7 +1219,7 @@ begin
   end
   else
     Result := EncodeDate(Year, Month, Day);
-  FRefList.Add(Result);
+  FRefer.SetRef(Result);
 end;
 
 function THproseReader.ReadTimeWithoutTag: TDateTime;
@@ -1157,7 +1250,7 @@ begin
     end;
   end;
   Result := EncodeTime(Hour, Minute, Second, Millisecond);
-  FRefList.Add(Result);
+  FRefer.SetRef(Result);
 end;
 
 function THproseReader.ReadUTF8CharWithoutTag: WideChar;
@@ -1242,7 +1335,7 @@ end;
 function THproseReader.ReadStringWithoutTag: WideString;
 begin
   Result := ReadStringAsWideString;
-  FRefList.Add(Result);
+  FRefer.SetRef(Result);
 end;
 
 function THproseReader.ReadBytesWithoutTag: Variant;
@@ -1256,14 +1349,14 @@ begin
   FStream.ReadBuffer(P^[0], Len);
   VarArrayUnLock(Result);
   CheckTag(HproseTagQuote);
-  FRefList.Add(VarArrayRef(Result));
+  FRefer.SetRef(VarArrayRef(Result));
 end;
 
 function THproseReader.ReadGuidWithoutTag: string;
 begin
   SetLength(Result, 38);
   FStream.ReadBuffer(Result[1], 38);
-  FRefList.Add(Result);
+  FRefer.SetRef(Result);
 end;
 
 function THproseReader.ReadBooleanArray(Count: Integer): Variant;
@@ -1272,11 +1365,11 @@ var
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varBoolean);
-  N := FRefList.Add(Null);
+  N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ReadBoolean;
   VarArrayUnlock(Result);
-  FRefList[N] := VarArrayRef(Result);
+  FRefer.SetRef(N, VarArrayRef(Result));
 end;
 
 function THproseReader.ReadShortIntArray(Count: Integer): Variant;
@@ -1285,11 +1378,11 @@ var
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varShortInt);
-  N := FRefList.Add(Null);
+  N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ShortInt(ReadInteger);
   VarArrayUnlock(Result);
-  FRefList[N] := VarArrayRef(Result);
+  FRefer.SetRef(N, VarArrayRef(Result));
 end;
 
 function THproseReader.ReadByteArray(Count: Integer): Variant;
@@ -1298,11 +1391,11 @@ var
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varByte);
-  N := FRefList.Add(Null);
+  N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := Byte(ReadInteger);
   VarArrayUnlock(Result);
-  FRefList[N] := VarArrayRef(Result);
+  FRefer.SetRef(N, VarArrayRef(Result));
 end;
 
 function THproseReader.ReadSmallIntArray(Count: Integer): Variant;
@@ -1311,11 +1404,11 @@ var
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varSmallInt);
-  N := FRefList.Add(Null);
+  N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := SmallInt(ReadInteger);
   VarArrayUnlock(Result);
-  FRefList[N] := VarArrayRef(Result);
+  FRefer.SetRef(N, VarArrayRef(Result));
 end;
 
 function THproseReader.ReadWordArray(Count: Integer): Variant;
@@ -1324,11 +1417,11 @@ var
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varWord);
-  N := FRefList.Add(Null);
+  N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := Word(ReadInteger);
   VarArrayUnlock(Result);
-  FRefList[N] := VarArrayRef(Result);
+  FRefer.SetRef(N, VarArrayRef(Result));
 end;
 
 function THproseReader.ReadIntegerArray(Count: Integer): Variant;
@@ -1337,11 +1430,11 @@ var
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varInteger);
-  N := FRefList.Add(Null);
+  N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ReadInteger;
   VarArrayUnlock(Result);
-  FRefList[N] := VarArrayRef(Result);
+  FRefer.SetRef(N, VarArrayRef(Result));
 end;
 
 function THproseReader.ReadLongWordArray(Count: Integer): Variant;
@@ -1350,11 +1443,11 @@ var
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varLongWord);
-  N := FRefList.Add(Null);
+  N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := LongWord(ReadInt64);
   VarArrayUnlock(Result);
-  FRefList[N] := VarArrayRef(Result);
+  FRefer.SetRef(N, VarArrayRef(Result));
 end;
 
 function THproseReader.ReadSingleArray(Count: Integer): Variant;
@@ -1363,11 +1456,11 @@ var
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varSingle);
-  N := FRefList.Add(Null);
+  N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ReadExtended;
   VarArrayUnlock(Result);
-  FRefList[N] := VarArrayRef(Result);
+  FRefer.SetRef(N, VarArrayRef(Result));
 end;
 
 function THproseReader.ReadDoubleArray(Count: Integer): Variant;
@@ -1376,11 +1469,11 @@ var
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varDouble);
-  N := FRefList.Add(Null);
+  N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ReadExtended;
   VarArrayUnlock(Result);
-  FRefList[N] := VarArrayRef(Result);
+  FRefer.SetRef(N, VarArrayRef(Result));
 end;
 
 function THproseReader.ReadCurrencyArray(Count: Integer): Variant;
@@ -1389,11 +1482,11 @@ var
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varCurrency);
-  N := FRefList.Add(Null);
+  N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ReadCurrency;
   VarArrayUnlock(Result);
-  FRefList[N] := VarArrayRef(Result);
+  FRefer.SetRef(N, VarArrayRef(Result));
 end;
 
 function THproseReader.ReadDateTimeArray(Count: Integer): Variant;
@@ -1402,11 +1495,11 @@ var
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varDate);
-  N := FRefList.Add(Null);
+  N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ReadDateTime;
   VarArrayUnlock(Result);
-  FRefList[N] := VarArrayRef(Result);
+  FRefer.SetRef(N, VarArrayRef(Result));
 end;
 
 function THproseReader.ReadWideStringArray(Count: Integer): Variant;
@@ -1415,11 +1508,11 @@ var
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varOleStr);
-  N := FRefList.Add(Null);
+  N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ReadString;
   VarArrayUnlock(Result);
-  FRefList[N] := VarArrayRef(Result);
+  FRefer.SetRef(N, VarArrayRef(Result));
 end;
 
 function THproseReader.ReadVariantArray(Count: Integer): Variant;
@@ -1428,11 +1521,11 @@ var
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varVariant);
-  N := FRefList.Add(Null);
+  N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := Unserialize;
   VarArrayUnlock(Result);
-  FRefList[N] := VarArrayRef(Result);
+  FRefer.SetRef(N, VarArrayRef(Result));
 end;
 
 function THproseReader.ReadInterfaceArray(Count: Integer): Variant;
@@ -1441,11 +1534,11 @@ var
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varVariant);
-  N := FRefList.Add(Null);
+  N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := Unserialize;
   VarArrayUnlock(Result);
-  FRefList[N] := VarArrayRef(Result);
+  FRefer.SetRef(N, VarArrayRef(Result));
 end;
 
 function THproseReader.ReadDynArrayWithoutTag(varType: Integer): Variant;
@@ -1478,7 +1571,7 @@ var
 begin
   Count := ReadInt(HproseTagOpenbrace);
   Result := TListClass(AClass).Create(Count) as IList;
-  FRefList.Add(Result);
+  FRefer.SetRef(Result);
   for I := 0 to Count - 1 do Result[I] := Unserialize;
   CheckTag(HproseTagClosebrace);
 end;
@@ -1489,7 +1582,7 @@ var
 begin
   Count := ReadInt(HproseTagOpenbrace);
   Result := TListClass(AClass).Create(Count);
-  FRefList.Add(ObjToVar(Result));
+  FRefer.SetRef(ObjToVar(Result));
   for I := 0 to Count - 1 do Result[I] := Unserialize;
   CheckTag(HproseTagClosebrace);
 end;
@@ -1505,7 +1598,7 @@ var
 begin
   Count := ReadInt(HproseTagOpenbrace);
   Result := TMapClass(AClass).Create(Count) as IMap;
-  FRefList.Add(Result);
+  FRefer.SetRef(Result);
   for I := 0 to Count - 1 do Result[I] := Unserialize;
   CheckTag(HproseTagClosebrace);
 end;
@@ -1516,7 +1609,7 @@ var
 begin
   Count := ReadInt(HproseTagOpenbrace);
   Result := TMapClass(AClass).Create(Count);
-  FRefList.Add(ObjToVar(Result));
+  FRefer.SetRef(ObjToVar(Result));
   for I := 0 to Count - 1 do Result[I] := Unserialize;
   CheckTag(HproseTagClosebrace);
 end;
@@ -1528,7 +1621,7 @@ var
 begin
   Count := ReadInt(HproseTagOpenbrace);
   Result := TMapClass(AClass).Create(Count) as IMap;
-  FRefList.Add(Result);
+  FRefer.SetRef(Result);
   for I := 0 to Count - 1 do begin
     Key := Unserialize;
     Result[Key] := Unserialize;
@@ -1543,7 +1636,7 @@ var
 begin
   Count := ReadInt(HproseTagOpenbrace);
   Result := TMapClass(AClass).Create(Count);
-  FRefList.Add(ObjToVar(Result));
+  FRefer.SetRef(ObjToVar(Result));
   for I := 0 to Count - 1 do begin
     Key := Unserialize;
     Result[Key] := Unserialize;
@@ -1560,7 +1653,7 @@ begin
   Count := ReadInt(HproseTagOpenbrace);
   Instance := AClass.Create;
   Supports(Instance, IID, Result);
-  FRefList.Add(Result);
+  FRefer.SetRef(Result);
   for I := 0 to Count - 1 do begin
     PropInfo := GetPropInfo(AClass, ReadString);
     if (PropInfo <> nil) then
@@ -1578,7 +1671,7 @@ var
 begin
   Count := ReadInt(HproseTagOpenbrace);
   Result := AClass.Create;
-  FRefList.Add(ObjToVar(Result));
+  FRefer.SetRef(ObjToVar(Result));
   for I := 0 to Count - 1 do begin
     PropInfo := GetPropInfo(AClass, ReadString);
     if (PropInfo <> nil) then
@@ -1630,7 +1723,7 @@ begin
   AttrNames := VarToList(FAttrRefMap[C]);
   Count := AttrNames.Count;
   Result := AClass.Create(Count) as IMap;
-  FRefList.Add(Result);
+  FRefer.SetRef(Result);
   for I := 0 to Count - 1 do Result[AttrNames[I]] := Unserialize;
   CheckTag(HproseTagClosebrace);
 end;
@@ -1645,7 +1738,7 @@ begin
   AttrNames := VarToList(FAttrRefMap[C]);
   Count := AttrNames.Count;
   Result := AClass.Create(Count);
-  FRefList.Add(ObjToVar(Result));
+  FRefer.SetRef(ObjToVar(Result));
   for I := 0 to Count - 1 do Result[AttrNames[I]] := Unserialize;
   CheckTag(HproseTagClosebrace);
 end;
@@ -1669,7 +1762,7 @@ begin
   Count := AttrNames.Count;
   Instance := AClass.Create;
   Supports(Instance, IID, Result);
-  FRefList.Add(Result);
+  FRefer.SetRef(Result);
   for I := 0 to Count - 1 do begin
     PropInfo := GetPropInfo(Instance, AttrNames[I]);
     if (PropInfo <> nil) then
@@ -1697,7 +1790,7 @@ begin
   AttrNames := VarToList(FAttrRefMap[C]);
   Count := AttrNames.Count;
   Result := AClass.Create;
-  FRefList.Add(ObjToVar(Result));
+  FRefer.SetRef(ObjToVar(Result));
   for I := 0 to Count - 1 do begin
     PropInfo := GetPropInfo(Result, AttrNames[I]);
     if (PropInfo <> nil) then
@@ -1735,7 +1828,7 @@ begin
       Instance := AClass.Create;
       Result := ObjToVar(Instance);
     end;
-    FRefList.Add(Result);
+    FRefer.SetRef(Result);
     if Instance is TAbstractMap then begin
       Map := TAbstractMap(Instance);
       for I := 0 to Count - 1 do Map[AttrNames[I]] := Unserialize;
@@ -1751,7 +1844,7 @@ begin
   else begin
     AMap := TCaseInsensitiveHashMap.Create(Count) as IMap;
     Result := AMap;
-    FRefList.Add(Result);
+    FRefer.SetRef(Result);
     for I := 0 to Count - 1 do AMap[AttrNames[I]] := Unserialize;
   end;
   CheckTag(HproseTagClosebrace);
@@ -1759,7 +1852,7 @@ end;
 
 function THproseReader.ReadRef: Variant;
 begin
-  Result := FRefList[ReadInt(HproseTagSemicolon)];
+  Result := FRefer.ReadRef(ReadInt(HproseTagSemicolon));
 end;
 
 function CastError(const SrcType, DestType: string): EHproseException;
@@ -2071,7 +2164,7 @@ begin
     htList: begin
       Count := ReadInt(HproseTagOpenbrace);
       SetLength(Result, Count);
-      FRefList.Add(Null);
+      FRefer.SetRef(Null);
       for I := 0 to Count - 1 do Result[I] := Unserialize;
       CheckTag(HproseTagClosebrace);
     end;
@@ -2183,7 +2276,7 @@ var
 begin
   Count := ReadInt(HproseTagOpenbrace);
   SetLength(DynArray, Count);
-  FRefList.Add(NativeInt(Pointer(DynArray)));
+  FRefer.SetRef(NativeInt(Pointer(DynArray)));
   for I := 0 to Count - 1 do Unserialize(TypeInfo, DynArray[I]);
   CheckTag(HproseTagClosebrace);
 end;
@@ -2275,7 +2368,7 @@ begin
   RttiType.Free;
   Context.Free;
   Result.Count := Count;
-  FRefList.Add(ObjToVar(Result));
+  FRefer.SetRef(ObjToVar(Result));
   for I := 0 to Count - 1 do Result[I] := UnserializeTypeAsT<T>(ElementTypeInfo);
   CheckTag(HproseTagClosebrace);
 end;
@@ -2331,7 +2424,7 @@ begin
   RttiMethod.Free;
   RttiType.Free;
   Context.Free;
-  FRefList.Add(ObjToVar(Result));
+  FRefer.SetRef(ObjToVar(Result));
   for I := 1 to Count do Result.Enqueue(UnserializeTypeAsT<T>(ElementTypeInfo));
   CheckTag(HproseTagClosebrace);
 end;
@@ -2378,7 +2471,7 @@ begin
   Count := ReadInt(HproseTagOpenbrace);
   AClass := GetTypeData(TypeInfo)^.ClassType;
   Result := TStack<T>(AClass.Create);
-  FRefList.Add(ObjToVar(Result));
+  FRefer.SetRef(ObjToVar(Result));
   for I := 1 to Count do Result.Push(UnserializeTypeAsT<T>(ElementTypeInfo));
   CheckTag(HproseTagClosebrace);
 end;
@@ -2437,7 +2530,7 @@ begin
   RttiMethod.Free;
   RttiType.Free;
   Context.Free;
-  FRefList.Add(ObjToVar(Result));
+  FRefer.SetRef(ObjToVar(Result));
   for I := 1 to Count do begin
     Unserialize(KeyTypeInfo, Key);
     Unserialize(ValueTypeInfo, Value);
@@ -2976,19 +3069,108 @@ end;
 
 procedure THproseReader.Reset;
 begin
-  FRefList.Clear;
+  FRefer.Reset;
   FClassRefList.Clear;
   FAttrRefMap.Clear;
 end;
 
-{ THproseWriter }
+type
+  TFakeWriterRefer = class(TInterfacedObject, IWriterRefer)
+  public
+    procedure AddCount(Count: Integer);
+    procedure SetRef(const V: Variant);
+    function WriteRef(const V:Variant): Boolean;
+    procedure Reset;
+  end;
 
-constructor THproseWriter.Create(AStream: TStream);
+{ TFakeWriterRefer }
+
+procedure TFakeWriterRefer.AddCount(Count: Integer);
+begin
+end;
+
+procedure TFakeWriterRefer.SetRef(const V: Variant);
+begin
+end;
+
+function TFakeWriterRefer.WriteRef(const V:Variant): Boolean;
+begin
+  Result := False;
+end;
+
+procedure TFakeWriterRefer.Reset;
+begin
+end;
+
+type
+  TRealWriterRefer = class(TInterfacedObject, IWriterRefer)
+  private
+    FRefList: IList;
+    FStream: TStream;
+  public
+    constructor Create(AStream: TStream);
+    procedure AddCount(Count: Integer);
+    procedure SetRef(const V: Variant);
+    function WriteRef(const V:Variant): Boolean;
+    procedure Reset;
+  end;
+
+{ TRealWriterRefer }
+
+constructor TRealWriterRefer.Create(AStream: TStream);
 begin
   FStream := AStream;
   FRefList := THashedList.Create(False);
+end;
+
+procedure TRealWriterRefer.AddCount(Count: Integer);
+begin
+  FRefList.Count := FRefList.Count + Count;
+end;
+
+procedure TRealWriterRefer.SetRef(const V: Variant);
+begin
+  FRefList.Add(V);
+end;
+
+function TRealWriterRefer.WriteRef(const V:Variant): Boolean;
+var
+  Ref: Integer;
+  S: RawByteString;
+begin
+  Ref := FRefList.IndexOf(V);
+  if Ref > -1 then begin
+    FStream.WriteBuffer(HproseTagRef, 1);
+    S := RawByteString(IntToStr(Ref));
+    FStream.WriteBuffer(S[1], Length(S));
+    FStream.WriteBuffer(HproseTagSemicolon, 1);
+    Result := True;
+  end
+  else
+    Result := False;
+end;
+
+procedure TRealWriterRefer.Reset;
+begin
+  FRefList.Clear;
+end;
+
+{ THproseWriter }
+
+constructor THproseWriter.Create(AStream: TStream; Simple: Boolean);
+begin
+  FStream := AStream;
+  if Simple then FRefer := TFakeWriterRefer.Create
+  else FRefer := TRealWriterRefer.Create(AStream);
   FClassRefList := THashedList.Create(False);
 end;
+
+{$IFDEF BCB}
+constructor THproseWriter.Create1(AStream: TStream);
+begin
+  Create(AStream);
+end;
+{$ENDIF}
 
 procedure THproseWriter.Serialize(const Value: Variant);
 var
@@ -3063,7 +3245,7 @@ var
   AMap: IMap;
   ASmartObject: ISmartObject;
 begin
-  FRefList.Add(Null);
+  FRefer.SetRef(Null);
   N := Length(Value);
   FStream.WriteBuffer(HproseTagList, 1);
   if N > 0 then WriteRawByteString(RawByteString(IntToStr(N)));
@@ -3117,7 +3299,7 @@ var
   Des: array of array[0..1] of Integer;
   Loc, Len: array of Integer;
 begin
-  FRefList.Add(Value);
+  FRefer.SetRef(Value);
   PVar := FindVarData(Value);
   Rank := VarArrayDimCount(Value);
   if Rank = 1 then begin
@@ -3162,7 +3344,7 @@ begin
       for I := Maxrank downto 1 do
         if Loc[I] = Des[I, 0] then Inc(N) else Break;
       for I := Rank - N to MaxRank do begin
-        FRefList.Add(Null);
+        FRefer.SetRef(Null);
         FStream.WriteBuffer(HproseTagList, 1);
         if Len[I] > 0 then WriteRawByteString(RawByteString(IntToStr(Len[I])));
         FStream.WriteBuffer(HproseTagOpenbrace, 1);
@@ -3184,11 +3366,8 @@ begin
 end;
 
 procedure THproseWriter.WriteArrayWithRef(const Value: Variant);
-var
-  Ref: Integer;
 begin
-  Ref := FRefList.IndexOf(Value);
-  if Ref > -1 then WriteRef(Ref) else WriteArray(Value);
+  if not FRefer.WriteRef(Value) then WriteArray(Value);
 end;
 
 procedure THproseWriter.WriteBoolean(B: Boolean);
@@ -3208,7 +3387,7 @@ procedure THproseWriter.WriteBytes(const Bytes: Variant);
 var
   N: Integer;
 begin
-  FRefList.Add(Bytes);
+  FRefer.SetRef(Bytes);
   N := VarArrayHighBound(Bytes, 1) - VarArrayLowBound(Bytes, 1) + 1;
   FStream.WriteBuffer(HproseTagBytes, 1);
   WriteRawByteString(RawByteString(IntToStr(N)));
@@ -3219,11 +3398,8 @@ begin
 end;
 
 procedure THproseWriter.WriteBytesWithRef(const Bytes: Variant);
-var
-  Ref: Integer;
 begin
-  Ref := FRefList.IndexOf(Bytes);
-  if Ref > -1 then WriteRef(Ref) else WriteBytes(Bytes);
+  if not FRefer.WriteRef(Bytes) then WriteBytes(Bytes);
 end;
 
 function THproseWriter.WriteClass(const Instance: TObject): Integer;
@@ -3298,7 +3474,7 @@ begin
   end;
   FStream.WriteBuffer(CachePointer^.Data[1], Length(CachePointer^.Data));
   if CachePointer^.RefCount > 0 then
-    FRefList.Count := FRefList.Count + CachePointer^.RefCount;
+    FRefer.AddCount(CachePointer^.RefCount);
   Result := FClassRefList.Add(Instance.ClassName);
 end;
 
@@ -3329,7 +3505,7 @@ procedure THproseWriter.WriteDateTime(const ADateTime: TDateTime);
 var
   ADate, ATime, AMillisecond: RawByteString;
 begin
-  FRefList.Add(ADateTime);
+  FRefer.SetRef(ADateTime);
   ADate := RawByteString(FormatDateTime('yyyymmdd', ADateTime));
   ATime := RawByteString(FormatDateTime('hhnnss', ADateTime));
   AMillisecond := RawByteString(FormatDateTime('zzz', ADateTime));
@@ -3359,11 +3535,8 @@ begin
 end;
 
 procedure THproseWriter.WriteDateTimeWithRef(const ADateTime: TDateTime);
-var
-  Ref: Integer;
 begin
-  Ref := FRefList.IndexOf(ADateTime);
-  if Ref > -1 then WriteRef(Ref) else WriteDateTime(ADateTime);
+  if not FRefer.WriteRef(ADateTime) then WriteDateTime(ADateTime);
 end;
 
 procedure THproseWriter.WriteDouble(D: Extended);
@@ -3420,7 +3593,7 @@ procedure THproseWriter.WriteList(const AList: IList);
 var
   Count, I: Integer;
 begin
-  FRefList.Add(AList);
+  FRefer.SetRef(AList);
   Count := AList.Count;
   FStream.WriteBuffer(HproseTagList, 1);
   if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -3430,18 +3603,15 @@ begin
 end;
 
 procedure THproseWriter.WriteListWithRef(const AList: IList);
-var
-  Ref: Integer;
 begin
-  Ref := FRefList.IndexOf(AList);
-  if Ref > -1 then WriteRef(Ref) else WriteList(AList);
+  if not FRefer.WriteRef(AList) then WriteList(AList);
 end;
 
 procedure THproseWriter.WriteList(const AList: TAbstractList);
 var
   Count, I: Integer;
 begin
-  FRefList.Add(ObjToVar(AList));
+  FRefer.SetRef(ObjToVar(AList));
   Count := AList.Count;
   FStream.WriteBuffer(HproseTagList, 1);
   if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -3522,7 +3692,7 @@ procedure THproseWriter.WriteMap(const AMap: IMap);
 var
   Count, I: Integer;
 begin
-  FRefList.Add(AMap);
+  FRefer.SetRef(AMap);
   Count := AMap.Count;
   FStream.WriteBuffer(HproseTagMap, 1);
   if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -3535,18 +3705,15 @@ begin
 end;
 
 procedure THproseWriter.WriteMapWithRef(const AMap: IMap);
-var
-  Ref: Integer;
 begin
-  Ref := FRefList.IndexOf(AMap);
-  if Ref > -1 then WriteRef(Ref) else WriteMap(AMap);
+  if not FRefer.WriteRef(AMap) then WriteMap(AMap);
 end;
 
 procedure THproseWriter.WriteMap(const AMap: TAbstractMap);
 var
   Count, I: Integer;
 begin
-  FRefList.Add(ObjToVar(AMap));
+  FRefer.SetRef(ObjToVar(AMap));
   Count := AMap.Count;
   FStream.WriteBuffer(HproseTagMap, 1);
   if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -3609,7 +3776,7 @@ begin
     Value := ObjToVar(AObject);
     ClassRef := FClassRefList.IndexOf(ClassName);
     if ClassRef < 0 then ClassRef := WriteClass(AObject);
-    FRefList.Add(Value);
+    FRefer.SetRef(Value);
     FStream.WriteBuffer(HproseTagObject, 1);
     WriteRawByteString(RawByteString(IntToStr(ClassRef)));
     FStream.WriteBuffer(HproseTagOpenbrace, 1);
@@ -3625,11 +3792,8 @@ begin
 end;
 
 procedure THproseWriter.WriteObjectWithRef(const AObject: TObject);
-var
-  Ref: Integer;
 begin
-  Ref := FRefList.IndexOf(ObjToVar(AObject));
-  if Ref > -1 then WriteRef(Ref) else WriteObject(AObject);
+  if not FRefer.WriteRef(ObjToVar(AObject)) then WriteObject(AObject);
 end;
 
 procedure THproseWriter.WriteInterface(const Intf: IInterface);
@@ -3642,7 +3806,7 @@ begin
   AObject := IntfToObj(Intf);
   ClassRef := FClassRefList.IndexOf(AObject.ClassName);
   if ClassRef < 0 then ClassRef := WriteClass(AObject);
-  FRefList.Add(Intf);
+  FRefer.SetRef(Intf);
   FStream.WriteBuffer(HproseTagObject, 1);
   WriteRawByteString(RawByteString(IntToStr(ClassRef)));
   FStream.WriteBuffer(HproseTagOpenbrace, 1);
@@ -3657,11 +3821,8 @@ begin
 end;
 
 procedure THproseWriter.WriteInterfaceWithRef(const Intf: IInterface);
-var
-  Ref: Integer;
 begin
-  Ref := FRefList.IndexOf(Intf);
-  if Ref > -1 then WriteRef(Ref) else WriteInterface(Intf);
+  if not FRefer.WriteRef(Intf) then WriteInterface(Intf);
 end;
 
 procedure THproseWriter.WriteSmartObject(const SmartObject: ISmartObject);
@@ -3670,23 +3831,13 @@ begin
 end;
 
 procedure THproseWriter.WriteSmartObjectWithRef(const SmartObject: ISmartObject);
-var
-  Ref: Integer;
 begin
-  Ref := FRefList.IndexOf(ObjToVar(SmartObject.Value));
-  if Ref > -1 then
-    WriteRef(Ref)
-  else if SmartObject.Value is TStrings then
-    WriteStrings(TStrings(SmartObject.Value))
-  else
-    WriteObject(SmartObject.Value);
-end;
-
-procedure THproseWriter.WriteRef(Value: Integer);
-begin
-  FStream.WriteBuffer(HproseTagRef, 1);
-  WriteRawByteString(RawByteString(IntToStr(Value)));
-  FStream.WriteBuffer(HproseTagSemicolon, 1);
+  if not FRefer.WriteRef(ObjToVar(SmartObject.Value)) then begin
+    if SmartObject.Value is TStrings then
+      WriteStrings(TStrings(SmartObject.Value))
+    else
+      WriteObject(SmartObject.Value);
+  end;
 end;
 
 procedure THproseWriter.WriteShortIntArray(var P; Count: Integer);
@@ -3721,7 +3872,7 @@ end;
 
 procedure THproseWriter.WriteString(const S: WideString);
 begin
-  FRefList.Add(S);
+  FRefer.SetRef(S);
   FStream.WriteBuffer(HproseTagString, 1);
   WriteRawByteString(RawByteString(IntToStr(Length(S))));
   FStream.WriteBuffer(HproseTagQuote, 1);
@@ -3730,18 +3881,15 @@ begin
 end;
 
 procedure THproseWriter.WriteStringWithRef(const S: WideString);
-var
-  Ref: Integer;
 begin
-  Ref := FRefList.IndexOf(S);
-  if Ref > -1 then WriteRef(Ref) else WriteString(S);
+  if not FRefer.WriteRef(S) then WriteString(S);
 end;
 
 procedure THproseWriter.WriteStrings(const SS: TStrings);
 var
   Count, I: Integer;
 begin
-  FRefList.Add(ObjToVar(SS));
+  FRefer.SetRef(ObjToVar(SS));
   Count := SS.Count;
   FStream.WriteBuffer(HproseTagList, 1);
   if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -3786,7 +3934,7 @@ end;
 
 procedure THproseWriter.Reset;
 begin
-  FRefList.Clear;
+  FRefer.Reset;
   FClassRefList.Clear;
 end;
 
@@ -3885,7 +4033,7 @@ begin
   if TypeInfo = nil then
     raise EHproseException.Create('Can not serialize ' + Name)
   else begin
-    FRefList.Add(NativeInt(Pointer(DynArray)));
+    FRefer.SetRef(NativeInt(Pointer(DynArray)));
     Count := Length(B1Array);
     FStream.WriteBuffer(HproseTagList, 1);
     if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -3918,14 +4066,12 @@ end;
 procedure THproseWriter.WriteArrayWithRef(const DynArray; TypeInfo: Pointer);
 var
   Name: string;
-  Ref: Integer;
   Value: Variant;
   TypeData: PTypeData;
 begin
   Name := GetTypeName(TypeInfo);
   if AnsiStartsText('TArray<', Name) then begin
-    Ref := FRefList.IndexOf(NativeInt(Pointer(DynArray)));
-    if Ref > -1 then WriteRef(Ref) else WriteArray(DynArray, Name);
+    if not FRefer.WriteRef(NativeInt(Pointer(DynArray))) then WriteArray(DynArray, Name);
   end
   else begin
     DynArrayToVariant(Value, Pointer(DynArray), TypeInfo);
@@ -3979,7 +4125,7 @@ begin
   if TypeInfo = nil then
     raise EHproseException.Create('Can not serialize ' + ClassName)
   else begin
-    FRefList.Add(ObjToVar(AList));
+    FRefer.SetRef(ObjToVar(AList));
     Count := B1List.Count;
     FStream.WriteBuffer(HproseTagList, 1);
     if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -4022,7 +4168,7 @@ begin
   if TypeInfo = nil then
     raise EHproseException.Create('Can not serialize ' + ClassName)
   else begin
-    FRefList.Add(ObjToVar(AList));
+    FRefer.SetRef(ObjToVar(AList));
     Count := OList.Count;
     FStream.WriteBuffer(HproseTagList, 1);
     if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -4073,7 +4219,7 @@ begin
   if TypeInfo = nil then
     raise EHproseException.Create('Can not serialize ' + ClassName)
   else begin
-    FRefList.Add(ObjToVar(AQueue));
+    FRefer.SetRef(ObjToVar(AQueue));
     Count := B1Queue.Count;
     FStream.WriteBuffer(HproseTagList, 1);
     if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -4116,7 +4262,7 @@ begin
   if TypeInfo = nil then
     raise EHproseException.Create('Can not serialize ' + ClassName)
   else begin
-    FRefList.Add(ObjToVar(AQueue));
+    FRefer.SetRef(ObjToVar(AQueue));
     Count := OQueue.Count;
     FStream.WriteBuffer(HproseTagList, 1);
     if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -4167,7 +4313,7 @@ begin
   if TypeInfo = nil then
     raise EHproseException.Create('Can not serialize ' + ClassName)
   else begin
-    FRefList.Add(ObjToVar(AStack));
+    FRefer.SetRef(ObjToVar(AStack));
     Count := B1Stack.Count;
     FStream.WriteBuffer(HproseTagList, 1);
     if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -4210,7 +4356,7 @@ begin
   if TypeInfo = nil then
     raise EHproseException.Create('Can not serialize ' + ClassName)
   else begin
-    FRefList.Add(ObjToVar(AStack));
+    FRefer.SetRef(ObjToVar(AStack));
     Count := OStack.Count;
     FStream.WriteBuffer(HproseTagList, 1);
     if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -4327,7 +4473,7 @@ begin
   if (KeyTypeInfo = nil) or (ValueTypeInfo = nil) then
     raise EHproseException.Create('Can not serialize ' + ClassName)
   else begin
-    FRefList.Add(ObjToVar(ADict));
+    FRefer.SetRef(ObjToVar(ADict));
     Count := ODict.Count;
     FStream.WriteBuffer(HproseTagMap, 1);
     if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -4349,7 +4495,7 @@ procedure THproseWriter.WriteArray<T>(const DynArray: array of T);
 var
   Count, I: Integer;
 begin
-  FRefList.Add(Null);
+  FRefer.SetRef(Null);
   Count := Length(DynArray);
   FStream.WriteBuffer(HproseTagList, 1);
   if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -4362,7 +4508,7 @@ procedure THproseWriter.WriteDynArray<T>(const DynArray: TArray<T>);
 var
   Count, I: Integer;
 begin
-  FRefList.Add(NativeInt(Pointer(DynArray)));
+  FRefer.SetRef(NativeInt(Pointer(DynArray)));
   Count := Length(DynArray);
   FStream.WriteBuffer(HproseTagList, 1);
   if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -4372,11 +4518,8 @@ begin
 end;
 
 procedure THproseWriter.WriteDynArrayWithRef<T>(const DynArray: TArray<T>);
-var
-  Ref: Integer;
 begin
-  Ref := FRefList.IndexOf(NativeInt(Pointer(DynArray)));
-  if Ref > -1 then WriteRef(Ref) else WriteDynArray<T>(DynArray);
+  if not FRefer.WriteRef(NativeInt(Pointer(DynArray))) then WriteDynArray<T>(DynArray);
 end;
 
 procedure THproseWriter.WriteTList<T>(const AList: TList<T>);
@@ -4384,7 +4527,7 @@ var
   Count, I: Integer;
   Element: T;
 begin
-  FRefList.Add(ObjToVar(AList));
+  FRefer.SetRef(ObjToVar(AList));
   Count := AList.Count;
   FStream.WriteBuffer(HproseTagList, 1);
   if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -4397,11 +4540,8 @@ begin
 end;
 
 procedure THproseWriter.WriteTListWithRef<T>(const AList: TList<T>);
-var
-  Ref: Integer;
 begin
-  Ref := FRefList.IndexOf(ObjToVar(AList));
-  if Ref > -1 then WriteRef(Ref) else WriteTList<T>(AList);
+  if not FRefer.WriteRef(ObjToVar(AList)) then WriteTList<T>(AList);
 end;
 
 procedure THproseWriter.WriteTQueue<T>(const AQueue: TQueue<T>);
@@ -4409,7 +4549,7 @@ var
   Count, I: Integer;
   Element: T;
 begin
-  FRefList.Add(ObjToVar(AQueue));
+  FRefer.SetRef(ObjToVar(AQueue));
   Count := AQueue.Count;
   FStream.WriteBuffer(HproseTagList, 1);
   if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -4419,11 +4559,8 @@ begin
 end;
 
 procedure THproseWriter.WriteTQueueWithRef<T>(const AQueue: TQueue<T>);
-var
-  Ref: Integer;
 begin
-  Ref := FRefList.IndexOf(ObjToVar(AQueue));
-  if Ref > -1 then WriteRef(Ref) else WriteTQueue<T>(AQueue);
+  if not FRefer.WriteRef(ObjToVar(AQueue)) then WriteTQueue<T>(AQueue);
 end;
 
 procedure THproseWriter.WriteTStack<T>(const AStack: TStack<T>);
@@ -4431,7 +4568,7 @@ var
   Count, I: Integer;
   Element: T;
 begin
-  FRefList.Add(ObjToVar(AStack));
+  FRefer.SetRef(ObjToVar(AStack));
   Count := AStack.Count;
   FStream.WriteBuffer(HproseTagList, 1);
   if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -4441,11 +4578,8 @@ begin
 end;
 
 procedure THproseWriter.WriteTStackWithRef<T>(const AStack: TStack<T>);
-var
-  Ref: Integer;
 begin
-  Ref := FRefList.IndexOf(ObjToVar(AStack));
-  if Ref > -1 then WriteRef(Ref) else WriteTStack<T>(AStack);
+  if not FRefer.WriteRef(ObjToVar(AStack)) then WriteTStack<T>(AStack);
 end;
 
 procedure THproseWriter.WriteTDictionary2<TKey, TValue>(
@@ -4454,7 +4588,7 @@ var
   Count, I: Integer;
   Pair: TPair<TKey, TValue>;
 begin
-  FRefList.Add(ObjToVar(ADict));
+  FRefer.SetRef(ObjToVar(ADict));
   Count := ADict.Count;
   FStream.WriteBuffer(HproseTagMap, 1);
   if Count > 0 then WriteRawByteString(RawByteString(IntToStr(Count)));
@@ -4474,11 +4608,8 @@ end;
 
 procedure THproseWriter.WriteTDictionaryWithRef<TKey, TValue>(
   const ADict: TDictionary<TKey, TValue>);
-var
-  Ref: Integer;
 begin
-  Ref := FRefList.IndexOf(ObjToVar(ADict));
-  if Ref > -1 then WriteRef(Ref) else WriteTDictionary<TKey, TValue>(ADict);
+  if not FRefer.WriteRef(ObjToVar(ADict)) then WriteTDictionary<TKey, TValue>(ADict);
 end;
 
 {$ELSE}
@@ -4492,19 +4623,14 @@ end;
 
 { HproseSerialize }
 
-function HproseSerialize(const Value: TObject): RawByteString;
-begin
-  Result := HproseSerialize(ObjToVar(Value));
-end;
-
-function HproseSerialize(const Value: Variant): RawByteString;
+function HproseSerialize(const Value: Variant; Simple: Boolean): RawByteString;
 var
   Writer: THproseWriter;
   Stream: TMemoryStream;
 begin
   Stream := TMemoryStream.Create;
   try
-    Writer := THproseWriter.Create(Stream);
+    Writer := THproseWriter.Create(Stream, Simple);
     try
       Writer.Serialize(Value);
       Stream.Position := 0;
@@ -4518,14 +4644,19 @@ begin
   end;
 end;
 
-function HproseSerialize(const Value: array of const): RawByteString;
+function HproseSerialize(const Value: TObject; Simple: Boolean): RawByteString;
+begin
+  Result := HproseSerialize(ObjToVar(Value), Simple);
+end;
+
+function HproseSerialize(const Value: array of const; Simple: Boolean): RawByteString;
 var
   Writer: THproseWriter;
   Stream: TMemoryStream;
 begin
   Stream := TMemoryStream.Create;
   try
-    Writer := THproseWriter.Create(Stream);
+    Writer := THproseWriter.Create(Stream, Simple);
     try
       Writer.Serialize(Value);
       Stream.Position := 0;
@@ -4541,7 +4672,7 @@ end;
 
 { HproseUnserialize }
 
-function HproseUnserialize(const Data: RawByteString; TypeInfo: Pointer): Variant;
+function HproseUnserialize(const Data: RawByteString; TypeInfo: Pointer; Simple: Boolean): Variant;
 var
   Reader: THproseReader;
   Stream: TMemoryStream;
@@ -4550,7 +4681,7 @@ begin
   try
     Stream.SetSize(Length(Data));
     Move(PAnsiChar(Data)^, Stream.Memory^, Stream.Size);
-    Reader := THproseReader.Create(Stream);
+    Reader := THproseReader.Create(Stream, Simple);
     try
       Result := Reader.Unserialize(TypeInfo);
     finally
@@ -4561,30 +4692,35 @@ begin
   end;
 end;
 
+function HproseUnserialize(const Data:RawByteString; Simple: Boolean): Variant;
+begin
+  Result := HproseUnserialize(Data, nil, Simple);
+end;
+
 { THproseFormatter }
 
 class function THproseFormatter.Serialize(
-  const Value: Variant): RawByteString;
+  const Value: Variant; Simple: Boolean): RawByteString;
 begin
-  Result := HproseSerialize(Value);
+  Result := HproseSerialize(Value, Simple);
 end;
 
 class function THproseFormatter.Serialize(
-  const Value: array of const): RawByteString;
+  const Value: array of const; Simple: Boolean): RawByteString;
 begin
-  Result := HproseSerialize(Value);
+  Result := HproseSerialize(Value, Simple);
 end;
 
 {$IFDEF Supports_Generics}
 
-class function THproseFormatter.Serialize<T>(const Value: T): RawByteString;
+class function THproseFormatter.Serialize<T>(const Value: T; Simple: Boolean): RawByteString;
 var
   Writer: THproseWriter;
   Stream: TMemoryStream;
 begin
   Stream := TMemoryStream.Create;
   try
-    Writer := THproseWriter.Create(Stream);
+    Writer := THproseWriter.Create(Stream, Simple);
     try
       Writer.Serialize<T>(Value);
       Stream.Position := 0;
@@ -4598,7 +4734,7 @@ begin
   end;
 end;
 
-class function THproseFormatter.Unserialize<T>(const Data:RawByteString): T;
+class function THproseFormatter.Unserialize<T>(const Data:RawByteString; Simple: Boolean): T;
 var
   Reader: THproseReader;
   Stream: TMemoryStream;
@@ -4607,7 +4743,7 @@ begin
   try
     Stream.SetSize(Length(Data));
     Move(PAnsiChar(Data)^, Stream.Memory^, Stream.Size);
-    Reader := THproseReader.Create(Stream);
+    Reader := THproseReader.Create(Stream, Simple);
     try
       Result := Reader.Unserialize<T>;
     finally
@@ -4620,22 +4756,22 @@ end;
 
 {$ELSE}
 
-class function THproseFormatter.Serialize(const Value: TObject): RawByteString;
+class function THproseFormatter.Serialize(const Value: TObject; Simple: Boolean): RawByteString;
 begin
-  Result := HproseSerialize(Value);
+  Result := HproseSerialize(Value, Simple);
 end;
 
 {$ENDIF}
 
 class function THproseFormatter.Unserialize(const Data: RawByteString;
-  TypeInfo: Pointer): Variant;
+  TypeInfo: Pointer; Simple: Boolean): Variant;
 begin
-  Result := HproseUnserialize(Data, TypeInfo);
+  Result := HproseUnserialize(Data, TypeInfo, Simple);
 end;
 
-class function THproseFormatter.Unserialize(const Data:RawByteString): Variant;
+class function THproseFormatter.Unserialize(const Data:RawByteString; Simple: Boolean): Variant;
 begin
-  Result := HproseUnserialize(Data, nil);
+  Result := HproseUnserialize(Data, nil, Simple);
 end;
 
 procedure FreePropertiesCache;
