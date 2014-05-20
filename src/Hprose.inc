@@ -65,6 +65,15 @@
   {$define DELPHIXE5_UP}
 {$endif}
 
+{$ifdef VER270}
+  {$define DELPHIXE6}
+  {$define DELPHIXE6_UP}
+{$endif}
+
+{$ifdef DELPHIXE6_UP}
+  {$define DELPHIXE5_UP}
+{$endif}
+
 {$ifdef DELPHIXE5_UP}
   {$define DELPHIXE4_UP}
 {$endif}
