@@ -15,7 +15,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: May 17, 2014                             *
+ * LastModified: May 21, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -464,6 +464,22 @@ type
       Sync: Boolean = True; ReadWriteSync: Boolean = False); override;
   end;
 
+{$IF not defined(DELPHI2007_UP) and not defined(FPC)}
+  TBytes = array of Byte;
+{$IFEND}
+
+{$IF not defined(DELPHI2009_UP) and not defined(FPC)}
+  TBytesStream = class(TMemoryStream)
+  private
+    FBytes: TBytes;
+  protected
+    function Realloc(var NewCapacity: Longint): Pointer; override;
+  public
+    constructor Create(const ABytes: TBytes); overload;
+    property Bytes: TBytes read FBytes;
+  end;
+{$IFEND}
+
   TStringBuffer = class(TObject)
   private
     FDataString: RawByteString;
@@ -629,6 +645,21 @@ function MapSplit(MapClass: TMapClass; Str: string;
   const ItemSeparator: string = ';'; const KeyValueSeparator: string = '=';
   Limit: Integer = 0; TrimKey: Boolean = False; TrimValue: Boolean = False;
   SkipEmptyKey: Boolean = False; SkipEmptyValue: Boolean = False): IMap;
+
+{$IFNDEF DELPHI2009_UP}
+  // TBytes/string conversion routines
+function BytesOf(const Val: RawByteString): TBytes; overload;
+function BytesOf(const Val: WideChar): TBytes; overload;
+function BytesOf(const Val: AnsiChar): TBytes; overload;
+function BytesOf(const Val: WideString): TBytes; overload;
+function StringOf(const Bytes: TBytes): RawByteString;
+function WideStringOf(const Value: TBytes): WideString;
+function WideBytesOf(const Value: WideString): TBytes;
+{$ENDIF}
+
+{$IFNDEF DELPHIXE3_UP}
+function BytesOf(const Val: Pointer; const Len: integer): TBytes; overload;
+{$ENDIF}
 
 implementation
 
@@ -2376,6 +2407,110 @@ begin
   InitData(TCaseInsensitiveHashedList.Create(Capacity, Factor, False),
            THashedList.Create(Capacity, Factor, False));
 end;
+
+{$IFNDEF DELPHI2009_UP}
+
+{ TBytes/string conversion routines }
+
+function BytesOf(const Val: RawByteString): TBytes;
+var
+  Len: Integer;
+begin
+  Len := Length(Val);
+  SetLength(Result, Len);
+  Move(Val[1], Result[0], Len);
+end;
+
+function BytesOf(const Val: AnsiChar): TBytes;
+begin
+  SetLength(Result, 1);
+  Result[0] := Byte(Val);
+end;
+
+function BytesOf(const Val: WideChar): TBytes;
+begin
+  Result := BytesOf(WideString(Val));
+end;
+
+function BytesOf(const Val: WideString): TBytes;
+begin
+  Result := BytesOf(RawByteString(Val));
+end;
+
+function StringOf(const Bytes: TBytes): RawByteString;
+var
+  Len: Integer;
+begin
+  if Assigned(Bytes) then begin
+    Len := Length(Bytes);
+    SetLength(Result, Len);
+    Move(Bytes[0], Result[1], Len);
+  end
+  else
+    Result := '';
+end;
+
+function WideStringOf(const Value: TBytes): WideString;
+var
+  Len: Integer;
+begin
+  if Assigned(Value) then begin
+    Len := Length(Value);
+    SetLength(Result, Len div 2);
+    Move(Value[0], Result[1], Len);
+  end
+  else
+    Result := '';
+end;
+
+function WideBytesOf(const Value: WideString): TBytes;
+var
+  Len: Integer;
+begin
+  Len := Length(Value) * 2;
+  SetLength(Result, Len);
+  Move(Value[1], Result[0], Len);
+end;
+
+{$ENDIF}
+
+{$IFNDEF DELPHIXE3_UP}
+function BytesOf(const Val: Pointer; const Len: integer): TBytes;
+begin
+  SetLength(Result, Len);
+  Move(PByte(Val)^, Result[0], Len);
+end;
+{$ENDIF}
+
+{$IF not defined(DELPHI2009_UP) and not defined(FPC)}
+const
+  MemoryDelta = $2000; { Must be a power of 2 }
+
+{ TBytesStream }
+
+constructor TBytesStream.Create(const ABytes: TBytes);
+begin
+  inherited Create;
+  FBytes := ABytes;
+  SetPointer(FBytes, Length(FBytes));
+  Capacity := Size;
+end;
+
+function TBytesStream.Realloc(var NewCapacity: Longint): Pointer;
+begin
+  if (NewCapacity > 0) and (NewCapacity <> Size) then
+    NewCapacity := (NewCapacity + (MemoryDelta - 1)) and not (MemoryDelta - 1);
+  Result := Pointer(FBytes);
+  if NewCapacity <> Capacity then
+  begin
+    SetLength(FBytes, NewCapacity);
+    Result := Pointer(FBytes);
+    if NewCapacity = 0 then
+      Exit;
+    if Result = nil then raise EStreamError.CreateRes(@SMemoryStreamError);
+  end;
+end;
+{$IFEND}
 
 { TStringBuffer }
 

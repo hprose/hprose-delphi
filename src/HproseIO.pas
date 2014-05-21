@@ -15,7 +15,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: May 20, 2014                             *
+ * LastModified: May 21, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -27,7 +27,7 @@ unit HproseIO;
 interface
 
 uses Classes, HproseCommon
-{$IFDEF Supports_Generics}, Generics.Collections {$ENDIF}, TypInfo;
+{$IFDEF Supports_Generics}, Generics.Collections {$ENDIF}, TypInfo, SysUtils;
 
 const
   { Hprose Serialize Tags }
@@ -196,7 +196,7 @@ type
 {$ENDIF}
     function Unserialize: Variant; overload;
     function Unserialize(TypeInfo: PTypeInfo): Variant; overload;
-    function ReadRaw: TMemoryStream; overload;
+    function ReadRaw: TBytesStream; overload;
     procedure ReadRaw(const OStream: TStream); overload;
     procedure Reset;
     property Stream: TStream read FStream;
@@ -315,30 +315,30 @@ type
 
   THproseFormatter = class
   public
-    class function Serialize(const Value: Variant; Simple: Boolean = False): RawByteString; overload;
-    class function Serialize(const Value: array of const; Simple: Boolean = False): RawByteString; overload;
+    class function Serialize(const Value: Variant; Simple: Boolean = False): TBytes; overload;
+    class function Serialize(const Value: array of const; Simple: Boolean = False): TBytes; overload;
 {$IFDEF Supports_Generics}
-    class function Serialize<T>(const Value: T; Simple: Boolean = False): RawByteString; overload;
-    class function Unserialize<T>(const Data:RawByteString; Simple: Boolean = False): T; overload;
+    class function Serialize<T>(const Value: T; Simple: Boolean = False): TBytes; overload;
+    class function Unserialize<T>(const Data:TBytes; Simple: Boolean = False): T; overload;
 {$ELSE}
-    class function Serialize(const Value: TObject; Simple: Boolean = False): RawByteString; overload;
+    class function Serialize(const Value: TObject; Simple: Boolean = False): TBytes; overload;
 {$ENDIF}
-    class function Unserialize(const Data:RawByteString; Simple: Boolean = False): Variant; overload;
-    class function Unserialize(const Data:RawByteString; TypeInfo: Pointer; Simple: Boolean = False): Variant; overload;
+    class function Unserialize(const Data:TBytes; Simple: Boolean = False): Variant; overload;
+    class function Unserialize(const Data:TBytes; TypeInfo: Pointer; Simple: Boolean = False): Variant; overload;
   end;
 
-function HproseSerialize(const Value: TObject; Simple: Boolean = False): RawByteString; overload;
-function HproseSerialize(const Value: Variant; Simple: Boolean = False): RawByteString; overload;
-function HproseSerialize(const Value: array of const; Simple: Boolean = False): RawByteString; overload;
-function HproseUnserialize(const Data:RawByteString; TypeInfo: Pointer; Simple: Boolean = False): Variant; overload;
-function HproseUnserialize(const Data:RawByteString; Simple: Boolean = True): Variant; overload;
+function HproseSerialize(const Value: TObject; Simple: Boolean = False): TBytes; overload;
+function HproseSerialize(const Value: Variant; Simple: Boolean = False): TBytes; overload;
+function HproseSerialize(const Value: array of const; Simple: Boolean = False): TBytes; overload;
+function HproseUnserialize(const Data:TBytes; TypeInfo: Pointer; Simple: Boolean = False): Variant; overload;
+function HproseUnserialize(const Data:TBytes; Simple: Boolean = True): Variant; overload;
 
 implementation
 
 uses DateUtils, Math, RTLConsts,
 {$IFNDEF FPC}StrUtils, SysConst, {$ENDIF}
 {$IFDEF Supports_Rtti}Rtti, {$ENDIF}
-     SysUtils, Variants;
+     Variants;
 type
 
   PSmallIntArray = ^TSmallIntArray;
@@ -376,7 +376,7 @@ type
 
   SerializeCache = record
     RefCount: Integer;
-    Data: RawByteString;
+    Data: TBytes;
   end;
   PSerializeCache = ^SerializeCache;
 
@@ -2876,9 +2876,9 @@ begin
   end;
 end;
 
-function THproseReader.ReadRaw: TMemoryStream;
+function THproseReader.ReadRaw: TBytesStream;
 begin
-  Result := TMemoryStream.Create;
+  Result := TBytesStream.Create;
   ReadRaw(Result);
 end;
 
@@ -3409,7 +3409,7 @@ var
   PropList: PPropList;
   PropCount, I: Integer;
   CachePointer: PSerializeCache;
-  CacheStream: TMemoryStream;
+  CacheStream: TBytesStream;
   TempData: RawByteString;
   TempWStr: WideString;
 begin
@@ -3423,8 +3423,8 @@ begin
       New(CachePointer);
       try
         CachePointer^.RefCount := 0;
-        CachePointer^.Data := '';
-        CacheStream := TMemoryStream.Create;
+        CachePointer^.Data := nil;
+        CacheStream := TBytesStream.Create;
         try
           PropCount := GetStoredPropList(Instance, PropList);
           try
@@ -3459,8 +3459,8 @@ begin
             FreeMem(PropList);
           end;
           CacheStream.Position := 0;
+          CachePointer^.Data := CacheStream.Bytes;
           SetLength(CachePointer^.Data, CacheStream.Size);
-          Move(CacheStream.Memory^, PAnsiChar(CachePointer^.Data)^, CacheStream.Size);
         finally
           CacheStream.Free;
         end;
@@ -3472,7 +3472,7 @@ begin
   finally
     PropertiesCache.UnLock;
   end;
-  FStream.WriteBuffer(CachePointer^.Data[1], Length(CachePointer^.Data));
+  FStream.WriteBuffer(CachePointer^.Data[0], Length(CachePointer^.Data));
   if CachePointer^.RefCount > 0 then
     FRefer.AddCount(CachePointer^.RefCount);
   Result := FClassRefList.Add(Instance.ClassName);
@@ -4623,19 +4623,18 @@ end;
 
 { HproseSerialize }
 
-function HproseSerialize(const Value: Variant; Simple: Boolean): RawByteString;
+function HproseSerialize(const Value: Variant; Simple: Boolean): TBytes;
 var
   Writer: THproseWriter;
-  Stream: TMemoryStream;
+  Stream: TBytesStream;
 begin
-  Stream := TMemoryStream.Create;
+  Stream := TBytesStream.Create;
   try
     Writer := THproseWriter.Create(Stream, Simple);
     try
       Writer.Serialize(Value);
-      Stream.Position := 0;
+      Result := Stream.Bytes;
       SetLength(Result, Stream.Size);
-      Move(Stream.Memory^, PAnsiChar(Result)^, Stream.Size);
     finally
       Writer.Free;
     end;
@@ -4644,24 +4643,23 @@ begin
   end;
 end;
 
-function HproseSerialize(const Value: TObject; Simple: Boolean): RawByteString;
+function HproseSerialize(const Value: TObject; Simple: Boolean): TBytes;
 begin
   Result := HproseSerialize(ObjToVar(Value), Simple);
 end;
 
-function HproseSerialize(const Value: array of const; Simple: Boolean): RawByteString;
+function HproseSerialize(const Value: array of const; Simple: Boolean): TBytes;
 var
   Writer: THproseWriter;
-  Stream: TMemoryStream;
+  Stream: TBytesStream;
 begin
-  Stream := TMemoryStream.Create;
+  Stream := TBytesStream.Create;
   try
     Writer := THproseWriter.Create(Stream, Simple);
     try
       Writer.Serialize(Value);
-      Stream.Position := 0;
+      Result := Stream.Bytes;
       SetLength(Result, Stream.Size);
-      Move(Stream.Memory^, PAnsiChar(Result)^, Stream.Size);
     finally
       Writer.Free;
     end;
@@ -4672,15 +4670,13 @@ end;
 
 { HproseUnserialize }
 
-function HproseUnserialize(const Data: RawByteString; TypeInfo: Pointer; Simple: Boolean): Variant;
+function HproseUnserialize(const Data: TBytes; TypeInfo: Pointer; Simple: Boolean): Variant;
 var
   Reader: THproseReader;
-  Stream: TMemoryStream;
+  Stream: TBytesStream;
 begin
-  Stream := TMemoryStream.Create;
+  Stream := TBytesStream.Create(Data);
   try
-    Stream.SetSize(Length(Data));
-    Move(PAnsiChar(Data)^, Stream.Memory^, Stream.Size);
     Reader := THproseReader.Create(Stream, Simple);
     try
       Result := Reader.Unserialize(TypeInfo);
@@ -4692,7 +4688,7 @@ begin
   end;
 end;
 
-function HproseUnserialize(const Data:RawByteString; Simple: Boolean): Variant;
+function HproseUnserialize(const Data:TBytes; Simple: Boolean): Variant;
 begin
   Result := HproseUnserialize(Data, nil, Simple);
 end;
@@ -4700,32 +4696,31 @@ end;
 { THproseFormatter }
 
 class function THproseFormatter.Serialize(
-  const Value: Variant; Simple: Boolean): RawByteString;
+  const Value: Variant; Simple: Boolean): TBytes;
 begin
   Result := HproseSerialize(Value, Simple);
 end;
 
 class function THproseFormatter.Serialize(
-  const Value: array of const; Simple: Boolean): RawByteString;
+  const Value: array of const; Simple: Boolean): TBytes;
 begin
   Result := HproseSerialize(Value, Simple);
 end;
 
 {$IFDEF Supports_Generics}
 
-class function THproseFormatter.Serialize<T>(const Value: T; Simple: Boolean): RawByteString;
+class function THproseFormatter.Serialize<T>(const Value: T; Simple: Boolean): TBytes;
 var
   Writer: THproseWriter;
-  Stream: TMemoryStream;
+  Stream: TBytesStream;
 begin
-  Stream := TMemoryStream.Create;
+  Stream := TBytesStream.Create;
   try
     Writer := THproseWriter.Create(Stream, Simple);
     try
       Writer.Serialize<T>(Value);
-      Stream.Position := 0;
+      Result := Stream.Bytes;
       SetLength(Result, Stream.Size);
-      Move(Stream.Memory^, PAnsiChar(Result)^, Stream.Size);
     finally
       Writer.Free;
     end;
@@ -4734,15 +4729,13 @@ begin
   end;
 end;
 
-class function THproseFormatter.Unserialize<T>(const Data:RawByteString; Simple: Boolean): T;
+class function THproseFormatter.Unserialize<T>(const Data:TBytes; Simple: Boolean): T;
 var
   Reader: THproseReader;
-  Stream: TMemoryStream;
+  Stream: TBytesStream;
 begin
-  Stream := TMemoryStream.Create;
+  Stream := TBytesStream.Create(Data);
   try
-    Stream.SetSize(Length(Data));
-    Move(PAnsiChar(Data)^, Stream.Memory^, Stream.Size);
     Reader := THproseReader.Create(Stream, Simple);
     try
       Result := Reader.Unserialize<T>;
@@ -4756,20 +4749,20 @@ end;
 
 {$ELSE}
 
-class function THproseFormatter.Serialize(const Value: TObject; Simple: Boolean): RawByteString;
+class function THproseFormatter.Serialize(const Value: TObject; Simple: Boolean): TBytes;
 begin
   Result := HproseSerialize(Value, Simple);
 end;
 
 {$ENDIF}
 
-class function THproseFormatter.Unserialize(const Data: RawByteString;
+class function THproseFormatter.Unserialize(const Data: TBytes;
   TypeInfo: Pointer; Simple: Boolean): Variant;
 begin
   Result := HproseUnserialize(Data, TypeInfo, Simple);
 end;
 
-class function THproseFormatter.Unserialize(const Data:RawByteString; Simple: Boolean): Variant;
+class function THproseFormatter.Unserialize(const Data:TBytes; Simple: Boolean): Variant;
 begin
   Result := HproseUnserialize(Data, nil, Simple);
 end;
