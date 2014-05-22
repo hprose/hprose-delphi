@@ -15,7 +15,7 @@
  *                                                        *
  * hprose indy http client unit for delphi.               *
  *                                                        *
- * LastModified: Jun 10, 2010                             *
+ * LastModified: May 23, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -26,7 +26,7 @@ unit HproseIdHttpClient;
 
 interface
 
-uses Classes, HproseCommon, HproseClient, IdURI;
+uses Classes, HproseCommon, HproseClient, IdURI, SysUtils;
 
 type
 
@@ -41,11 +41,7 @@ type
     FUserAgent: string;
     FTimeout: Integer;
   protected
-    function GetInvokeContext: TObject; override;
-    function GetOutputStream(var Context: TObject): TStream; override;
-    procedure SendData(var Context: TObject); override;
-    function GetInputStream(var Context: TObject): TStream; override;
-    procedure EndInvoke(var Context: TObject); override;
+    function SendAndReceive(Data: TBytes): TBytes; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -78,15 +74,7 @@ procedure Register;
 
 implementation
 
-uses IdHttp, IdHeaderList, IdHTTPHeaderInfo, IdCookieManager, SysUtils;
-
-type
-
-  THproseIdHttpInvokeContext = class
-    IdHttp: TIdHttp;
-    OutStream: TStream;
-    InStream: TStream;
-  end;
+uses IdHttp, IdHeaderList, IdHTTPHeaderInfo, IdCookieManager;
 
 var
   CookieManager: TIdCookieManager = nil;
@@ -121,84 +109,54 @@ begin
   inherited;
 end;
 
-procedure THproseIdHttpClient.EndInvoke(var Context: TObject);
+function THproseIdHttpClient.SendAndReceive(Data: TBytes): TBytes;
+var
+  IdHttp: TIdHttp;
+  OutStream, InStream: TBytesStream;
 begin
-  if Context <> nil then
-    with THproseIdHttpInvokeContext(Context) do begin
-      IdHttp.Request.Clear;
-      IdHttp.Request.CustomHeaders.Clear;
-      IdHttp.Response.Clear;
-      FHttpPool.Lock;
-      try
-        FHttpPool.Add(ObjToVar(IdHttp));
-      finally
-        FHttpPool.Unlock;
-      end;
-      FreeAndNil(OutStream);
-      FreeAndNil(InStream);
-      FreeAndNil(Context);
-    end;
-end;
-
-function THproseIdHttpClient.GetInputStream(var Context: TObject): TStream;
-begin
-  if Context <> nil then
-    Result := THproseIdHttpInvokeContext(Context).InStream
-  else
-    raise EHproseException.Create('Can''t get input stream.');
-end;
-
-function THproseIdHttpClient.GetInvokeContext: TObject;
-begin
-  Result := THproseIdHttpInvokeContext.Create;
-  with THproseIdHttpInvokeContext(Result) do begin
-    FHttpPool.Lock;
-    try
-      if FHttpPool.Count > 0 then
-        IdHttp := TIdHttp(VarToObj(FHttpPool.Delete(FHttpPool.Count - 1)))
-      else
-        IdHttp := TIdHttp.Create(nil);
-    finally
-      FHttpPool.Unlock;
-    end;
-    OutStream := TMemoryStream.Create;
-    InStream := TMemoryStream.Create;
+  FHttpPool.Lock;
+  try
+    if FHttpPool.Count > 0 then
+      IdHttp := TIdHttp(VarToObj(FHttpPool.Delete(FHttpPool.Count - 1)))
+    else
+      IdHttp := TIdHttp.Create(nil);
+  finally
+    FHttpPool.Unlock;
   end;
-end;
-
-function THproseIdHttpClient.GetOutputStream(var Context: TObject): TStream;
-begin
-  if Context <> nil then
-    Result := THproseIdHttpInvokeContext(Context).OutStream
-  else
-    raise EHproseException.Create('Can''t get output stream.');
-end;
-
-procedure THproseIdHttpClient.SendData(var Context: TObject);
-begin
-  if Context <> nil then
-    with THproseIdHttpInvokeContext(Context) do begin
-      OutStream.Position := 0;
-      IdHttp.ReadTimeout := FTimeout;
-      IdHttp.Request.CustomHeaders.Assign(FHeaders);
-      IdHttp.Request.UserAgent := FUserAgent;
-      if FProxyHost <> '' then begin
-        IdHttp.ProxyParams.ProxyServer := FProxyHost;
-        IdHttp.ProxyParams.ProxyPort := FProxyPort;
-        IdHttp.ProxyParams.ProxyUsername := FProxyUser;
-        IdHttp.ProxyParams.ProxyPassword := FProxyPass;
-      end;
-      IdHttp.Request.Connection := 'close';
-      IdHttp.Request.ContentType := 'application/hprose';
-      IdHttp.AllowCookies := True;
-      IdHttp.CookieManager := CookieManager;
-      IdHTTP.HTTPOptions := IdHTTP.HTTPOptions + [hoKeepOrigProtocol];
-      IdHttp.ProtocolVersion := pv1_1;
-      IdHttp.DoRequest(hmPost, FUri, OutStream, InStream);
-      InStream.Position := 0;
-    end
-  else
-    raise EHproseException.Create('Can''t send data.');
+  IdHttp.ReadTimeout := FTimeout;
+  IdHttp.Request.CustomHeaders.Assign(FHeaders);
+  IdHttp.Request.UserAgent := FUserAgent;
+  if FProxyHost <> '' then begin
+    IdHttp.ProxyParams.ProxyServer := FProxyHost;
+    IdHttp.ProxyParams.ProxyPort := FProxyPort;
+    IdHttp.ProxyParams.ProxyUsername := FProxyUser;
+    IdHttp.ProxyParams.ProxyPassword := FProxyPass;
+  end;
+  IdHttp.Request.Connection := 'close';
+  IdHttp.Request.ContentType := 'application/hprose';
+  IdHttp.AllowCookies := True;
+  IdHttp.CookieManager := CookieManager;
+  IdHTTP.HTTPOptions := IdHTTP.HTTPOptions + [hoKeepOrigProtocol];
+  IdHttp.ProtocolVersion := pv1_1;
+  OutStream := TBytesStream.Create(Data);
+  InStream := TBytesStream.Create;
+  try
+    IdHttp.DoRequest(hmPost, FUri, OutStream, InStream);
+    Result := InStream.Bytes;
+    SetLength(Result, InStream.Size);
+  finally
+    OutStream.Free;
+    InStream.Free;
+  end;
+  IdHttp.Request.Clear;
+  IdHttp.Request.CustomHeaders.Clear;
+  IdHttp.Response.Clear;
+  FHttpPool.Lock;
+  try
+    FHttpPool.Add(ObjToVar(IdHttp));
+  finally
+    FHttpPool.Unlock;
+  end;
 end;
 
 procedure Register;

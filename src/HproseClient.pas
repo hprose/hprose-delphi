@@ -15,7 +15,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: Nov 4, 2013                              *
+ * LastModified: May 23, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -53,28 +53,26 @@ type
   THproseClient = class(TComponent)
   private
     FErrorEvent: THproseErrorEvent;
-    FFilter: IHproseFilter;
-  protected
-    FUri: string;
-    function GetInvokeContext: TObject; virtual; abstract;
-    function GetOutputStream(var Context: TObject): TStream; virtual; abstract;
-    procedure SendData(var Context: TObject); virtual; abstract;
-    function GetInputStream(var Context: TObject): TStream; virtual; abstract;
-    procedure EndInvoke(var Context: TObject); virtual; abstract;
+    FFilters: IList;
+    function GetFilter: IHproseFilter;
+    procedure SetFilter(const Filter: IHproseFilter);
     function DoInput(var Args: TVariants; ResultType: PTypeInfo;
-      ResultMode: THproseResultMode; InStream: TStream): Variant; overload;
+      ResultMode: THproseResultMode; Data: TBytes): Variant; overload;
     function DoInput(ResultType: PTypeInfo; ResultMode: THproseResultMode;
-      InStream: TStream): Variant; overload;
-    procedure DoOutput(const Name: string; const Args: array of const;
-      OutStream: TStream); overload;
-    procedure DoOutput(const Name: string; const Args: TVariants;
-      ByRef: Boolean; OutStream: TStream); overload;
+      Data: TBytes): Variant; overload;
+    function DoOutput(const Name: string;
+      const Args: array of const): TBytes; overload;
+    function DoOutput(const Name: string; const Args: TVariants;
+      ByRef: Boolean): TBytes; overload;
 {$IFDEF Supports_Generics}
     procedure DoInput(var Args: TVariants; ResultType: PTypeInfo;
-      InStream: TStream; out Result); overload;
+      Data: TBytes; out Result); overload;
     procedure DoInput(ResultType: PTypeInfo;
-      InStream: TStream; out Result); overload;
+      Data: TBytes; out Result); overload;
 {$ENDIF}
+  protected
+    FUri: string;
+    function SendAndReceive(Data: TBytes): TBytes; virtual; abstract;
     // Synchronous invoke
     function Invoke(const Name: string; const Args: array of const;
       ResultType: PTypeInfo; ResultMode: THproseResultMode): Variant;
@@ -86,6 +84,8 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     procedure UseService(const AUri: string); virtual;
+    procedure AddFilter(const Filter: IHproseFilter);
+    function RemoveFilter(const Filter: IHproseFilter): Boolean;
     // Synchronous invoke
     function Invoke(const Name: string;
       ResultMode: THproseResultMode = Normal): Variant;
@@ -198,7 +198,7 @@ type
 {$ENDIF}
   published
     property Uri: string read FUri write UseService;
-    property Filter: IHproseFilter read FFilter write FFilter;
+    property Filter: IHproseFilter read GetFilter write SetFilter;
     // This event OnError only for asynchronous invoke
     property OnError: THproseErrorEvent read FErrorEvent write FErrorEvent;
   end;
@@ -302,40 +302,63 @@ constructor THproseClient.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FErrorEvent := nil;
-  FFilter := nil;
+  FFilters := THashedList.Create;
+end;
+
+function THproseClient.GetFilter: IHproseFilter;
+begin
+  if FFilters.Count = 0 then
+    Result := nil
+  else
+    VarToIntf(FFilters[0], IHproseFilter, Result);
+end;
+
+procedure THproseClient.SetFilter(const Filter: IHproseFilter);
+begin
+  if FFilters.Count > 0 then FFilters.Clear;
+  if Filter <> nil then FFilters.Add(Filter);
+end;
+
+procedure THproseClient.AddFilter(const Filter: IHproseFilter);
+begin
+  if Filter <> nil then FFilters.Add(Filter);
+end;
+
+function THproseClient.RemoveFilter(const Filter: IHproseFilter): Boolean;
+begin
+  Result := (FFilters.Remove(Filter) >= 0);
 end;
 
 function THproseClient.DoInput(var Args: TVariants; ResultType: PTypeInfo;
-  ResultMode: THproseResultMode; InStream: TStream): Variant;
+  ResultMode: THproseResultMode; Data: TBytes): Variant;
 var
+  I: Integer;
+  Filter: IHproseFilter;
   Tag: AnsiChar;
+  InStream: TBytesStream;
   HproseReader: THproseReader;
-  Stream: TMemoryStream;
 begin
-  if Assigned(FFilter) then InStream := FFilter.InputFilter(InStream);
+  for I := FFilters.Count - 1 downto 0 do begin
+    VarToIntf(FFilters[I], IHproseFilter, Filter);
+    Data := Filter.InputFilter(Data);
+  end;
+  if Data[Length(Data) - 1] <> Byte(HproseTagEnd) then
+    raise EHproseException.Create('Wrong Response: ' + #13#10 + StringOf(Data));
   Result := Null;
   if (ResultMode = RawWithEndTag) or
     (ResultMode = Raw) then begin
-    Stream := TMemoryStream.Create;
-    Stream.CopyFrom(InStream, 0);
-    Stream.Position := 0;
-    Result := ObjToVar(Stream);
-    if ResultMode = Raw then Stream.Size := Stream.Size - 1;
+    if ResultMode = Raw then SetLength(Data, Length(Data) - 1);
+    Result := Data;
   end
   else begin
+    InStream := TBytesStream.Create(Data);
     HproseReader := THproseReader.Create(InStream);
     try
-      repeat
-        Tag := HproseReader.CheckTags(HproseTagResult +
-                                      HproseTagArgument +
-                                      HproseTagError +
-                                      HproseTagEnd);
+      while Data[Instream.Position] <> Byte(HproseTagEnd) do begin
+        InStream.ReadBuffer(Tag, 1);
         if Tag = HproseTagResult then begin
-          if ResultMode = Serialized then begin
-            Stream := HproseReader.ReadRaw;
-            Stream.Position := 0;
-            Result := ObjToVar(Stream);
-          end
+          if ResultMode = Serialized then
+            Result := HproseReader.ReadRaw
           else begin
             HproseReader.Reset;
             Result := HproseReader.Unserialize(ResultType)
@@ -348,37 +371,45 @@ begin
         else if Tag = HproseTagError then begin
           HproseReader.Reset;
           raise EHproseException.Create(HproseReader.ReadString());
-        end;
-      until Tag = HproseTagEnd;
+        end
+        else raise EHproseException.Create('Wrong Response: ' + #13#10 + StringOf(Data));
+      end;
     finally
       HproseReader.Free;
+      InStream.Free;
     end;
   end;
 end;
 
 function THproseClient.DoInput(ResultType: PTypeInfo;
-  ResultMode: THproseResultMode; InStream: TStream): Variant;
+  ResultMode: THproseResultMode; Data: TBytes): Variant;
 var
   Args: TVariants;
 begin
-  Result := DoInput(Args, ResultType, ResultMode, InStream);
+  Result := DoInput(Args, ResultType, ResultMode, Data);
 end;
 
 {$IFDEF Supports_Generics}
 procedure THproseClient.DoInput(var Args: TVariants; ResultType: PTypeInfo;
-      InStream: TStream; out Result);
+      Data: TBytes; out Result);
 var
+  I: Integer;
+  Filter: IHproseFilter;
   Tag: AnsiChar;
+  InStream: TBytesStream;
   HproseReader: THproseReader;
 begin
-  if Assigned(FFilter) then InStream := FFilter.InputFilter(InStream);
+  for I := FFilters.Count - 1 downto 0 do begin
+    VarToIntf(FFilters[I], IHproseFilter, Filter);
+    Data := Filter.InputFilter(Data);
+  end;
+  if Data[Length(Data) - 1] <> Byte(HproseTagEnd) then
+    raise EHproseException.Create('Wrong Response: ' + #13#10 + StringOf(Data));
+  InStream := TBytesStream.Create(Data);
   HproseReader := THproseReader.Create(InStream);
   try
-    repeat
-      Tag := HproseReader.CheckTags(HproseTagResult +
-                                    HproseTagArgument +
-                                    HproseTagError +
-                                    HproseTagEnd);
+    while Data[Instream.Position] <> Byte(HproseTagEnd) do begin
+      InStream.ReadBuffer(Tag, 1);
       if Tag = HproseTagResult then begin
         HproseReader.Reset;
         HproseReader.Unserialize(ResultType, Result);
@@ -390,28 +421,33 @@ begin
       else if Tag = HproseTagError then begin
         HproseReader.Reset;
         raise EHproseException.Create(HproseReader.ReadString());
-      end;
-    until Tag = HproseTagEnd;
+      end
+      else raise EHproseException.Create('Wrong Response: ' + #13#10 + StringOf(Data));
+    end;
   finally
     HproseReader.Free;
+    InStream.Free;
   end;
 end;
 
 procedure THproseClient.DoInput(ResultType: PTypeInfo;
-  InStream: TStream; out Result);
+  Data: TBytes; out Result);
 var
   Args: TVariants;
 begin
-  DoInput(Args, ResultType, InStream, Result);
+  DoInput(Args, ResultType, Data, Result);
 end;
 {$ENDIF}
 
-procedure THproseClient.DoOutput(const Name: string;
-  const Args: array of const; OutStream: TStream);
+function THproseClient.DoOutput(const Name: string;
+  const Args: array of const): TBytes;
 var
+  I: Integer;
+  Filter: IHproseFilter;
+  OutStream: TBytesStream;
   HproseWriter: THproseWriter;
 begin
-  if Assigned(FFilter) then OutStream := FFilter.OutputFilter(OutStream);
+  OutStream := TBytesStream.Create;
   HproseWriter := THproseWriter.Create(OutStream);
   try
     OutStream.Write(HproseTagCall, 1);
@@ -421,17 +457,27 @@ begin
       HproseWriter.WriteArray(Args);
     end;
     OutStream.Write(HproseTagEnd, 1);
+    Result := OutStream.Bytes;
+    SetLength(Result, OutStream.Size);
   finally
     HproseWriter.Free;
+    OutStream.Free;
+  end;
+  for I := 0 to FFilters.Count - 1 do begin
+    VarToIntf(FFilters[I], IHproseFilter, Filter);
+    Result := Filter.OutputFilter(Result);
   end;
 end;
 
-procedure THproseClient.DoOutput(const Name: string;
-  const Args: TVariants; ByRef: Boolean; OutStream: TStream);
+function THproseClient.DoOutput(const Name: string;
+  const Args: TVariants; ByRef: Boolean): TBytes;
 var
+  I: Integer;
+  Filter: IHproseFilter;
+  OutStream: TBytesStream;
   HproseWriter: THproseWriter;
 begin
-  if Assigned(FFilter) then OutStream := FFilter.OutputFilter(OutStream);
+  OutStream := TBytesStream.Create;
   HproseWriter := THproseWriter.Create(OutStream);
   try
     OutStream.Write(HproseTagCall, 1);
@@ -442,8 +488,15 @@ begin
       if ByRef then HproseWriter.WriteBoolean(True);
     end;
     OutStream.Write(HproseTagEnd, 1);
+    Result := OutStream.Bytes;
+    SetLength(Result, OutStream.Size);
   finally
     HproseWriter.Free;
+    OutStream.Free;
+  end;
+  for I := 0 to FFilters.Count - 1 do begin
+    VarToIntf(FFilters[I], IHproseFilter, Filter);
+    Result := Filter.OutputFilter(Result);
   end;
 end;
 
@@ -475,20 +528,8 @@ end;
 function THproseClient.Invoke(const Name: string;
   const Args: array of const; ResultType: PTypeInfo;
   ResultMode: THproseResultMode): Variant;
-var
-  Context: TObject;
-  InStream, OutStream: TStream;
 begin
-  Context := GetInvokeContext;
-  try
-    OutStream := GetOutputStream(Context);
-    DoOutput(Name, Args, OutStream);
-    SendData(Context);
-    InStream := GetInputStream(Context);
-    Result := DoInput(ResultType, ResultMode, InStream);
-  finally
-    EndInvoke(Context);
-  end;
+  Result := DoInput(ResultType, ResultMode, SendAndReceive(DoOutput(Name, Args)));
 end;
 
 // Synchronous invoke
@@ -507,20 +548,8 @@ end;
 function THproseClient.Invoke(const Name: string; var Args: TVariants;
   ResultType: PTypeInfo; ByRef: Boolean;
   ResultMode: THproseResultMode): Variant;
-var
-  Context: TObject;
-  InStream, OutStream: TStream;
 begin
-  Context := GetInvokeContext;
-  try
-    OutStream := GetOutputStream(Context);
-    DoOutput(Name, Args, Byref, OutStream);
-    SendData(Context);
-    InStream := GetInputStream(Context);
-    Result := DoInput(Args, ResultType, ResultMode, InStream);
-  finally
-    EndInvoke(Context);
-  end;
+  Result := DoInput(Args, ResultType, ResultMode, SendAndReceive(DoOutput(Name, Args, ByRef)));
 end;
 
 {$IFDEF Supports_Generics}
@@ -536,17 +565,8 @@ var
   Context: TObject;
   InStream, OutStream: TStream;
 begin
-  Context := GetInvokeContext;
-  try
-    OutStream := GetOutputStream(Context);
-    DoOutput(Name, Args, OutStream);
-    SendData(Context);
-    InStream := GetInputStream(Context);
-    Result := Default(T);
-    DoInput(TypeInfo(T), InStream, Result);
-  finally
-    EndInvoke(Context);
-  end;
+  Result := Default(T);
+  DoInput(TypeInfo(T), SendAndReceive(DoOutput(Name, Args)), Result);
 end;
 
 function THproseClient.Invoke<T>(const Name: string; var Args: TVariants;
@@ -555,17 +575,8 @@ var
   Context: TObject;
   InStream, OutStream: TStream;
 begin
-  Context := GetInvokeContext;
-  try
-    OutStream := GetOutputStream(Context);
-    DoOutput(Name, Args, Byref, OutStream);
-    SendData(Context);
-    InStream := GetInputStream(Context);
-    Result := Default(T);
-    DoInput(Args, TypeInfo(T), InStream, Result);
-  finally
-    EndInvoke(Context);
-  end;
+  Result := Default(T);
+  DoInput(Args, TypeInfo(T), SendAndReceive(DoOutput(Name, Args, ByRef)), Result);
 end;
 {$ENDIF}
 

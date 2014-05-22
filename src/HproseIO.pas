@@ -15,7 +15,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: May 21, 2014                             *
+ * LastModified: May 22, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -196,7 +196,7 @@ type
 {$ENDIF}
     function Unserialize: Variant; overload;
     function Unserialize(TypeInfo: PTypeInfo): Variant; overload;
-    function ReadRaw: TBytesStream; overload;
+    function ReadRaw: TBytes; overload;
     procedure ReadRaw(const OStream: TStream); overload;
     procedure Reset;
     property Stream: TStream read FStream;
@@ -2876,10 +2876,18 @@ begin
   end;
 end;
 
-function THproseReader.ReadRaw: TBytesStream;
+function THproseReader.ReadRaw: TBytes;
+var
+  Stream: TBytesStream;
 begin
-  Result := TBytesStream.Create;
-  ReadRaw(Result);
+  Stream := TBytesStream.Create;
+  try
+    ReadRaw(Stream);
+    Result := Stream.Bytes;
+    SetLength(Result, Stream.Size);
+  finally
+    Stream.Free;
+  end
 end;
 
 procedure THproseReader.ReadRaw(const OStream: TStream);

@@ -15,7 +15,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: May 21, 2014                             *
+ * LastModified: May 23, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -47,6 +47,10 @@ type
 
   THproseResultMode = (Normal, Serialized, Raw, RawWithEndTag);
 
+{$IF not defined(DELPHI2007_UP) and not defined(FPC)}
+  TBytes = array of Byte;
+{$IFEND}
+
   TVariants = array of Variant;
   PVariants = ^TVariants;
 
@@ -58,8 +62,8 @@ type
 
   IHproseFilter = interface
   ['{4AD7CCF2-1121-4CA4-92A7-5704C5956BA4}']
-    function InputFilter(const data: TStream): TStream;
-    function OutputFilter(const data: TStream): TStream;
+    function InputFilter(const data: TBytes): TBytes;
+    function OutputFilter(const data: TBytes): TBytes;
   end;
 
   IListEnumerator = interface
@@ -464,10 +468,6 @@ type
       Sync: Boolean = True; ReadWriteSync: Boolean = False); override;
   end;
 
-{$IF not defined(DELPHI2007_UP) and not defined(FPC)}
-  TBytes = array of Byte;
-{$IFEND}
-
 {$IF not defined(DELPHI2009_UP) and not defined(FPC)}
   TBytesStream = class(TMemoryStream)
   private
@@ -611,6 +611,7 @@ function HasRegisterWithInterface(const AClass: TInterfacedClass): Boolean;
 function GetInterfaceByClass(const AClass: TInterfacedClass): TGUID;
 
 {$IFDEF Supports_Generics}
+procedure RegisterType(const Size: Integer; const TypeInfo: PTypeInfo; TypeName: string); overload;
 procedure RegisterType(const Size: Integer; const TypeInfo: PTypeInfo); overload;
 function GetTypeInfo(const TypeName: string; var Size: Integer): PTypeInfo;
 {$ENDIF}
@@ -2969,13 +2970,11 @@ begin
   end;
 end;
 
-procedure RegisterType(const Size: Integer; const TypeInfo: PTypeInfo);
+procedure RegisterType(const Size: Integer; const TypeInfo: PTypeInfo; TypeName: string); overload;
 var
-  TypeName: string;
   UnitName: string;
   TypeData: PTypeData;
 begin
-  TypeName := GetTypeName(TypeInfo);
   RegisterType(TypeName, Size, TypeInfo);
 
   TypeData := GetTypeData(TypeInfo);
@@ -2994,6 +2993,11 @@ begin
   end;
   if UnitName <> '' then TypeName := UnitName + '.' + TypeName;
   RegisterType(TypeName, Size, TypeInfo);
+end;
+
+procedure RegisterType(const Size: Integer; const TypeInfo: PTypeInfo);
+begin
+  RegisterType(Size, TypeInfo, GetTypeName(TypeInfo));
 end;
 
 function GetTypeInfo(const TypeName: string; var Size: Integer): PTypeInfo;
@@ -3018,7 +3022,12 @@ begin
   TTI := System.TypeInfo(T);
   ITI := System.TypeInfo(I);
   RegisterClass(TInterfacedClass(GetTypeData(TTI)^.ClassType), GetTypeData(ITI)^.Guid, Alias);
+{$IFDEF DELPHIXE3_UP}
   RegisterType(SizeOf(T), TTI);
+{$ELSE}
+// Delphi 2010 - XE2 have a bug for GetTypeName from TTI, so I hack it like this
+  RegisterType(SizeOf(T), TTI, string('T' + AnsiRightStr(GetTypeName(ITI), Length(GetTypeName(ITI)) - 1)));
+{$ENDIF}
   RegisterType(SizeOf(I), ITI);
 end;
 
@@ -3026,7 +3035,6 @@ class procedure THproseClassManager.Register<T>;
 var
   TI: PTypeInfo;
   TypeName: string;
-  TTI: PTypeInfo;
 begin
   TI := System.TypeInfo(T);
   RegisterType(SizeOf(T), TI);

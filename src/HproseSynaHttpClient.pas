@@ -15,7 +15,7 @@
  *                                                        *
  * hprose synapse http client unit for delphi.            *
  *                                                        *
- * LastModified: Dec 29, 2012                             *
+ * LastModified: May 23, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -26,7 +26,7 @@ unit HproseSynaHttpClient;
 
 interface
 
-uses Classes, HproseCommon, HproseClient;
+uses Classes, HproseCommon, HproseClient, SysUtils;
 
 type
 
@@ -53,11 +53,7 @@ type
     FUserAgent: string;
     FTimeout: Integer;
   protected
-    function GetInvokeContext: TObject; override;
-    function GetOutputStream(var Context: TObject): TStream; override;
-    procedure SendData(var Context: TObject); override;
-    function GetInputStream(var Context: TObject): TStream; override;
-    procedure EndInvoke(var Context: TObject); override;
+    function SendAndReceive(Data: TBytes): TBytes; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -108,7 +104,7 @@ procedure Register;
 
 implementation
 
-uses httpsend, synautil, SysUtils, Variants;
+uses httpsend, synautil, Variants;
 
 var
   cookieManager: IMap;
@@ -213,82 +209,53 @@ end;
 
 { THproseSynaHttpClient }
 
-function THproseSynaHttpClient.GetInvokeContext: TObject;
+function THproseSynaHttpClient.SendAndReceive(Data: TBytes): TBytes;
+var
+  HttpSend: THttpSend;
+  Cookie: string;
 begin
   FHttpPool.Lock;
   try
     if FHttpPool.Count > 0 then
-      Result := VarToObj(FHttpPool.Delete(FHttpPool.Count - 1))
+      HttpSend := THttpSend(VarToObj(FHttpPool.Delete(FHttpPool.Count - 1)))
     else
-      Result := THttpSend.Create;
+      HttpSend := THttpSend.Create;
   finally
     FHttpPool.Unlock;
   end;
-end;
-
-function THproseSynaHttpClient.GetOutputStream(var Context: TObject): TStream;
-begin
-  if Context <> nil then
-    Result := THTTPSend(Context).Document
+  HttpSend.Headers.Assign(FHeaders);
+  HttpSend.KeepAlive := FKeepAlive;
+  HttpSend.KeepAliveTimeout := FKeepAliveTimeout;
+  HttpSend.Status100 := FStatus100;
+  HttpSend.UserName := FUser;
+  HttpSend.Password := FPassword;
+  HttpSend.ProxyHost := FProxyHost;
+  if FProxyPort = 0 then
+    HttpSend.ProxyPort := ''
   else
-    raise EHproseException.Create('Can''t get output stream.');
-end;
-
-procedure THproseSynaHttpClient.SendData(var Context: TObject);
-var
-  Cookie: string;
-begin
-  if Context <> nil then
-    with THTTPSend(Context) do begin
-      Headers.Assign(FHeaders);
-      KeepAlive := FKeepAlive;
-      KeepAliveTimeout := FKeepAliveTimeout;
-      Status100 := FStatus100;
-      UserName := FUser;
-      Password := FPassword;
-      ProxyHost := FProxyHost;
-      if FProxyPort = 0 then
-        ProxyPort := ''
-      else
-        ProxyPort := IntToStr(FProxyPort);
-      ProxyUser := FProxyUser;
-      ProxyPass := FProxyPass;
-      UserAgent := FUserAgent;
-      Timeout := FTimeout;
-      Protocol := '1.1';
-      MimeType := 'application/hprose';
-      Cookie := GetCookie(FHost,
-                          FPath,
-                          LowerCase(FProtocol) = 'https');
-      if Cookie <> '' then Headers.Add('Cookie: ' + Cookie);
-      HTTPMethod('POST', FUri);
-      SetCookie(Headers, FHost);
-    end
-  else
-    raise EHproseException.Create('Can''t send data.');
-end;
-
-function THproseSynaHttpClient.GetInputStream(var Context: TObject): TStream;
-begin
-  if Context <> nil then
-    Result := THTTPSend(Context).Document
-  else
-    raise EHproseException.Create('Can''t get input stream.');
-end;
-
-procedure THproseSynaHttpClient.EndInvoke(var Context: TObject);
-begin
-  if Context <> nil then begin
-    FHttpPool.Lock;
-    try
-      with THTTPSend(Context) do begin
-        Clear;
-        Cookies.Clear;
-      end;
-      FHttpPool.Add(ObjToVar(Context));
-    finally
-      FHttpPool.Unlock;
-    end;
+    HttpSend.ProxyPort := IntToStr(FProxyPort);
+  HttpSend.ProxyUser := FProxyUser;
+  HttpSend.ProxyPass := FProxyPass;
+  HttpSend.UserAgent := FUserAgent;
+  HttpSend.Timeout := FTimeout;
+  HttpSend.Protocol := '1.1';
+  HttpSend.MimeType := 'application/hprose';
+  Cookie := GetCookie(FHost,
+                      FPath,
+                      LowerCase(FProtocol) = 'https');
+  if Cookie <> '' then HttpSend.Headers.Add('Cookie: ' + Cookie);
+  HttpSend.Document.WriteBuffer(Data[0], Length(Data));
+  HttpSend.HTTPMethod('POST', FUri);
+  SetCookie(Headers, FHost);
+  SetLength(Result, HttpSend.Document.Size);
+  Move(HttpSend.Document.Memory^, Data[0], Length(Data));
+  HttpSend.Clear;
+  HttpSend.Cookies.Clear;
+  FHttpPool.Lock;
+  try
+    FHttpPool.Add(ObjToVar(HttpSend));
+  finally
+    FHttpPool.Unlock;
   end;
 end;
 
