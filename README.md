@@ -1,4 +1,4 @@
-# Hprose for Delphi/Free Pascal
+# Hprose for Delphi/Lazarus
 
 *Hprose* is a High Performance Remote Object Service Engine.
 
@@ -11,7 +11,7 @@ It is a modern, lightweight, cross-language, cross-platform, object-oriented, hi
 * ASP
 * C++
 * Dart
-* Delphi/Free Pascal
+* Delphi/Lazarus
 * dotNET(C#, Visual Basic...)
 * Golang
 * Java
@@ -26,4 +26,4 @@ It is a modern, lightweight, cross-language, cross-platform, object-oriented, hi
 
 Through *Hprose*, You can conveniently and efficiently intercommunicate between those programming languages.
 
-This project is the implementation of Hprose for Delphi/Free Pascal.
+This project is the implementation of Hprose for Delphi/Lazarus.
