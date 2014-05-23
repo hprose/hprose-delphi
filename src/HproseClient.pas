@@ -862,7 +862,7 @@ procedure TAsyncInvokeThread1<T>.Execute;
 begin
   try
     try
-      FResult := FClient.Invoke<T>(FName, FArgs);
+      FResult := FClient.Invoke<T>(FName, FArgs, FSimple);
     except
       on E: Exception do begin
         FError := E;
