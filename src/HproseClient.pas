@@ -61,9 +61,9 @@ type
     function DoInput(ResultType: PTypeInfo; ResultMode: THproseResultMode;
       Data: TBytes): Variant; overload;
     function DoOutput(const Name: string;
-      const Args: array of const): TBytes; overload;
+      const Args: array of const; Simple: Boolean): TBytes; overload;
     function DoOutput(const Name: string; const Args: TVariants;
-      ByRef: Boolean): TBytes; overload;
+      ByRef: Boolean; Simple: Boolean): TBytes; overload;
 {$IFDEF Supports_Generics}
     procedure DoInput(var Args: TVariants; ResultType: PTypeInfo;
       Data: TBytes; out Result); overload;
@@ -75,11 +75,11 @@ type
     function SendAndReceive(Data: TBytes): TBytes; virtual; abstract;
     // Synchronous invoke
     function Invoke(const Name: string; const Args: array of const;
-      ResultType: PTypeInfo; ResultMode: THproseResultMode): Variant;
+      ResultType: PTypeInfo; ResultMode: THproseResultMode; Simple: Boolean): Variant;
       overload; virtual;
     function Invoke(const Name: string; var Args: TVariants;
       ResultType: PTypeInfo; ByRef: Boolean;
-      ResultMode: THproseResultMode): Variant;
+      ResultMode: THproseResultMode; Simple: Boolean): Variant;
       overload; virtual;
   public
     constructor Create(AOwner: TComponent); override;
@@ -94,27 +94,27 @@ type
       overload; virtual;
     // Synchronous invoke
     function Invoke(const Name: string; const Args: array of const;
-      ResultMode: THproseResultMode = Normal): Variant;
+      ResultMode: THproseResultMode = Normal; Simple: Boolean = False): Variant;
       overload; virtual;
     function Invoke(const Name: string; const Args: array of const;
-      ResultType: PTypeInfo): Variant;
+      ResultType: PTypeInfo; Simple: Boolean = False): Variant;
       overload; virtual;
     // Synchronous invoke
     function Invoke(const Name: string; var Args: TVariants;
       ByRef: Boolean = True;
-      ResultMode: THproseResultMode = Normal): Variant;
+      ResultMode: THproseResultMode = Normal; Simple: Boolean = False): Variant;
       overload; virtual;
     function Invoke(const Name: string; var Args: TVariants;
       ResultType: PTypeInfo;
-      ByRef: Boolean = True): Variant;
+      ByRef: Boolean = True; Simple: Boolean = False): Variant;
       overload; virtual;
 {$IFDEF Supports_Generics}
     // Synchronous invoke
     function Invoke<T>(const Name: string): T; overload;
-    function Invoke<T>(const Name: string; const Args: array of const): T;
-      overload;
+    function Invoke<T>(const Name: string; const Args: array of const;
+      Simple: Boolean = False): T; overload;
     function Invoke<T>(const Name: string; var Args: TVariants;
-      ByRef: Boolean = True): T; overload;
+      ByRef: Boolean = True; Simple: Boolean = False): T; overload;
 {$ENDIF}
     // Asynchronous invoke
     procedure Invoke(const Name: string;
@@ -139,46 +139,46 @@ type
     // Asynchronous invoke
     procedure Invoke(const Name: string; const Args: array of const;
       Callback: THproseCallback1;
-      ResultMode: THproseResultMode = Normal);
+      ResultMode: THproseResultMode = Normal; Simple: Boolean = False);
       overload; virtual;
     procedure Invoke(const Name: string; const Args: array of const;
       Callback: THproseCallback1;
       ErrorEvent: THproseErrorEvent;
-      ResultMode: THproseResultMode = Normal);
+      ResultMode: THproseResultMode = Normal; Simple: Boolean = False);
       overload; virtual;
     // Asynchronous invoke
     procedure Invoke(const Name: string; const Args: array of const;
       Callback: THproseCallback1;
-      ResultType: PTypeInfo);
+      ResultType: PTypeInfo; Simple: Boolean = False);
       overload; virtual;
     procedure Invoke(const Name: string; const Args: array of const;
       Callback: THproseCallback1;
       ErrorEvent: THproseErrorEvent;
-      ResultType: PTypeInfo);
+      ResultType: PTypeInfo; Simple: Boolean = False);
       overload; virtual;
     // Asynchronous invoke
     procedure Invoke(const Name: string; var Args: TVariants;
       Callback: THproseCallback2;
       ByRef: Boolean = True;
-      ResultMode: THproseResultMode = Normal);
+      ResultMode: THproseResultMode = Normal; Simple: Boolean = False);
       overload; virtual;
     procedure Invoke(const Name: string; var Args: TVariants;
       Callback: THproseCallback2;
       ErrorEvent: THproseErrorEvent;
       ByRef: Boolean = True;
-      ResultMode: THproseResultMode = Normal);
+      ResultMode: THproseResultMode = Normal; Simple: Boolean = False);
       overload; virtual;
     // Asynchronous invoke
     procedure Invoke(const Name: string; var Args: TVariants;
       Callback: THproseCallback2;
       ResultType: PTypeInfo;
-      ByRef: Boolean = True);
+      ByRef: Boolean = True; Simple: Boolean = False);
       overload; virtual;
     procedure Invoke(const Name: string; var Args: TVariants;
       Callback: THproseCallback2;
       ErrorEvent: THproseErrorEvent;
       ResultType: PTypeInfo;
-      ByRef: Boolean = True);
+      ByRef: Boolean = True; Simple: Boolean = False);
       overload; virtual;
 {$IFDEF Supports_Generics}
     // Asynchronous invoke
@@ -187,14 +187,14 @@ type
       ErrorEvent: THproseErrorEvent = nil); overload;
     procedure Invoke<T>(const Name: string; const Args: array of const;
       Callback: THproseCallback1<T>;
-      ErrorEvent: THproseErrorEvent = nil); overload;
+      ErrorEvent: THproseErrorEvent = nil; Simple: Boolean = False); overload;
     procedure Invoke<T>(const Name: string; var Args: TVariants;
       Callback: THproseCallback2<T>;
-      ByRef: Boolean = True); overload;
+      ByRef: Boolean = True; Simple: Boolean = False); overload;
     procedure Invoke<T>(const Name: string; var Args: TVariants;
       Callback: THproseCallback2<T>;
       ErrorEvent: THproseErrorEvent;
-      ByRef: Boolean = True); overload;
+      ByRef: Boolean = True; Simple: Boolean = False); overload;
 {$ENDIF}
   published
     property Uri: string read FUri write UseService;
@@ -213,11 +213,12 @@ type
     FArgs: TConstArray;
     FCallback: THproseCallback1<T>;
     FErrorEvent: THproseErrorEvent;
+    FSimple: Boolean;
     FResult: T;
     FError: Exception;
     constructor Create(Client: THproseClient; const Name: string;
       const Args: array of const; Callback: THproseCallback1<T>;
-      ErrorEvent: THproseErrorEvent);
+      ErrorEvent: THproseErrorEvent; Simple: Boolean);
   protected
     procedure Execute; override;
     procedure DoCallback;
@@ -232,11 +233,12 @@ type
     FCallback: THproseCallback2<T>;
     FErrorEvent: THproseErrorEvent;
     FByRef: Boolean;
+    FSimple: Boolean;
     FResult: T;
     FError: Exception;
     constructor Create(Client: THproseClient; const Name: string;
       const Args: TVariants; Callback: THproseCallback2<T>;
-      ErrorEvent: THproseErrorEvent; ByRef: Boolean);
+      ErrorEvent: THproseErrorEvent; ByRef: Boolean; Simple: Boolean);
   protected
     procedure Execute; override;
     procedure DoCallback;
@@ -260,6 +262,7 @@ type
     FErrorEvent: THproseErrorEvent;
     FResultType: PTypeInfo;
     FResultMode: THproseResultMode;
+    FSimple: Boolean;
     FResult: Variant;
     FError: Exception;
   protected
@@ -270,7 +273,7 @@ type
     constructor Create(Client: THproseClient; const Name: string;
       const Args: array of const; Callback: THproseCallback1;
       ErrorEvent: THproseErrorEvent; ResultType: PTypeInfo;
-      ResultMode: THproseResultMode);
+      ResultMode: THproseResultMode; Simple: Boolean);
   end;
 
   TAsyncInvokeThread2 = class(TThread)
@@ -283,6 +286,7 @@ type
     FResultType: PTypeInfo;
     FByRef: Boolean;
     FResultMode: THproseResultMode;
+    FSimple: Boolean;
     FResult: Variant;
     FError: Exception;
   protected
@@ -293,7 +297,7 @@ type
     constructor Create(Client: THproseClient; const Name: string;
       const Args: TVariants; Callback: THproseCallback2;
       ErrorEvent: THproseErrorEvent; ResultType: PTypeInfo;
-      ByRef: Boolean; ResultMode: THproseResultMode);
+      ByRef: Boolean; ResultMode: THproseResultMode; Simple: Boolean);
   end;
 
 { THproseClient }
@@ -440,7 +444,7 @@ end;
 {$ENDIF}
 
 function THproseClient.DoOutput(const Name: string;
-  const Args: array of const): TBytes;
+  const Args: array of const; Simple: Boolean): TBytes;
 var
   I: Integer;
   Filter: IHproseFilter;
@@ -448,7 +452,7 @@ var
   HproseWriter: THproseWriter;
 begin
   OutStream := TBytesStream.Create;
-  HproseWriter := THproseWriter.Create(OutStream);
+  HproseWriter := THproseWriter.Create(OutStream, Simple);
   try
     OutStream.Write(HproseTagCall, 1);
     HproseWriter.WriteString(Name);
@@ -470,7 +474,7 @@ begin
 end;
 
 function THproseClient.DoOutput(const Name: string;
-  const Args: TVariants; ByRef: Boolean): TBytes;
+  const Args: TVariants; ByRef: Boolean; Simple: Boolean): TBytes;
 var
   I: Integer;
   Filter: IHproseFilter;
@@ -478,7 +482,7 @@ var
   HproseWriter: THproseWriter;
 begin
   OutStream := TBytesStream.Create;
-  HproseWriter := THproseWriter.Create(OutStream);
+  HproseWriter := THproseWriter.Create(OutStream, Simple);
   try
     OutStream.Write(HproseTagCall, 1);
     HproseWriter.WriteString(Name);
@@ -504,79 +508,79 @@ end;
 function THproseClient.Invoke(const Name: string;
   ResultMode: THproseResultMode): Variant;
 begin
-  Result := Invoke(Name, [], PTypeInfo(nil), ResultMode);
+  Result := Invoke(Name, [], PTypeInfo(nil), ResultMode, True);
 end;
 
 function THproseClient.Invoke(const Name: string;
   ResultType: PTypeInfo): Variant;
 begin
-  Result := Invoke(Name, [], ResultType, Normal);
+  Result := Invoke(Name, [], ResultType, Normal, True);
 end;
 
 function THproseClient.Invoke(const Name: string;
-  const Args: array of const; ResultMode: THproseResultMode): Variant;
+  const Args: array of const; ResultMode: THproseResultMode; Simple: Boolean): Variant;
 begin
-  Result := Invoke(Name, Args, PTypeInfo(nil), ResultMode);
+  Result := Invoke(Name, Args, PTypeInfo(nil), ResultMode, Simple);
 end;
 
 function THproseClient.Invoke(const Name: string;
-  const Args: array of const; ResultType: PTypeInfo): Variant;
+  const Args: array of const; ResultType: PTypeInfo; Simple: Boolean): Variant;
 begin
-  Result := Invoke(Name, Args, ResultType, Normal);
+  Result := Invoke(Name, Args, ResultType, Normal, Simple);
 end;
 
 function THproseClient.Invoke(const Name: string;
   const Args: array of const; ResultType: PTypeInfo;
-  ResultMode: THproseResultMode): Variant;
+  ResultMode: THproseResultMode; Simple: Boolean): Variant;
 begin
-  Result := DoInput(ResultType, ResultMode, SendAndReceive(DoOutput(Name, Args)));
+  Result := DoInput(ResultType, ResultMode, SendAndReceive(DoOutput(Name, Args, Simple)));
 end;
 
 // Synchronous invoke
 function THproseClient.Invoke(const Name: string; var Args: TVariants;
-  ByRef: Boolean; ResultMode: THproseResultMode): Variant;
+  ByRef: Boolean; ResultMode: THproseResultMode; Simple: Boolean): Variant;
 begin
-  Result := Invoke(Name, Args, PTypeInfo(nil), ByRef, ResultMode);
+  Result := Invoke(Name, Args, PTypeInfo(nil), ByRef, ResultMode, Simple);
 end;
 
 function THproseClient.Invoke(const Name: string; var Args: TVariants;
-  ResultType: PTypeInfo; ByRef: Boolean): Variant;
+  ResultType: PTypeInfo; ByRef: Boolean; Simple: Boolean): Variant;
 begin
-  Result := Invoke(Name, Args, ResultType, ByRef, Normal);
+  Result := Invoke(Name, Args, ResultType, ByRef, Normal, Simple);
 end;
 
 function THproseClient.Invoke(const Name: string; var Args: TVariants;
   ResultType: PTypeInfo; ByRef: Boolean;
-  ResultMode: THproseResultMode): Variant;
+  ResultMode: THproseResultMode; Simple: Boolean): Variant;
 begin
-  Result := DoInput(Args, ResultType, ResultMode, SendAndReceive(DoOutput(Name, Args, ByRef)));
+  Result := DoInput(Args, ResultType, ResultMode, SendAndReceive(DoOutput(Name, Args, ByRef, Simple)));
 end;
 
 {$IFDEF Supports_Generics}
 // Synchronous invoke
 function THproseClient.Invoke<T>(const Name: string): T;
 begin
-  Result := Self.Invoke<T>(Name, []);
+  Result := Self.Invoke<T>(Name, [], True);
 end;
 
 function THproseClient.Invoke<T>(const Name: string;
-  const Args: array of const): T;
+  const Args: array of const; Simple: Boolean): T;
 var
   Context: TObject;
   InStream, OutStream: TStream;
 begin
   Result := Default(T);
-  DoInput(TypeInfo(T), SendAndReceive(DoOutput(Name, Args)), Result);
+  DoInput(TypeInfo(T), SendAndReceive(DoOutput(Name, Args, Simple)), Result);
 end;
 
 function THproseClient.Invoke<T>(const Name: string; var Args: TVariants;
-  ByRef: Boolean): T;
+  ByRef: Boolean; Simple: Boolean): T;
 var
   Context: TObject;
   InStream, OutStream: TStream;
 begin
   Result := Default(T);
-  DoInput(Args, TypeInfo(T), SendAndReceive(DoOutput(Name, Args, ByRef)), Result);
+  DoInput(Args, TypeInfo(T), SendAndReceive(DoOutput(Name, Args, ByRef, Simple)), Result);
 end;
 {$ENDIF}
 
@@ -585,7 +589,7 @@ procedure THproseClient.Invoke(const Name: string;
   Callback: THproseCallback1;
   ResultMode: THproseResultMode);
 begin
-  TAsyncInvokeThread1.Create(Self, Name, [], Callback, nil, nil, ResultMode);
+  TAsyncInvokeThread1.Create(Self, Name, [], Callback, nil, nil, ResultMode, True);
 end;
 
 procedure THproseClient.Invoke(const Name: string;
@@ -593,7 +597,7 @@ procedure THproseClient.Invoke(const Name: string;
   ErrorEvent: THproseErrorEvent;
   ResultMode: THproseResultMode);
 begin
-  TAsyncInvokeThread1.Create(Self, Name, [], Callback, ErrorEvent, nil, ResultMode);
+  TAsyncInvokeThread1.Create(Self, Name, [], Callback, ErrorEvent, nil, ResultMode, True);
 end;
 
 // Asynchronous invoke
@@ -601,7 +605,7 @@ procedure THproseClient.Invoke(const Name: string;
   Callback: THproseCallback1;
   ResultType: PTypeInfo);
 begin
-  TAsyncInvokeThread1.Create(Self, Name, [], Callback, nil, ResultType, Normal);
+  TAsyncInvokeThread1.Create(Self, Name, [], Callback, nil, ResultType, Normal, True);
 end;
 
 procedure THproseClient.Invoke(const Name: string;
@@ -609,75 +613,75 @@ procedure THproseClient.Invoke(const Name: string;
   ErrorEvent: THproseErrorEvent;
   ResultType: PTypeInfo);
 begin
-  TAsyncInvokeThread1.Create(Self, Name, [], Callback, ErrorEvent, ResultType, Normal);
+  TAsyncInvokeThread1.Create(Self, Name, [], Callback, ErrorEvent, ResultType, Normal, True);
 end;
 
 // Asynchronous invoke
 procedure THproseClient.Invoke(const Name: string; const Args: array of const;
   Callback: THproseCallback1;
-  ResultMode: THproseResultMode);
+  ResultMode: THproseResultMode; Simple: Boolean);
 begin
-  TAsyncInvokeThread1.Create(Self, Name, Args, Callback, nil, nil, ResultMode);
+  TAsyncInvokeThread1.Create(Self, Name, Args, Callback, nil, nil, ResultMode, Simple);
 end;
 
 procedure THproseClient.Invoke(const Name: string; const Args: array of const;
   Callback: THproseCallback1;
   ErrorEvent: THproseErrorEvent;
-  ResultMode: THproseResultMode);
+  ResultMode: THproseResultMode; Simple: Boolean);
 begin
-  TAsyncInvokeThread1.Create(Self, Name, Args, Callback, ErrorEvent, nil, ResultMode);
+  TAsyncInvokeThread1.Create(Self, Name, Args, Callback, ErrorEvent, nil, ResultMode, Simple);
 end;
 
 // Asynchronous invoke
 procedure THproseClient.Invoke(const Name: string; const Args: array of const;
   Callback: THproseCallback1;
-  ResultType: PTypeInfo);
+  ResultType: PTypeInfo; Simple: Boolean);
 begin
-  TAsyncInvokeThread1.Create(Self, Name, Args, Callback, nil, ResultType, Normal);
+  TAsyncInvokeThread1.Create(Self, Name, Args, Callback, nil, ResultType, Normal, Simple);
 end;
 
 procedure THproseClient.Invoke(const Name: string; const Args: array of const;
   Callback: THproseCallback1;
   ErrorEvent: THproseErrorEvent;
-  ResultType: PTypeInfo);
+  ResultType: PTypeInfo; Simple: Boolean);
 begin
-  TAsyncInvokeThread1.Create(Self, Name, Args, Callback, ErrorEvent, ResultType, Normal);
+  TAsyncInvokeThread1.Create(Self, Name, Args, Callback, ErrorEvent, ResultType, Normal, Simple);
 end;
 
 // Asynchronous invoke
 procedure THproseClient.Invoke(const Name: string; var Args: TVariants;
   Callback: THproseCallback2;
   ByRef: Boolean;
-  ResultMode: THproseResultMode);
+  ResultMode: THproseResultMode; Simple: Boolean);
 begin
-  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, nil, nil, ByRef, ResultMode);
+  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, nil, nil, ByRef, ResultMode, Simple);
 end;
 
 procedure THproseClient.Invoke(const Name: string; var Args: TVariants;
   Callback: THproseCallback2;
   ErrorEvent: THproseErrorEvent;
   ByRef: Boolean;
-  ResultMode: THproseResultMode);
+  ResultMode: THproseResultMode; Simple: Boolean);
 begin
-  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, ErrorEvent, nil, ByRef, ResultMode);
+  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, ErrorEvent, nil, ByRef, ResultMode, Simple);
 end;
 
 // Asynchronous invoke
 procedure THproseClient.Invoke(const Name: string; var Args: TVariants;
   Callback: THproseCallback2;
   ResultType: PTypeInfo;
-  ByRef: Boolean);
+  ByRef: Boolean; Simple: Boolean);
 begin
-  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, nil, ResultType, ByRef, Normal);
+  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, nil, ResultType, ByRef, Normal, Simple);
 end;
 
 procedure THproseClient.Invoke(const Name: string; var Args: TVariants;
   Callback: THproseCallback2;
   ErrorEvent: THproseErrorEvent;
   ResultType: PTypeInfo;
-  ByRef: Boolean);
+  ByRef: Boolean; Simple: Boolean);
 begin
-  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, ErrorEvent, ResultType, ByRef, Normal);
+  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, ErrorEvent, ResultType, ByRef, Normal, Simple);
 end;
 
 {$IFDEF Supports_Generics}
@@ -685,29 +689,29 @@ procedure THproseClient.Invoke<T>(const Name: string;
   Callback: THproseCallback1<T>;
   ErrorEvent: THproseErrorEvent);
 begin
-  TAsyncInvokeThread1<T>.Create(Self, Name, [], Callback, ErrorEvent);
+  TAsyncInvokeThread1<T>.Create(Self, Name, [], Callback, ErrorEvent, True);
 end;
 
 procedure THproseClient.Invoke<T>(const Name: string; const Args: array of const;
   Callback: THproseCallback1<T>;
-  ErrorEvent: THproseErrorEvent);
+  ErrorEvent: THproseErrorEvent; Simple: Boolean);
 begin
-  TAsyncInvokeThread1<T>.Create(Self, Name, Args, Callback, ErrorEvent);
+  TAsyncInvokeThread1<T>.Create(Self, Name, Args, Callback, ErrorEvent, Simple);
 end;
 
 procedure THproseClient.Invoke<T>(const Name: string; var Args: TVariants;
   Callback: THproseCallback2<T>;
-  ByRef: Boolean);
+  ByRef: Boolean; Simple: Boolean);
 begin
-  TAsyncInvokeThread2<T>.Create(Self, Name, Args, Callback, nil, ByRef);
+  TAsyncInvokeThread2<T>.Create(Self, Name, Args, Callback, nil, ByRef, Simple);
 end;
 
 procedure THproseClient.Invoke<T>(const Name: string; var Args: TVariants;
   Callback: THproseCallback2<T>;
   ErrorEvent: THproseErrorEvent;
-  ByRef: Boolean);
+  ByRef: Boolean; Simple: Boolean);
 begin
-  TAsyncInvokeThread2<T>.Create(Self, Name, Args, Callback, ErrorEvent, ByRef);
+  TAsyncInvokeThread2<T>.Create(Self, Name, Args, Callback, ErrorEvent, ByRef, Simple);
 end;
 {$ENDIF}
 
@@ -721,7 +725,7 @@ end;
 constructor TAsyncInvokeThread1.Create(Client: THproseClient;
   const Name: string; const Args: array of const;
   Callback: THproseCallback1; ErrorEvent: THproseErrorEvent;
-  ResultType: PTypeInfo; ResultMode: THproseResultMode);
+  ResultType: PTypeInfo; ResultMode: THproseResultMode; Simple: Boolean);
 begin
   inherited Create(False);
   FreeOnTerminate := True;
@@ -732,6 +736,7 @@ begin
   FErrorEvent := ErrorEvent;
   FResultType := ResultType;
   FResultMode := ResultMode;
+  FSimple := Simple;
   FError := nil;
 end;
 
@@ -755,7 +760,8 @@ begin
       FResult := FClient.Invoke(FName,
                                 FArgs,
                                 FResultType,
-                                FResultMode);
+                                FResultMode,
+                                FSimple);
     except
       on E: Exception do begin
         FError := E;
@@ -774,7 +780,7 @@ constructor TAsyncInvokeThread2.Create(Client: THproseClient;
   const Name: string; const Args: TVariants;
   Callback: THproseCallback2; ErrorEvent: THproseErrorEvent;
   ResultType: PTypeInfo; ByRef: Boolean;
-  ResultMode: THproseResultMode);
+  ResultMode: THproseResultMode; Simple: Boolean);
 begin
   inherited Create(False);
   FreeOnTerminate := True;
@@ -786,6 +792,7 @@ begin
   FResultType := ResultType;
   FByRef := ByRef;
   FResultMode := ResultMode;
+  FSimple := Simple;
   FError := nil;
 end;
 
@@ -809,7 +816,8 @@ begin
                               FArgs,
                               FResultType,
                               FByRef,
-                              FResultMode);
+                              FResultMode,
+                              FSimple);
   except
     on E: Exception do begin
       FError := E;
@@ -824,7 +832,7 @@ end;
 
 constructor TAsyncInvokeThread1<T>.Create(Client: THproseClient;
   const Name: string; const Args: array of const;
-  Callback: THproseCallback1<T>; ErrorEvent: THproseErrorEvent);
+  Callback: THproseCallback1<T>; ErrorEvent: THproseErrorEvent; Simple: Boolean);
 begin
   inherited Create(False);
   FreeOnTerminate := True;
@@ -833,6 +841,7 @@ begin
   FArgs := CreateConstArray(Args);
   FCallback := Callback;
   FErrorEvent := ErrorEvent;
+  FSimple := Simple;
   FError := nil;
 end;
 
@@ -871,7 +880,7 @@ end;
 constructor TAsyncInvokeThread2<T>.Create(Client: THproseClient;
   const Name: string; const Args: TVariants;
   Callback: THproseCallback2<T>; ErrorEvent: THproseErrorEvent;
-  ByRef: Boolean);
+  ByRef: Boolean; Simple: Boolean);
 begin
   inherited Create(False);
   FreeOnTerminate := True;
@@ -881,6 +890,7 @@ begin
   FCallback := Callback;
   FErrorEvent := ErrorEvent;
   FByRef := ByRef;
+  FSimple := Simple;
   FError := nil;
 end;
 
@@ -900,7 +910,7 @@ end;
 procedure TAsyncInvokeThread2<T>.Execute;
 begin
   try
-    FResult := FClient.Invoke<T>(FName, FArgs, FByRef);
+    FResult := FClient.Invoke<T>(FName, FArgs, FByRef, FSimple);
   except
     on E: Exception do begin
       FError := E;
@@ -912,3 +922,4 @@ end;
 {$ENDIF}
 
 end.
+
