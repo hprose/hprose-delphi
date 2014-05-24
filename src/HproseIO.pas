@@ -356,7 +356,9 @@ function HproseUnserialize(const Data:TBytes; Simple: Boolean = True): Variant; 
 
 implementation
 
+{$IFDEF NEXTGEN}
 {$ZEROBASEDSTRINGS OFF}
+{$ENDIF}
 
 uses DateUtils, Math, RTLConsts, StrUtils,
 {$IFNDEF FPC}SysConst, {$ENDIF}

@@ -661,7 +661,9 @@ function BytesOf(const Val: Pointer; const Len: integer): TBytes; overload;
 
 implementation
 
+{$IFDEF NEXTGEN}
 {$ZEROBASEDSTRINGS OFF}
+{$ENDIF}
 
 uses RTLConsts, Variants
 {$IFNDEF FPC}, StrUtils{$ENDIF}
@@ -2596,7 +2598,7 @@ begin
     end;
     Move(PChar(@FDataString[FPosition + 1])^,
       PChar(@FDataString[FPosition + Count + 1])^, (FLength - FPosition) * SizeOf(Char));
-    MoveChars(PChar(AString)^, PChar(@FDataString[FPosition + 1])^, Count * SizeOf(Char));
+    Move(PChar(AString)^, PChar(@FDataString[FPosition + 1])^, Count * SizeOf(Char));
     Inc(FPosition, Count);
     Inc(FLength, Count);
   end;
