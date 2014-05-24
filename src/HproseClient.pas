@@ -15,7 +15,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: May 23, 2014                             *
+ * LastModified: May 24, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -338,7 +338,7 @@ function THproseClient.DoInput(var Args: TVariants; ResultType: PTypeInfo;
 var
   I: Integer;
   Filter: IHproseFilter;
-  Tag: AnsiChar;
+  Tag: Byte;
   InStream: TBytesStream;
   HproseReader: THproseReader;
 begin
@@ -346,7 +346,7 @@ begin
     VarToIntf(FFilters[I], IHproseFilter, Filter);
     Data := Filter.InputFilter(Data);
   end;
-  if Data[Length(Data) - 1] <> Byte(HproseTagEnd) then
+  if Data[Length(Data) - 1] <> HproseTagEnd then
     raise EHproseException.Create('Wrong Response: ' + #13#10 + StringOf(Data));
   Result := Null;
   if (ResultMode = RawWithEndTag) or
@@ -358,7 +358,7 @@ begin
     InStream := TBytesStream.Create(Data);
     HproseReader := THproseReader.Create(InStream);
     try
-      while Data[Instream.Position] <> Byte(HproseTagEnd) do begin
+      while Data[Instream.Position] <> HproseTagEnd do begin
         InStream.ReadBuffer(Tag, 1);
         if Tag = HproseTagResult then begin
           if ResultMode = Serialized then
@@ -399,7 +399,7 @@ procedure THproseClient.DoInput(var Args: TVariants; ResultType: PTypeInfo;
 var
   I: Integer;
   Filter: IHproseFilter;
-  Tag: AnsiChar;
+  Tag: Byte;
   InStream: TBytesStream;
   HproseReader: THproseReader;
 begin
@@ -407,12 +407,12 @@ begin
     VarToIntf(FFilters[I], IHproseFilter, Filter);
     Data := Filter.InputFilter(Data);
   end;
-  if Data[Length(Data) - 1] <> Byte(HproseTagEnd) then
+  if Data[Length(Data) - 1] <> HproseTagEnd then
     raise EHproseException.Create('Wrong Response: ' + #13#10 + StringOf(Data));
   InStream := TBytesStream.Create(Data);
   HproseReader := THproseReader.Create(InStream);
   try
-    while Data[Instream.Position] <> Byte(HproseTagEnd) do begin
+    while Data[Instream.Position] <> HproseTagEnd do begin
       InStream.ReadBuffer(Tag, 1);
       if Tag = HproseTagResult then begin
         HproseReader.Reset;

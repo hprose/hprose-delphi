@@ -15,7 +15,7 @@
  *                                                        *
  * hprose indy http client unit for delphi.               *
  *                                                        *
- * LastModified: May 23, 2014                             *
+ * LastModified: May 24, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -97,11 +97,13 @@ end;
 destructor THproseIdHttpClient.Destroy;
 var
   I: Integer;
+  IdHttp: TIdHttp;
 begin
   FHttpPool.Lock;
   try
     for I := FHttpPool.Count - 1 downto 0 do
-      TIdHttp(VarToObj(FHttpPool.Delete(I))).Free;
+      IdHttp := TIdHttp(VarToObj(FHttpPool.Delete(I)));
+      FreeAndNil(IdHttp);
   finally
     FHttpPool.Unlock;
   end;
@@ -170,3 +172,4 @@ initialization
 finalization
   FreeAndNil(CookieManager);
 end.
+

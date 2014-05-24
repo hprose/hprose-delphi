@@ -6,7 +6,7 @@ package HproseIndy10_5;
 {$ALIGN 8}
 {$ASSERTIONS ON}
 {$BOOLEVAL OFF}
-{$DEBUGINFO ON}
+{$DEBUGINFO OFF}
 {$EXTENDEDSYNTAX ON}
 {$IMPORTEDDATA ON}
 {$IOCHECKS ON}
@@ -27,6 +27,7 @@ package HproseIndy10_5;
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
 {$IMPLICITBUILD ON}
+{$DESCRIPTION 'Hprose for Delphi with Indy10.5'}
 
 requires
   rtl,
@@ -35,9 +36,9 @@ requires
   IndySystem;
 
 contains
-  HproseIdHttpClient in 'Indy10_5\HproseIdHttpClient.pas',
   HproseClient in 'HproseClient.pas',
   HproseCommon in 'HproseCommon.pas',
-  HproseIO in 'HproseIO.pas';
+  HproseIO in 'HproseIO.pas',
+  HproseIdHttpClient in 'Indy10_5\HproseIdHttpClient.pas';
 
 end.

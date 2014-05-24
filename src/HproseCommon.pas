@@ -15,7 +15,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: May 23, 2014                             *
+ * LastModified: May 24, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -482,7 +482,7 @@ type
 
   TStringBuffer = class(TObject)
   private
-    FDataString: RawByteString;
+    FDataString: string;
     FPosition: Integer;
     FCapacity: Integer;
     FLength: Integer;
@@ -492,18 +492,15 @@ type
   public
     constructor Create(Capacity: Integer = 255); overload;
     constructor Create(const AString: string); overload;
-    function Read(var Buffer; Count: Longint): Longint;
     function ReadString(Count: Longint): string;
-    function Write(const Buffer; Count: Longint): Longint;
     procedure WriteString(const AString: string);
-    function Insert(const Buffer; Count: Longint): Longint;
     procedure InsertString(const AString: string);
     function Seek(Offset: Longint; Origin: Word): Longint;
     function ToString: string; {$IFDEF DELPHI2009_UP}override;{$ENDIF}{$IFDEF FPC}override;{$ENDIF}
     property Position: Integer read FPosition write SetPosition;
     property Length: Integer read FLength;
     property Capacity: Integer read FCapacity write SetCapacity;
-    property DataString: RawByteString read FDataString;
+    property DataString: string read FDataString;
   end;
 
   ISmartObject = interface
@@ -664,9 +661,11 @@ function BytesOf(const Val: Pointer; const Len: integer): TBytes; overload;
 
 implementation
 
+{$ZEROBASEDSTRINGS OFF}
+
 uses RTLConsts, Variants
 {$IFNDEF FPC}, StrUtils{$ENDIF}
-{$IFDEF DELPHIXE4_UP}, AnsiStrings{$ENDIF}
+{$IFDEF DELPHIXE4_UP}{$IFNDEF NEXTGEN}, AnsiStrings{$ENDIF}{$ENDIF}
 {$IFDEF Supports_Rtti}, Rtti{$ENDIF};
 {$IFNDEF FPC}
 
@@ -717,15 +716,16 @@ end;
 function VarIsType(const V: Variant; const AVarTypes: array of TVarType): Boolean;
 var
   I: Integer;
+  P: PVarData;
 begin
   Result := False;
-  with FindVarData(V)^ do
-    for I := Low(AVarTypes) to High(AVarTypes) do
-      if VType = AVarTypes[I] then
-      begin
-        Result := True;
-        Break;
-      end;
+  P := FindVarData(V);
+  for I := Low(AVarTypes) to High(AVarTypes) do
+    if P^.VType = AVarTypes[I] then
+    begin
+      Result := True;
+      Break;
+    end;
 end;
 
 function VarTypeIsCustom(const AVarType: TVarType): Boolean;
@@ -793,29 +793,33 @@ end;
 {$ENDIF}
 
 function VarToObj(const Value: Variant): TObject;
+var
+  P: PVarData;
 begin
   Result := nil;
   try
-    with FindVarData(Value)^ do
-      if VType = varObject then begin
-        Result := TObject(VPointer);
-      end
-      else if VType <> varNull then Error(reInvalidCast);
+    P := FindVarData(Value);
+    if P^.VType = varObject then begin
+      Result := TObject(P^.VPointer);
+    end
+    else if P^.VType <> varNull then Error(reInvalidCast);
   except
     Error(reInvalidCast);
   end;
 end;
 
 function VarToObj(const Value: Variant; AClass: TClass): TObject;
+var
+  P: PVarData;
 begin
   Result := nil;
   try
-    with FindVarData(Value)^ do
-      if VType = varObject then begin
-        Result := TObject(VPointer);
-        if not (Result is AClass) then Error(reInvalidCast);
-      end
-      else if VType <> varNull then Error(reInvalidCast);
+    P := FindVarData(Value);
+    if P^.VType = varObject then begin
+      Result := TObject(P^.VPointer);
+      if not (Result is AClass) then Error(reInvalidCast);
+    end
+    else if P^.VType <> varNull then Error(reInvalidCast);
   except
     Error(reInvalidCast);
   end;
@@ -825,17 +829,18 @@ function VarToObj(const Value: Variant; AClass: TClass; out AObject):
   Boolean;
 var
   Obj: TObject absolute AObject;
+  P: PVarData;
 begin
   Obj := nil;
   Result := True;
   try
-    with FindVarData(Value)^ do
-      if VType = varObject then begin
-        Obj := TObject(VPointer) as AClass;
-        Result := (Obj <> nil) or (VPointer = nil);
-      end
-      else if VType <> varNull then
-        Result := False;
+    P := FindVarData(Value);
+    if P^.VType = varObject then begin
+      Obj := TObject(P^.VPointer) as AClass;
+      Result := (Obj <> nil) or (P^.VPointer = nil);
+    end
+    else if P^.VType <> varNull then
+      Result := False;
   except
     Result := False;
   end;
@@ -857,29 +862,29 @@ begin
   L := FindVarData(Left);
   R := FindVarData(Right);
   if VarIsArray(Left) and VarIsArray(Right) then begin
-    if (L.VType and varByRef) <> 0 then
-      LA := PVarArray(L.VPointer^)
+    if (L^.VType and varByRef) <> 0 then
+      LA := PVarArray(L^.VPointer^)
     else
-      LA := L.VArray;
-    if (R.VType and varByRef) <> 0 then
-      RA := PVarArray(R.VPointer^)
+      LA := L^.VArray;
+    if (R^.VType and varByRef) <> 0 then
+      RA := PVarArray(R^.VPointer^)
     else
-      RA := R.VArray;
+      RA := R^.VArray;
     if LA = RA then Result := True;
   end
   else begin
-    if (L.VType = varUnknown) and
-       (R.VType = varUnknown) then
-      Result := L.VUnknown = R.VUnknown
-    else if (L.VType = varUnknown or varByRef) and
-            (R.VType = varUnknown) then
-      Result := Pointer(L.VPointer^) = R.VUnknown
-    else if (L.VType = varUnknown) and
-            (R.VType = varUnknown or varByRef) then
-      Result := L.VUnknown = Pointer(R.VPointer^)
-    else if (L.VType = varUnknown or varByRef) and
-            (R.VType = varUnknown or varByRef) then
-      Result := Pointer(L.VPointer^) = Pointer(R.VPointer^)
+    if (L^.VType = varUnknown) and
+       (R^.VType = varUnknown) then
+      Result := L^.VUnknown = R^.VUnknown
+    else if (L^.VType = varUnknown or varByRef) and
+            (R^.VType = varUnknown) then
+      Result := Pointer(L^.VPointer^) = R^.VUnknown
+    else if (L^.VType = varUnknown) and
+            (R^.VType = varUnknown or varByRef) then
+      Result := L^.VUnknown = Pointer(R^.VPointer^)
+    else if (L^.VType = varUnknown or varByRef) and
+            (R^.VType = varUnknown or varByRef) then
+      Result := Pointer(L^.VPointer^) = Pointer(R^.VPointer^)
     else
       try
         Result := Left = Right;
@@ -922,20 +927,22 @@ begin
 end;
 
 function VarUnref(const Value: Variant): Variant;
+var
+  P: PVarData;
 begin
   if not VarIsByRef(Value) then
     Result := Value
   else begin
     VarClear(Result);
-    with FindVarData(Value)^ do
-      if (VType and varByRef) = 0 then begin
-        TVarData(Result).VType := VType;
-        TVarData(Result).VInt64 := VInt64;
-      end
-      else begin
-        TVarData(Result).VType := VType and (not varByRef);
-        TVarData(Result).VInt64 := Int64(VPointer^);
-      end;
+    P := FindVarData(Value);
+    if (P^.VType and varByRef) = 0 then begin
+      TVarData(Result).VType := P^.VType;
+      TVarData(Result).VInt64 := P^.VInt64;
+    end
+    else begin
+      TVarData(Result).VType := P^.VType and (not varByRef);
+      TVarData(Result).VInt64 := Int64(P^.VPointer^);
+    end;
   end;
 end;
 
@@ -945,14 +952,16 @@ begin
 end;
 
 function VarIsObj(const Value: Variant; AClass: TClass): Boolean;
+var
+  P: PVarData;
 begin
   Result := True;
   try
-    with FindVarData(Value)^ do
-      if VType = varObject then
-        Result := TObject(VPointer) is AClass
-      else if VType <> varNull then
-        Result := False;
+    P := FindVarData(Value);
+    if P^.VType = varObject then
+      Result := TObject(P^.VPointer) is AClass
+    else if P^.VType <> varNull then
+      Result := False;
   except
     Result := False;
   end;
@@ -1011,7 +1020,7 @@ begin
     Result := false;
 end;
 
-{$ifndef DELPHI2010_UP}
+{$IFNDEF DELPHI2010_UP}
 type
   TObjectFromInterfaceStub = packed record
     Stub: cardinal;
@@ -1020,23 +1029,23 @@ type
     1: (LongJmp: LongInt)
   end;
   PObjectFromInterfaceStub = ^TObjectFromInterfaceStub;
-{$endif}
+{$ENDIF}
 
-function IntfToObj(const Intf: IInterface): TInterfacedObject; {$ifdef DELPHI2010_UP}inline;{$endif}
+function IntfToObj(const Intf: IInterface): TInterfacedObject; {$IFDEF DELPHI2010_UP}inline;{$ENDIF}
 begin
   if Intf = nil then
     result := nil
   else begin
-{$ifdef DELPHI2010_UP}
+{$IFDEF DELPHI2010_UP}
     result := Intf as TInterfacedObject; // slower but always working
-{$else}
+{$ELSE}
     with PObjectFromInterfaceStub(PPointer(PPointer(Intf)^)^)^ do
     case Stub of
       $04244483: result := Pointer(NativeInt(Intf) + ShortJmp);
       $04244481: result := Pointer(NativeInt(Intf) + LongJmp);
       else       result := nil;
     end;
-{$endif}
+{$ENDIF}
   end;
 end;
 
@@ -1051,7 +1060,11 @@ const
   htObject  = $70000000;
   htArray   = $80000000;
 
+{$IFDEF NEXTGEN}
+function HashOfString(const Value: string): Integer;
+{$ELSE}
 function HashOfString(const Value: WideString): Integer;
+{$ENDIF}
 var
   I, N: Integer;
 begin
@@ -1098,78 +1111,78 @@ var
   P: PVarData;
 begin
   P := FindVarData(Value);
-  case P.VType of
+  case P^.VType of
     varEmpty:    Result := 0;
     varNull:     Result := 1;
-    varBoolean:  Result := htBoolean or Abs(Integer(P.VBoolean));
-    varByte:     Result := htInteger or P.VByte;
-    varWord:     Result := htInteger or P.VWord;
-    varShortInt: Result := htInteger or (P.VShortInt and $FF);
-    varSmallint: Result := htInteger or (P.VSmallInt and $FFFF);
-    varInteger:  Result := htInteger or (P.VInteger and $0FFFFFFF);
-    varLongWord: Result := htInt64 or (P.VLongWord and $0FFFFFFF)
-                           xor (not (P.VLongWord shr 3) and $10000000);
-    varInt64:    Result := htInt64 or (P.VInt64 and $0FFFFFFF)
-                           xor (not (P.VInt64 shr 3) and $10000000);
+    varBoolean:  Result := htBoolean or Abs(Integer(P^.VBoolean));
+    varByte:     Result := htInteger or P^.VByte;
+    varWord:     Result := htInteger or P^.VWord;
+    varShortInt: Result := htInteger or (P^.VShortInt and $FF);
+    varSmallint: Result := htInteger or (P^.VSmallInt and $FFFF);
+    varInteger:  Result := htInteger or (P^.VInteger and $0FFFFFFF);
+    varLongWord: Result := htInt64 or (P^.VLongWord and $0FFFFFFF)
+                           xor (not (P^.VLongWord shr 3) and $10000000);
+    varInt64:    Result := htInt64 or (P^.VInt64 and $0FFFFFFF)
+                           xor (not (P^.VInt64 shr 3) and $10000000);
 {$IFDEF DELPHI2009_UP}
-    varUInt64:   Result := htInt64 or (P.VUInt64 and $0FFFFFFF)
-                           xor (not (P.VUInt64 shr 3) and $10000000);
+    varUInt64:   Result := htInt64 or (P^.VUInt64 and $0FFFFFFF)
+                           xor (not (P^.VUInt64 shr 3) and $10000000);
 {$ENDIF}
-    varSingle:   Result := htDouble or (P.VInteger and $0FFFFFFF);
-    varDouble:   Result := htDouble or ((P.VInteger xor (P.VInt64 shr 32))
+    varSingle:   Result := htDouble or (P^.VInteger and $0FFFFFFF);
+    varDouble:   Result := htDouble or ((P^.VInteger xor (P^.VInt64 shr 32))
                            and $0FFFFFFF);
-    varCurrency: Result := htDouble or ((P.VInteger xor (P.VInt64 shr 32))
+    varCurrency: Result := htDouble or ((P^.VInteger xor (P^.VInt64 shr 32))
                            and $0FFFFFFF);
-    varDate:     Result := htDate or ((P.VInteger xor (P.VInt64 shr 32))
+    varDate:     Result := htDate or ((P^.VInteger xor (P^.VInt64 shr 32))
                            and $0FFFFFFF);
-    varUnknown:  Result := htObject or (P.VInteger and $0FFFFFFF);
-    varVariant:  Result := htObject or (P.VInteger and $0FFFFFFF);
+    varUnknown:  Result := htObject or (P^.VInteger and $0FFFFFFF);
+    varVariant:  Result := htObject or (P^.VInteger and $0FFFFFFF);
   else
-    if  P.VType and varByRef <> 0 then
-      case P.VType and not varByRef of
+    if  P^.VType and varByRef <> 0 then
+      case P^.VType and not varByRef of
         varBoolean:  Result := htBoolean
-                               or Abs(Integer(PWordBool(P.VPointer)^));
-        varByte:     Result := htInteger or PByte(P.VPointer)^;
-        varWord:     Result := htInteger or PWord(P.VPointer)^;
-        varShortInt: Result := htInteger or (PShortInt(P.VPointer)^ and $FF);
-        varSmallInt: Result := htInteger or (PSmallInt(P.VPointer)^ and $FFFF);
-        varInteger:  Result := htInteger or (PInteger(P.VPointer)^
+                               or Abs(Integer(PWordBool(P^.VPointer)^));
+        varByte:     Result := htInteger or PByte(P^.VPointer)^;
+        varWord:     Result := htInteger or PWord(P^.VPointer)^;
+        varShortInt: Result := htInteger or (PShortInt(P^.VPointer)^ and $FF);
+        varSmallInt: Result := htInteger or (PSmallInt(P^.VPointer)^ and $FFFF);
+        varInteger:  Result := htInteger or (PInteger(P^.VPointer)^
                                and $0FFFFFFF);
-        varLongWord: Result := htInt64 or (PLongWord(P.VPointer)^ and $0FFFFFFF)
-                               xor (not (PLongWord(P.VPointer)^ shr 3)
+        varLongWord: Result := htInt64 or (PLongWord(P^.VPointer)^ and $0FFFFFFF)
+                               xor (not (PLongWord(P^.VPointer)^ shr 3)
                                and $10000000);
-        varInt64:    Result := htInt64 or (PInt64(P.VPointer)^ and $0FFFFFFF)
-                               xor (not (PInt64(P.VPointer)^ shr 3)
+        varInt64:    Result := htInt64 or (PInt64(P^.VPointer)^ and $0FFFFFFF)
+                               xor (not (PInt64(P^.VPointer)^ shr 3)
                                and $10000000);
 {$IFDEF DELPHI2009_UP}
-        varUInt64:   Result := htInt64 or (PUInt64(P.VPointer)^ and $0FFFFFFF)
-                               xor (not (PUInt64(P.VPointer)^ shr 3)
+        varUInt64:   Result := htInt64 or (PUInt64(P^.VPointer)^ and $0FFFFFFF)
+                               xor (not (PUInt64(P^.VPointer)^ shr 3)
                                and $10000000);
 {$ENDIF}
-        varSingle:   Result := htDouble or (PInteger(P.VPointer)^
+        varSingle:   Result := htDouble or (PInteger(P^.VPointer)^
                                and $0FFFFFFF);
-        varDouble:   Result := htDouble or ((PInteger(P.VPointer)^
-                               xor (PInt64(P.VPointer)^ shr 32)) and $0FFFFFFF);
-        varCurrency: Result := htDouble or ((PInteger(P.VPointer)^
-                               xor (PInt64(P.VPointer)^ shr 32)) and $0FFFFFFF);
-        varDate:     Result := htDate or ((PInteger(P.VPointer)^
-                               xor (PInt64(P.VPointer)^ shr 32)) and $0FFFFFFF);
-        varUnknown:  Result := htObject or (PInteger(P.VPointer)^
+        varDouble:   Result := htDouble or ((PInteger(P^.VPointer)^
+                               xor (PInt64(P^.VPointer)^ shr 32)) and $0FFFFFFF);
+        varCurrency: Result := htDouble or ((PInteger(P^.VPointer)^
+                               xor (PInt64(P^.VPointer)^ shr 32)) and $0FFFFFFF);
+        varDate:     Result := htDate or ((PInteger(P^.VPointer)^
+                               xor (PInt64(P^.VPointer)^ shr 32)) and $0FFFFFFF);
+        varUnknown:  Result := htObject or (PInteger(P^.VPointer)^
                                and $0FFFFFFF);
       else
         if VarIsArray(Value) then
-          Result := Integer(htArray) or GetHashType(P.VType and varTypeMask)
-                    or (PInteger(P.VPointer)^ and $0FFFFFFF)
+          Result := Integer(htArray) or GetHashType(P^.VType and varTypeMask)
+                    or (PInteger(P^.VPointer)^ and $0FFFFFFF)
         else
           Result := 0;
       end
     else if VarIsArray(Value) then
-      Result := Integer(htArray) or GetHashType(P.VType and varTypeMask)
-                or (P.VInteger and $0FFFFFFF)
-    else if P.VType = varObject then
-      Result := htObject or (P.VInteger and $0FFFFFFF)
+      Result := Integer(htArray) or GetHashType(P^.VType and varTypeMask)
+                or (P^.VInteger and $0FFFFFFF)
+    else if P^.VType = varObject then
+      Result := htObject or (P^.VInteger and $0FFFFFFF)
     else
-      Result := (P.VInteger xor (P.VInt64 shr 32)) and $0FFFFFFF;
+      Result := (P^.VInteger xor (P^.VInt64 shr 32)) and $0FFFFFFF;
   end;
 end;
 
@@ -1178,7 +1191,7 @@ end;
 // updated.
 function CopyVarRec(const Item: TVarRec): TVarRec;
 var
-  W: WideString;
+  S: {$IFNDEF NEXTGEN}WideString{$ELSE}string{$ENDIF};
 begin
   // Copy entire TVarRec first
   Result := Item;
@@ -1190,6 +1203,7 @@ begin
         New(Result.VExtended);
         Result.VExtended^ := Item.VExtended^;
       end;
+{$IFNDEF NEXTGEN}
     vtString:
       begin
         New(Result.VString);
@@ -1197,15 +1211,6 @@ begin
       end;
     vtPChar:
       Result.VPChar := {$IFDEF DELPHIXE4_UP}AnsiStrings.{$ENDIF}StrNew(Item.VPChar);
-    // there is no StrNew for PWideChar
-    vtPWideChar:
-      begin
-        W := Item.VPWideChar;
-        GetMem(Result.VPWideChar,
-               (Length(W) + 1) * SizeOf(WideChar));
-        Move(PWideChar(W)^, Result.VPWideChar^,
-             (Length(W) + 1) * SizeOf(WideChar));
-      end;
     // a little trickier: casting to AnsiString will ensure
     // reference counting is done properly
     vtAnsiString:
@@ -1214,6 +1219,16 @@ begin
         // reference count
         Result.VAnsiString := nil;
         AnsiString(Result.VAnsiString) := AnsiString(Item.VAnsiString);
+      end;
+{$ENDIF}
+    // there is no StrNew for PWideChar
+    vtPWideChar:
+      begin
+        S := Item.VPWideChar;
+        GetMem(Result.VPWideChar,
+               (Length(S) + 1) * SizeOf(WideChar));
+        Move(PWideChar(S)^, Result.VPWideChar^,
+             (Length(S) + 1) * SizeOf(WideChar));
       end;
     vtCurrency:
       begin
@@ -1235,7 +1250,11 @@ begin
     vtWideString:
       begin
         Result.VWideString := nil;
+{$IFNDEF NEXTGEN}
         WideString(Result.VWideString) := WideString(Item.VWideString);
+{$ELSE}
+        string(Result.VWideString) := string(Item.VWideString);
+{$ENDIF}
       end;
     vtInt64:
       begin
@@ -1282,21 +1301,27 @@ procedure FinalizeVarRec(var Item: TVarRec);
 begin
   case Item.VType of
     vtExtended: Dispose(Item.VExtended);
+{$IFNDEF NEXTGEN}
     vtString: Dispose(Item.VString);
     vtPChar: {$IFDEF DELPHIXE4_UP}AnsiStrings.{$ENDIF}StrDispose(Item.VPChar);
-    vtPWideChar: FreeMem(Item.VPWideChar);
     vtAnsiString: AnsiString(Item.VAnsiString) := '';
+{$ENDIF}
+    vtPWideChar: FreeMem(Item.VPWideChar);
     vtCurrency: Dispose(Item.VCurrency);
     vtVariant: Dispose(Item.VVariant);
     vtInterface: IInterface(Item.VInterface) := nil;
+{$IFNDEF NEXTGEN}
     vtWideString: WideString(Item.VWideString) := '';
+{$ELSE}
+    vtWideString: string(Item.VWideString) := '';
+{$ENDIF}
     vtInt64: Dispose(Item.VInt64);
-  {$IFDEF DELPHI2009_UP}
+{$IFDEF DELPHI2009_UP}
     vtUnicodeString: UnicodeString(Item.VUnicodeString) := '';
-  {$ENDIF}
-  {$IFDEF FPC}
+{$ENDIF}
+{$IFDEF FPC}
     vtQWord: Dispose(Item.VQWord);
-  {$ENDIF}
+{$ENDIF}
   end;
   Item.VPointer := nil;
 end;
@@ -1949,7 +1974,7 @@ end;
 function THashedList.HashOf(const Value: Variant): Integer;
 begin
   if VarIsStr(Value) then
-    Result := HashOfString(WideString(Value))
+    Result := HashOfString(Value)
   else
     Result := HashOfVariant(Value);
 end;
@@ -1961,7 +1986,11 @@ var
 begin
   Item := Get(Index);
   if VarIsStr(Item) and VarIsStr(Value) then
+{$IFNDEF NEXTGEN}
     Result := WideCompareStr(Item, Value) = 0
+{$ELSE}
+    Result := CompareStr(Item, Value) = 0
+{$ENDIF}
   else
     Result := VarEquals(Item, Value)
 end;
@@ -2017,7 +2046,11 @@ end;
 function TCaseInsensitiveHashedList.HashOf(const Value: Variant): Integer;
 begin
   if VarIsStr(Value) then
+{$IFNDEF NEXTGEN}
     Result := HashOfString(WideLowerCase(Value))
+{$ELSE}
+    Result := HashOfString(LowerCase(Value))
+{$ENDIF}
   else
     Result := HashOfVariant(Value);
 end;
@@ -2029,7 +2062,11 @@ var
 begin
   Item := Get(Index);
   if VarIsStr(Item) and VarIsStr(Value) then
+{$IFNDEF NEXTGEN}
     Result := WideCompareText(Item, Value) = 0
+{$ELSE}
+    Result := CompareText(Item, Value) = 0
+{$ENDIF}
   else
     Result := VarEquals(Item, Value)
 end;
@@ -2517,11 +2554,7 @@ end;
 
 constructor TStringBuffer.Create(const AString: string);
 begin
-{$IFDEF DELPHI2009_UP}
-  FDataString := RawByteString(AString);
-{$ELSE}
   FDataString := AString;
-{$ENDIF}
   FLength := System.Length(FDataString);
   FCapacity := FLength;
   FPosition := FLength;
@@ -2549,48 +2582,26 @@ begin
   SetCapacity(FCapacity + Delta);
 end;
 
-function TStringBuffer.Insert(const Buffer; Count: Integer): Longint;
+procedure TStringBuffer.InsertString(const AString: string);
+var
+  Count: Integer;
 begin
   if FPosition = FLength then
-    Result := Write(Buffer, Count)
+    WriteString(AString)
   else begin
-    Result := Count;
-    if (FLength + Result > FCapacity) then begin
-      FCapacity := FLength + Result;
+    Count := System.Length(AString);
+    if (FLength + Count > FCapacity) then begin
+      FCapacity := FLength + Count;
       Grow;
     end;
-    Move(PAnsiChar(@FDataString[FPosition + 1])^,
-      PAnsiChar(@FDataString[FPosition + Result + 1])^, FLength - FPosition);
-    Move(Buffer, PAnsiChar(@FDataString[FPosition + 1])^, Result);
-    Inc(FPosition, Result);
-    Inc(FLength, Result);
+    Move(PChar(@FDataString[FPosition + 1])^,
+      PChar(@FDataString[FPosition + Count + 1])^, (FLength - FPosition) * SizeOf(Char));
+    MoveChars(PChar(AString)^, PChar(@FDataString[FPosition + 1])^, Count * SizeOf(Char));
+    Inc(FPosition, Count);
+    Inc(FLength, Count);
   end;
 end;
 
-procedure TStringBuffer.InsertString(const AString: string);
-{$IFDEF DELPHI2009_UP}
-var
-  S: RawByteString;
-begin
-  S := RawByteString(AString);
-  Insert(PAnsiChar(S)^, System.Length(S));
-end;
-{$ELSE}
-begin
-  Insert(PAnsiChar(AString)^, System.Length(AString));
-end;
-{$ENDIF}
-
-function TStringBuffer.Read(var Buffer; Count: Integer): Longint;
-begin
-  Result := FLength - FPosition;
-  if Result > Count then Result := Count;
-  if Result > 0 then begin
-    Move(PAnsiChar(@FDataString[FPosition + 1])^, Buffer, Result);
-    Inc(FPosition, Result);
-  end
-  else Result := 0;
-end;
 
 function TStringBuffer.ReadString(Count: Integer): string;
 var
@@ -2599,7 +2610,7 @@ begin
   Len := FLength - FPosition;
   if Len > Count then Len := Count;
   if Len > 0 then begin
-    SetString(Result, PAnsiChar(@FDataString[FPosition + 1]), Len);
+    SetString(Result, PChar(@FDataString[FPosition + 1]), Len);
     Inc(FPosition, Len);
   end;
 end;
@@ -2634,34 +2645,22 @@ end;
 
 function TStringBuffer.ToString: string;
 begin
-  SetString(Result, PAnsiChar(FDataString), FLength);
-end;
-
-function TStringBuffer.Write(const Buffer; Count: Integer): Longint;
-begin
-  Result := Count;
-  if (FPosition + Result > FCapacity) then begin
-    FCapacity := FPosition + Result;
-    Grow;
-  end;
-  Move(Buffer, PAnsiChar(@FDataString[FPosition + 1])^, Result);
-  Inc(FPosition, Result);
-  if FPosition > FLength then FLength := FPosition;
+  SetString(Result, PChar(FDataString), FLength);
 end;
 
 procedure TStringBuffer.WriteString(const AString: string);
-{$IFDEF DELPHI2009_UP}
 var
-  S: RawByteString;
+  Count: Integer;
 begin
-  S := RawByteString(AString);
-  Write(PAnsiChar(S)^, System.Length(S));
+  Count := System.Length(AString);
+  if (FPosition + Count > FCapacity) then begin
+    FCapacity := FPosition + Count;
+    Grow;
+  end;
+  Move(PChar(AString)^, PChar(@FDataString[FPosition + 1])^, Count * SizeOf(Char));
+  Inc(FPosition, Count);
+  if FPosition > FLength then FLength := FPosition;
 end;
-{$ELSE}
-begin
-  Write(PAnsiChar(AString)^, System.Length(AString));
-end;
-{$ENDIF}
 
 {$IFNDEF FPC}
 { TVarObjectType }
@@ -2676,13 +2675,17 @@ begin
   else if AVarType = varInt64 then
     Variant(Dest) := FindVarData(Variant(Source)).VInt64
   else if AVarType = varString then
-    Variant(Dest) := AnsiString(TObject(FindVarData(Variant(Source)).VPointer).ClassName)
+    Variant(Dest) := string(TObject(FindVarData(Variant(Source)).VPointer).ClassName)
 {$IFDEF DELPHI2009_UP}
   else if AVarType = varUString then
     Variant(Dest) := UnicodeString(TObject(FindVarData(Variant(Source)).VPointer).ClassName)
 {$ENDIF}
   else if AVarType = varOleStr then
+{$IFNDEF NEXTGEN}
     Variant(Dest) := WideString(TObject(FindVarData(Variant(Source)).VPointer).ClassName)
+{$ELSE}
+    Variant(Dest) := TObject(FindVarData(Variant(Source)).VPointer).ClassName
+{$ENDIF}
   else
     RaiseCastError;
 end;
@@ -2756,11 +2759,8 @@ begin
     VarDataCopyNoInd(Dest, Source)
   else
     VarDataClear(Dest);
-    with Dest do
-    begin
-      VType := Source.VType;
-      VPointer := Source.VPointer;
-    end;
+    Dest.VType := Source.VType;
+    Dest.VPointer := Source.VPointer;
 end;
 
 function TVarObjectType.IsClear(const V: TVarData): Boolean;
@@ -2976,7 +2976,6 @@ var
   TypeData: PTypeData;
 begin
   RegisterType(TypeName, Size, TypeInfo);
-
   TypeData := GetTypeData(TypeInfo);
   case TypeInfo^.Kind of
   tkEnumeration:
@@ -2985,9 +2984,15 @@ begin
 {$ELSE}
     UnitName := string(TypeData^.EnumUnitName);
 {$ENDIF}
+{$IFNDEF DELPHIXE3_UP}
   tkClass:       UnitName := string(TypeData^.UnitName);
   tkInterface:   UnitName := string(TypeData^.IntfUnit);
   tkDynArray:    UnitName := string(TypeData^.DynUnitName);
+{$ELSE}
+  tkClass:       UnitName := TypeData^.UnitNameFld.ToString;
+  tkInterface:   UnitName := TypeData^.IntfUnitFld.ToString;
+  tkDynArray:    UnitName := TypeData^.DynUnitNameFld.ToString;
+{$ENDIF}
   else
     raise EHproseException.Create('Can not register this type: ' + TypeName);
   end;
@@ -3157,7 +3162,6 @@ initialization
     HproseSizeMap['System.Cardinal'] := SizeOf(Cardinal);
     HproseSizeMap['System.UInt64'] := SizeOf(UInt64);
     HproseSizeMap['System.Char'] := SizeOf(Char);
-    HproseSizeMap['System.AnsiChar'] := SizeOf(AnsiChar);
     HproseSizeMap['System.WideChar'] := SizeOf(WideChar);
     HproseSizeMap['System.UCS4Char'] := SizeOf(UCS4Char);
     HproseSizeMap['System.Boolean'] := SizeOf(Boolean);
@@ -3170,13 +3174,16 @@ initialization
     HproseSizeMap['System.Extended'] := SizeOf(Extended);
     HproseSizeMap['System.Comp'] := SizeOf(Comp);
     HproseSizeMap['System.Currency'] := SizeOf(Currency);
+    HproseSizeMap['System.string'] := SizeOf(string);
+    HproseSizeMap['System.UnicodeString'] := SizeOf(UnicodeString);
+{$IFNDEF NEXTGEN}
+    HproseSizeMap['System.AnsiChar'] := SizeOf(AnsiChar);
     HproseSizeMap['System.AnsiString'] := SizeOf(AnsiString);
     HproseSizeMap['System.RawByteString'] := SizeOf(RawByteString);
-    HproseSizeMap['System.UnicodeString'] := SizeOf(UnicodeString);
-    HproseSizeMap['System.string'] := SizeOf(string);
     HproseSizeMap['System.ShortString'] := SizeOf(ShortString);
-    HproseSizeMap['System.WideString'] := SizeOf(WideString);
     HproseSizeMap['System.UTF8String'] := SizeOf(UTF8String);
+    HproseSizeMap['System.WideString'] := SizeOf(WideString);
+{$ENDIF}
     HproseSizeMap['System.UCS4String'] := SizeOf(UCS4String);
     HproseSizeMap['System.TDateTime'] := SizeOf(TDateTime);
     HproseSizeMap['System.TDate'] := SizeOf(TDate);
@@ -3201,7 +3208,6 @@ initialization
     HproseTypeMap['System.Cardinal'] := NativeInt(TypeInfo(Cardinal));
     HproseTypeMap['System.UInt64'] := NativeInt(TypeInfo(UInt64));
     HproseTypeMap['System.Char'] := NativeInt(TypeInfo(Char));
-    HproseTypeMap['System.AnsiChar'] := NativeInt(TypeInfo(AnsiChar));
     HproseTypeMap['System.WideChar'] := NativeInt(TypeInfo(WideChar));
     HproseTypeMap['System.UCS4Char'] := NativeInt(TypeInfo(UCS4Char));
     HproseTypeMap['System.Boolean'] := NativeInt(TypeInfo(Boolean));
@@ -3214,13 +3220,16 @@ initialization
     HproseTypeMap['System.Extended'] := NativeInt(TypeInfo(Extended));
     HproseTypeMap['System.Comp'] := NativeInt(TypeInfo(Comp));
     HproseTypeMap['System.Currency'] := NativeInt(TypeInfo(Currency));
+    HproseTypeMap['System.string'] := NativeInt(TypeInfo(string));
+    HproseTypeMap['System.UnicodeString'] := NativeInt(TypeInfo(UnicodeString));
+{$IFNDEF NEXTGEN}
+    HproseTypeMap['System.AnsiChar'] := NativeInt(TypeInfo(AnsiChar));
     HproseTypeMap['System.AnsiString'] := NativeInt(TypeInfo(AnsiString));
     HproseTypeMap['System.RawByteString'] := NativeInt(TypeInfo(RawByteString));
-    HproseTypeMap['System.UnicodeString'] := NativeInt(TypeInfo(UnicodeString));
-    HproseTypeMap['System.string'] := NativeInt(TypeInfo(string));
     HproseTypeMap['System.ShortString'] := NativeInt(TypeInfo(ShortString));
-    HproseTypeMap['System.WideString'] := NativeInt(TypeInfo(WideString));
     HproseTypeMap['System.UTF8String'] := NativeInt(TypeInfo(UTF8String));
+    HproseTypeMap['System.WideString'] := NativeInt(TypeInfo(WideString));
+{$ENDIF}
     HproseTypeMap['System.UCS4String'] := NativeInt(TypeInfo(UCS4String));
     HproseTypeMap['System.TDateTime'] := NativeInt(TypeInfo(TDateTime));
     HproseTypeMap['System.TDate'] := NativeInt(TypeInfo(TDate));
