@@ -15,7 +15,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: May 24, 2014                             *
+ * LastModified: May 25, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -92,9 +92,7 @@ type
     function GetEnumerator: IListEnumerator;
     function IndexOf(const Value: Variant): Integer;
     procedure Insert(Index: Integer; const Value: Variant);
-    function Join(const Glue: string = ',';
-                  const LeftPad: string = '';
-                  const RightPad: string = ''): string;
+    function Join(const Glue, LeftPad, RightPad: string): string;
     procedure InitLock;
     procedure InitReadWriteLock;
     procedure Lock;
@@ -136,7 +134,9 @@ type
     function GetEnumerator: IListEnumerator; virtual;
     function IndexOf(const Value: Variant): Integer; virtual; abstract;
     procedure Insert(Index: Integer; const Value: Variant); virtual; abstract;
-    function Join(const Glue, LeftPad, RightPad: string): string; virtual;
+    function Join(const Glue: string = ',';
+                  const LeftPad: string = '';
+                  const RightPad: string = ''): string; virtual;
     class function Split(Str: string; const Separator: string = ',';
       Limit: Integer = 0; TrimItem: Boolean = False;
       SkipEmptyItem: Boolean = False; Sync: Boolean = True;
@@ -312,10 +312,7 @@ type
     function ContainsValue(const Value: Variant): Boolean;
     function Delete(const Key: Variant): Variant;
     function GetEnumerator: IMapEnumerator;
-    function Join(const ItemGlue: string = ';';
-                  const KeyValueGlue: string = '=';
-                  const LeftPad: string = '';
-                  const RightPad: string = ''): string;
+    function Join(const ItemGlue, KeyValueGlue, LeftPad, RightPad: string): string;
     procedure InitLock;
     procedure InitReadWriteLock;
     procedure Lock;
@@ -355,8 +352,10 @@ type
     function ContainsValue(const Value: Variant): Boolean; virtual; abstract;
     function Delete(const Key: Variant): Variant; virtual; abstract;
     function GetEnumerator: IMapEnumerator; virtual;
-    function Join(const ItemGlue, KeyValueGlue, LeftPad, RightPad: string):
-      string; virtual;
+    function Join(const ItemGlue: string = ';';
+                  const KeyValueGlue: string = '=';
+                  const LeftPad: string = '';
+                  const RightPad: string = ''): string; virtual;
     class function Split(Str: string; const ItemSeparator: string = ';';
       const KeyValueSeparator: string = '='; Limit: Integer = 0;
       TrimKey: Boolean = False; TrimValue: Boolean = False;
@@ -480,9 +479,11 @@ type
   end;
 {$IFEND}
 
+  TChars = array of Char;
+
   TStringBuffer = class(TObject)
   private
-    FDataString: string;
+    FData: TChars;
     FPosition: Integer;
     FCapacity: Integer;
     FLength: Integer;
@@ -500,7 +501,6 @@ type
     property Position: Integer read FPosition write SetPosition;
     property Length: Integer read FLength;
     property Capacity: Integer read FCapacity write SetCapacity;
-    property DataString: string read FDataString;
   end;
 
   ISmartObject = interface
@@ -1344,18 +1344,18 @@ type
 
   TListEnumerator = class(TInterfacedObject, IListEnumerator)
   private
-    FList: IList;
+    FList: TAbstractList;
     FIndex: Integer;
     function GetCurrent: Variant;
   public
-    constructor Create(AList: IList);
+    constructor Create(AList: TAbstractList);
     function MoveNext: Boolean;
     property Current: Variant read GetCurrent;
   end;
 
 { TListEnumerator }
 
-constructor TListEnumerator.Create(AList: IList);
+constructor TListEnumerator.Create(AList: TAbstractList);
 begin
   FList := AList;
   FIndex := -1;
@@ -2077,18 +2077,18 @@ type
 
   TMapEnumerator = class(TInterfacedObject, IMapEnumerator)
   private
-    FMap: IMap;
+    FMap: TAbstractMap;
     FIndex: Integer;
     function GetCurrent: TMapEntry;
   public
-    constructor Create(AMap: IMap);
+    constructor Create(AMap: TAbstractMap);
     function MoveNext: Boolean;
     property Current: TMapEntry read GetCurrent;
   end;
 
 { TMapEnumerator }
 
-constructor TMapEnumerator.Create(AMap: IMap);
+constructor TMapEnumerator.Create(AMap: TAbstractMap);
 begin
   FMap := AMap;
   FIndex := -1;
@@ -2556,10 +2556,11 @@ end;
 
 constructor TStringBuffer.Create(const AString: string);
 begin
-  FDataString := AString;
-  FLength := System.Length(FDataString);
+  FLength := System.Length(AString);
   FCapacity := FLength;
   FPosition := FLength;
+  SetLength(FData, FLength);
+  Move(PChar(AString)^, FData[0], FLength * SizeOf(Char));
 end;
 
 constructor TStringBuffer.Create(Capacity: Integer);
@@ -2567,7 +2568,7 @@ begin
   FLength := 0;
   FPosition := 0;
   FCapacity := Capacity;
-  SetLength(FDataString, Capacity);
+  SetLength(FData, Capacity);
 end;
 
 procedure TStringBuffer.Grow;
@@ -2596,9 +2597,8 @@ begin
       FCapacity := FLength + Count;
       Grow;
     end;
-    Move(PChar(@FDataString[FPosition + 1])^,
-      PChar(@FDataString[FPosition + Count + 1])^, (FLength - FPosition) * SizeOf(Char));
-    Move(PChar(AString)^, PChar(@FDataString[FPosition + 1])^, Count * SizeOf(Char));
+    Move(FData[FPosition], FData[FPosition + Count], (FLength - FPosition) * SizeOf(Char));
+    Move(PChar(AString)^, FData[FPosition], Count * SizeOf(Char));
     Inc(FPosition, Count);
     Inc(FLength, Count);
   end;
@@ -2612,7 +2612,7 @@ begin
   Len := FLength - FPosition;
   if Len > Count then Len := Count;
   if Len > 0 then begin
-    SetString(Result, PChar(@FDataString[FPosition + 1]), Len);
+    SetString(Result, PChar(@FData[FPosition]), Len);
     Inc(FPosition, Len);
   end;
 end;
@@ -2635,7 +2635,7 @@ begin
   FCapacity := NewCapacity;
   if FLength > NewCapacity then FLength := NewCapacity;
   if FPosition > NewCapacity then FPosition := NewCapacity;
-  SetLength(FDataString, NewCapacity);
+  SetLength(FData, NewCapacity);
 end;
 
 procedure TStringBuffer.SetPosition(NewPosition: Integer);
@@ -2647,7 +2647,7 @@ end;
 
 function TStringBuffer.ToString: string;
 begin
-  SetString(Result, PChar(FDataString), FLength);
+  SetString(Result, PChar(FData), FLength);
 end;
 
 procedure TStringBuffer.WriteString(const AString: string);
@@ -2659,7 +2659,7 @@ begin
     FCapacity := FPosition + Count;
     Grow;
   end;
-  Move(PChar(AString)^, PChar(@FDataString[FPosition + 1])^, Count * SizeOf(Char));
+  Move(PChar(AString)^, FData[FPosition], Count * SizeOf(Char));
   Inc(FPosition, Count);
   if FPosition > FLength then FLength := FPosition;
 end;
