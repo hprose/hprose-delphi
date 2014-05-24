@@ -3033,7 +3033,7 @@ begin
   RegisterType(SizeOf(T), TTI);
 {$ELSE}
 // Delphi 2010 - XE2 have a bug for GetTypeName from TTI, so I hack it like this
-  RegisterType(SizeOf(T), TTI, string('T' + AnsiRightStr(GetTypeName(ITI), Length(GetTypeName(ITI)) - 1)));
+  RegisterType(SizeOf(T), TTI, string('T' + RightStr(GetTypeName(ITI), Length(GetTypeName(ITI)) - 1)));
 {$ENDIF}
   RegisterType(SizeOf(I), ITI);
 end;
