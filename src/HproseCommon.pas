@@ -92,7 +92,9 @@ type
     function GetEnumerator: IListEnumerator;
     function IndexOf(const Value: Variant): Integer;
     procedure Insert(Index: Integer; const Value: Variant);
-    function Join(const Glue, LeftPad, RightPad: string): string;
+    function Join(const Glue: string = ',';
+                  const LeftPad: string = '';
+                  const RightPad: string = ''): string;
     procedure InitLock;
     procedure InitReadWriteLock;
     procedure Lock;
@@ -312,7 +314,10 @@ type
     function ContainsValue(const Value: Variant): Boolean;
     function Delete(const Key: Variant): Variant;
     function GetEnumerator: IMapEnumerator;
-    function Join(const ItemGlue, KeyValueGlue, LeftPad, RightPad: string): string;
+    function Join(const ItemGlue: string = ';';
+                  const KeyValueGlue: string = '=';
+                  const LeftPad: string = '';
+                  const RightPad: string = ''): string;
     procedure InitLock;
     procedure InitReadWriteLock;
     procedure Lock;
