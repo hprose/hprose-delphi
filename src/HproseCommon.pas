@@ -15,7 +15,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: May 25, 2014                             *
+ * LastModified: May 26, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -47,7 +47,7 @@ type
 
   THproseResultMode = (Normal, Serialized, Raw, RawWithEndTag);
 
-{$IF not defined(DELPHI2007_UP) and not defined(FPC)}
+{$IF NOT DEFINED(DELPHI2007_UP) AND NOT DEFINED(FPC)}
   TBytes = array of Byte;
 {$IFEND}
 
@@ -472,7 +472,7 @@ type
       Sync: Boolean = True; ReadWriteSync: Boolean = False); override;
   end;
 
-{$IF not defined(DELPHI2009_UP) and not defined(FPC)}
+{$IF NOT DEFINED(DELPHI2009_UP) AND NOT DEFINED(FPC)}
   TBytesStream = class(TMemoryStream)
   private
     FBytes: TBytes;
@@ -556,12 +556,8 @@ const
   varNativeInt = varInteger;
 {$ENDIF}
 
-{$IFDEF FPC}
-  varObject = 23;  {23 is not used by FreePascal and Delphi, so it's safe.}
-{$ELSE}
 var
   varObject: TVarType;
-{$ENDIF}
 
 {$IFNDEF DELPHI2009_UP}
 function GetTypeName(const Info: PTypeInfo): string;
@@ -670,11 +666,13 @@ uses RTLConsts, Variants
 {$IFNDEF FPC}, StrUtils{$ENDIF}
 {$IFDEF DELPHIXE4_UP}{$IFNDEF NEXTGEN}, AnsiStrings{$ENDIF}{$ENDIF}
 {$IFDEF Supports_Rtti}, Rtti{$ENDIF};
-{$IFNDEF FPC}
 
 type
 
-  TVarObjectType = class(TCustomVariantType)
+  TVarObjectType = class(TPublishableVariantType)
+  protected
+    { IVarInstanceReference }
+    function GetInstance(const V: TVarData): TObject; override;
   public
     procedure CastTo(var Dest: TVarData; const Source: TVarData;
       const AVarType: TVarType); override;
@@ -688,7 +686,6 @@ type
 
 var
   VarObjectType: TVarObjectType;
-{$ENDIF}
 
 {$IFDEF DELPHIXE2_UP}
 const
@@ -1378,10 +1375,10 @@ begin
 {$ELSE}
     vtWideString: string(Item.VWideString) := '';
 {$ENDIF}
-    vtInt64: Dispose(Item.VInt64);
-{$IFDEF DELPHI2009_UP}
+{$IFDEF Supports_Unicode}
     vtUnicodeString: UnicodeString(Item.VUnicodeString) := '';
 {$ENDIF}
+    vtInt64: Dispose(Item.VInt64);
 {$IFDEF FPC}
     vtQWord: Dispose(Item.VQWord);
 {$ENDIF}
@@ -2583,7 +2580,7 @@ begin
 end;
 {$ENDIF}
 
-{$IF not defined(DELPHI2009_UP) and not defined(FPC)}
+{$IF NOT DEFINED(DELPHI2009_UP) AND NOT DEFINED(FPC)}
 const
   MemoryDelta = $2000; { Must be a power of 2 }
 
@@ -2725,8 +2722,20 @@ begin
   if FPosition > FLength then FLength := FPosition;
 end;
 
-{$IFNDEF FPC}
 { TVarObjectType }
+
+function TVarObjectType.GetInstance(const V: TVarData): TObject;
+begin
+  Result := nil;
+  try
+    if V.VType = varObject then begin
+      Result := TObject(V.VPointer);
+    end
+    else if V.VType <> varNull then Error(reInvalidCast);
+  except
+    Error(reInvalidCast);
+  end;
+end;
 
 procedure TVarObjectType.CastTo(var Dest: TVarData; const Source: TVarData;
   const AVarType: TVarType);
@@ -2830,7 +2839,6 @@ function TVarObjectType.IsClear(const V: TVarData): Boolean;
 begin
   Result := V.VPointer = nil;
 end;
-{$ENDIF}
 
 function ListSplit(ListClass: TListClass; Str: string;
   const Separator: string; Limit: Integer; TrimItem: Boolean;
@@ -3262,13 +3270,11 @@ initialization
   RegisterClass(TCaseInsensitiveHashedMap, ICaseInsensitiveHashedMap, '!CaseInsensitiveHashedMap');
 {$ENDIF}
 
-{$IFNDEF FPC}
   VarObjectType := TVarObjectType.Create;
   varObject := VarObjectType.VarType;
 
   SmartObjectsRef := THashMap.Create;
 finalization
   FreeAndNil(VarObjectType);
-{$ENDIF}
 
 end.

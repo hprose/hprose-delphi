@@ -150,6 +150,7 @@
 
 {$ifdef FPC}
   {$define Supports_UInt64}
+  {$define Supports_Unicode}
   {$mode DELPHI}
 {$endif}
 

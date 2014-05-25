@@ -15,7 +15,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: May 25, 2014                             *
+ * LastModified: May 26, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -762,7 +762,7 @@ begin
       Result := Char(GetOrdProp(Instance, PropInfo));
     tkWString:
       Result := GetWideStrProp(Instance, PropInfo);
-{$IFDEF DELPHI2009_UP}
+{$IFDEF Supports_Unicode}
     tkUString:
       Result := GetUnicodeStrProp(Instance, PropInfo);
 {$ENDIF}
@@ -826,7 +826,7 @@ begin
       SetStrProp(Instance, PropInfo, VarToStr(Value));
     tkWString:
       SetWideStrProp(Instance, PropInfo, VarToWideStr(Value));
-{$IFDEF DELPHI2009_UP}
+{$IFDEF Supports_Unicode}
     tkUString:
       SetUnicodeStrProp(Instance, PropInfo, VarToStr(Value)); //SB: ??
 {$ENDIF}
@@ -943,7 +943,7 @@ begin
         Result := varString;
       tkWString:
         Result := varOleStr;
-{$IFDEF DELPHI2009_UP}
+{$IFDEF Supports_Unicode}
       tkUString:
         Result := varUString;
 {$ENDIF}
@@ -2989,10 +2989,10 @@ begin
           Result := ShortString(ReadString());
         tkLString{$IFDEF FPC}, tkAString{$ENDIF}:
           Result := AnsiString(ReadString);
-{$ENDIF}
         tkWString:
           Result := ReadString;
-{$IFDEF DELPHI2009_UP}
+{$ENDIF}
+{$IFDEF Supports_Unicode}
         tkUString:
           Result := UnicodeString(ReadString);
 {$ENDIF}
@@ -3347,7 +3347,7 @@ begin
       WriteDouble(Value);
     varCurrency:
       WriteCurrency(Value);
-    varString, {$IFDEF DELPHI2009_UP}varUString, {$ENDIF}varOleStr:
+    varString, {$IFDEF Supports_Unicode}varUString, {$ENDIF}varOleStr:
       WriteWideString(Value);
     varDate:
       WriteDateTimeWithRef(Value);
@@ -3436,7 +3436,7 @@ begin
 {$IFDEF FPC}
       vtQWord:         WriteLong(V.VQWord^);
 {$ENDIF}
-{$IFDEF DELPHI2009_UP}
+{$IFDEF Supports_Unicode}
       vtUnicodeString: WriteStringWithRef(UnicodeString(V.VUnicodeString));
 {$ENDIF}
     else
