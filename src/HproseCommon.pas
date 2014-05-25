@@ -564,8 +564,9 @@ var
 {$ENDIF}
 
 {$IFNDEF DELPHI2009_UP}
-function GetTypeName(const TypeInfo: PTypeInfo): string;
+function GetTypeName(const Info: PTypeInfo): string;
 {$ENDIF}
+function GetTypeSize(const Info: PTypeInfo): Integer;
 {$IFDEF DELPHI6}
 function FindVarData(const Value: Variant): PVarData;
 function VarIsType(const V: Variant; AVarType: TVarType): Boolean; overload;
@@ -612,18 +613,14 @@ function GetClassByInterface(const IID: TGUID): TInterfacedClass;
 function HasRegisterWithInterface(const AClass: TInterfacedClass): Boolean;
 function GetInterfaceByClass(const AClass: TInterfacedClass): TGUID;
 
-{$IFDEF Supports_Generics}
-procedure RegisterType(const Size: Integer; const TypeInfo: PTypeInfo; TypeName: string); overload;
-procedure RegisterType(const Size: Integer; const TypeInfo: PTypeInfo); overload;
-function GetTypeInfo(const TypeName: string; var Size: Integer): PTypeInfo;
-{$ENDIF}
-
 type
   THproseClassManager = class
 {$IFDEF Supports_Generics}
   private
     class procedure RegisterSmartObject<T, I>(const Alias: string);
+    class procedure Register(const TypeInfo: PTypeInfo; TypeName: string); overload;
   public
+    class procedure Register(const TypeInfo: PTypeInfo); overload;
     class procedure Register<T>; overload;
     class procedure Register<T: constructor, class>(const Alias: string); overload;
     class procedure Register<T: constructor, TInterfacedObject; I: IInterface>(const Alias: string); overload;
@@ -631,7 +628,6 @@ type
     class function GetInterface<T: TInterfacedObject>: TGUID; overload;
     class function GetClass<I>: TInterfacedClass; overload;
     class function TypeInfo(const Name: string): PTypeInfo; overload;
-    class function TypeInfo(const Name: string; var Size: Integer): PTypeInfo; overload;
 {$ENDIF}
     class procedure Register(const AClass: TClass; const Alias: string); overload;
     class procedure Register(const AClass: TInterfacedClass; const IID: TGUID; const Alias: string); overload;
@@ -701,9 +697,69 @@ const
 {$ENDIF}
 
 {$IFNDEF DELPHI2009_UP}
-function GetTypeName(const TypeInfo: PTypeInfo): string;
+function GetTypeName(const Info: PTypeInfo): string;
 begin
-  Result := string(TypeInfo^.Name);
+  Result := string(Info^.Name);
+end;
+{$ENDIF}
+
+function GetTypeSize(const Info: PTypeInfo): Integer;
+{$IFNDEF Supports_Rtti}
+var
+  TypeData: PTypeData;
+begin
+  Result := 4;
+  TypeData := GetTypeData(Info);
+  case Info^.Kind of
+    tkInteger:
+      case TypeData^.OrdType of
+        otSByte,
+        otUByte:
+            Result := SizeOf(Byte);
+        otSWord,
+        otUWord:
+          begin
+            Result := SizeOf(Word);
+          end;
+        otSLong,
+        otULong:
+          ;
+      end;
+    tkFloat:
+      case TypeData.FloatType of
+        ftSingle:
+          Result := SizeOf(Single);
+        ftDouble:
+          Result := SizeOf(Double);
+        ftComp:
+          Result := SizeOf(Comp);
+        ftCurr:
+          Result := SizeOf(Currency);
+        ftExtended:
+          Result := SizeOf(Extended);
+      end;
+    tkChar:
+      Result := 1;
+    tkWChar:
+      Result := 2;
+    tkInt64:
+      Result := SizeOf(Int64);
+    tkVariant:
+      Result := SizeOf(TVarData);
+    tkEnumeration:
+      Result := 1;
+  end;
+end;
+{$ELSE}
+var
+  Context: TRttiContext;
+  Typ: TRttiType;
+begin
+  if (Info = TypeInfo(Variant)) or (Info = TypeInfo(OleVariant)) then
+    Exit(SizeOf(TVarData));
+  Result := SizeOf(Pointer);
+  Typ := Context.GetType(Info);
+  if Assigned(Typ) then Result := Typ.TypeSize;
 end;
 {$ENDIF}
 
@@ -2960,29 +3016,26 @@ begin
 end;
 
 var
-  HproseSizeMap: IMap;
   HproseTypeMap: IMap;
 
-procedure RegisterType(const TypeName: string; const Size: Integer;
-  const TypeInfo: PTypeInfo); overload;
+procedure RegisterType(const TypeName: string; const TypeInfo: PTypeInfo);
 begin
   HproseTypeMap.BeginWrite;
-  HproseSizeMap.BeginWrite;
   try
-    HproseSizeMap[TypeName] := Size;
     HproseTypeMap[TypeName] := NativeInt(TypeInfo);
   finally
-    HproseSizeMap.EndWrite;
     HproseTypeMap.EndWrite;
   end;
 end;
 
-procedure RegisterType(const Size: Integer; const TypeInfo: PTypeInfo; TypeName: string); overload;
+{ THproseClassManager }
+
+class procedure THproseClassManager.Register(const TypeInfo: PTypeInfo; TypeName: string);
 var
   UnitName: string;
   TypeData: PTypeData;
 begin
-  RegisterType(TypeName, Size, TypeInfo);
+  RegisterType(TypeName, TypeInfo);
   TypeData := GetTypeData(TypeInfo);
   case TypeInfo^.Kind of
   tkEnumeration:
@@ -3004,28 +3057,13 @@ begin
     raise EHproseException.Create('Can not register this type: ' + TypeName);
   end;
   if UnitName <> '' then TypeName := UnitName + '.' + TypeName;
-  RegisterType(TypeName, Size, TypeInfo);
+  RegisterType(TypeName, TypeInfo);
 end;
 
-procedure RegisterType(const Size: Integer; const TypeInfo: PTypeInfo);
+class procedure THproseClassManager.Register(const TypeInfo: PTypeInfo);
 begin
-  RegisterType(Size, TypeInfo, GetTypeName(TypeInfo));
+  Register(TypeInfo, GetTypeName(TypeInfo));
 end;
-
-function GetTypeInfo(const TypeName: string; var Size: Integer): PTypeInfo;
-begin
-  HproseTypeMap.BeginRead;
-  HproseSizeMap.BeginRead;
-  try
-    Size := HproseSizeMap[TypeName];
-    Result := PTypeInfo(NativeInt(HproseTypeMap[TypeName]));
-  finally
-    HproseSizeMap.EndRead;
-    HproseTypeMap.EndRead;
-  end;
-end;
-
-{ THproseClassManager }
 
 class procedure THproseClassManager.RegisterSmartObject<T, I>(const Alias: string);
 var
@@ -3035,12 +3073,12 @@ begin
   ITI := System.TypeInfo(I);
   RegisterClass(TInterfacedClass(GetTypeData(TTI)^.ClassType), GetTypeData(ITI)^.Guid, Alias);
 {$IFDEF DELPHIXE3_UP}
-  RegisterType(SizeOf(T), TTI);
+  Register(TTI);
 {$ELSE}
 // Delphi 2010 - XE2 have a bug for GetTypeName from TTI, so I hack it like this
-  RegisterType(SizeOf(T), TTI, string('T' + RightStr(GetTypeName(ITI), Length(GetTypeName(ITI)) - 1)));
+  Register(TTI, string('T' + RightStr(GetTypeName(ITI), Length(GetTypeName(ITI)) - 1)));
 {$ENDIF}
-  RegisterType(SizeOf(I), ITI);
+  Register(ITI);
 end;
 
 class procedure THproseClassManager.Register<T>;
@@ -3049,11 +3087,11 @@ var
   TypeName: string;
 begin
   TI := System.TypeInfo(T);
-  RegisterType(SizeOf(T), TI);
+  Register(TI);
   TypeName := GetTypeName(TI);
   if (TI^.Kind = tkClass) and
      not StrUtils.AnsiStartsText('TSmartObject<', TypeName) then
-    THproseClassManager.RegisterSmartObject<TSmartObject<T>, ISmartObject<T>>(TypeName);
+    Self.RegisterSmartObject<TSmartObject<T>, ISmartObject<T>>(TypeName);
 end;
 
 class procedure THproseClassManager.Register<T>(const Alias: string);
@@ -3063,7 +3101,7 @@ begin
   TI := System.TypeInfo(T);
   if PTypeInfo(TI)^.Kind = tkClass then
     RegisterClass(GetTypeData(TI)^.ClassType, Alias);
-  THproseClassManager.Register<T>;
+  Self.Register<T>;
 end;
 
 class procedure THproseClassManager.Register<T, I>(const Alias: string);
@@ -3075,8 +3113,8 @@ begin
   if ITI^.Kind <> tkInterface then
     raise EHproseException.Create(GetTypeName(ITI) + ' must be a interface');
   RegisterClass(TInterfacedClass(GetTypeData(TTI)^.ClassType), GetTypeData(ITI)^.Guid, Alias);
-  THproseClassManager.Register<T>;
-  THproseClassManager.Register<I>;
+  Self.Register<T>;
+  Self.Register<I>;
 end;
 
 class function THproseClassManager.GetAlias<T>: string;
@@ -3104,15 +3142,13 @@ begin
 end;
 
 class function THproseClassManager.TypeInfo(const Name: string): PTypeInfo;
-var
-  Size: Integer;
 begin
-  Result := GetTypeInfo(Name, Size);
-end;
-
-class function THproseClassManager.TypeInfo(const Name: string; var Size: Integer): PTypeInfo;
-begin
-  Result := GetTypeInfo(Name, Size);
+  HproseTypeMap.BeginRead;
+  try
+    Result := PTypeInfo(NativeInt(HproseTypeMap[Name]));
+  finally
+    HproseTypeMap.EndRead;
+  end;
 end;
 
 {$ENDIF}
@@ -3155,52 +3191,6 @@ initialization
   HproseInterfaceMap := TCaseInsensitiveHashedMap.Create(False, True);
 
 {$IFDEF Supports_Generics}
-  HproseSizeMap := TCaseInsensitiveHashMap.Create(64, 0.75, False, True);
-  HproseSizeMap.BeginWrite;
-  try
-    HproseSizeMap['System.NativeInt'] := SizeOf(NativeInt);
-    HproseSizeMap['System.NativeUInt'] := SizeOf(NativeUInt);
-    HproseSizeMap['System.ShortInt'] := SizeOf(ShortInt);
-    HproseSizeMap['System.SmallInt'] := SizeOf(SmallInt);
-    HproseSizeMap['System.Integer'] := SizeOf(Integer);
-    HproseSizeMap['System.Int64'] := SizeOf(Int64);
-    HproseSizeMap['System.Byte'] := SizeOf(Byte);
-    HproseSizeMap['System.Word'] := SizeOf(Word);
-    HproseSizeMap['System.Cardinal'] := SizeOf(Cardinal);
-    HproseSizeMap['System.UInt64'] := SizeOf(UInt64);
-    HproseSizeMap['System.Char'] := SizeOf(Char);
-    HproseSizeMap['System.WideChar'] := SizeOf(WideChar);
-    HproseSizeMap['System.UCS4Char'] := SizeOf(UCS4Char);
-    HproseSizeMap['System.Boolean'] := SizeOf(Boolean);
-    HproseSizeMap['System.ByteBool'] := SizeOf(ByteBool);
-    HproseSizeMap['System.WordBool'] := SizeOf(WordBool);
-    HproseSizeMap['System.LongBool'] := SizeOf(LongBool);
-    HproseSizeMap['System.Single'] := SizeOf(Single);
-    HproseSizeMap['System.Double'] := SizeOf(Double);
-    HproseSizeMap['System.Real'] := SizeOf(Real);
-    HproseSizeMap['System.Extended'] := SizeOf(Extended);
-    HproseSizeMap['System.Comp'] := SizeOf(Comp);
-    HproseSizeMap['System.Currency'] := SizeOf(Currency);
-    HproseSizeMap['System.string'] := SizeOf(string);
-    HproseSizeMap['System.UnicodeString'] := SizeOf(UnicodeString);
-{$IFNDEF NEXTGEN}
-    HproseSizeMap['System.AnsiChar'] := SizeOf(AnsiChar);
-    HproseSizeMap['System.AnsiString'] := SizeOf(AnsiString);
-    HproseSizeMap['System.RawByteString'] := SizeOf(RawByteString);
-    HproseSizeMap['System.ShortString'] := SizeOf(ShortString);
-    HproseSizeMap['System.UTF8String'] := SizeOf(UTF8String);
-    HproseSizeMap['System.WideString'] := SizeOf(WideString);
-{$ENDIF}
-    HproseSizeMap['System.UCS4String'] := SizeOf(UCS4String);
-    HproseSizeMap['System.TDateTime'] := SizeOf(TDateTime);
-    HproseSizeMap['System.TDate'] := SizeOf(TDate);
-    HproseSizeMap['System.TTime'] := SizeOf(TTime);
-    HproseSizeMap['System.Variant'] := SizeOf(Variant);
-    HproseSizeMap['System.OleVariant'] := SizeOf(OleVariant);
-  finally
-    HproseSizeMap.EndWrite;
-  end;
-
   HproseTypeMap := TCaseInsensitiveHashMap.Create(64, 0.75, False, True);
   HproseTypeMap.BeginWrite;
   try
