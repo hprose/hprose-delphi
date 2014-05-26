@@ -62,8 +62,13 @@ type
 
   IHproseFilter = interface
   ['{4AD7CCF2-1121-4CA4-92A7-5704C5956BA4}']
-    function InputFilter(const data: TBytes): TBytes;
-    function OutputFilter(const data: TBytes): TBytes;
+    function InputFilter(const Data: TBytes): TBytes;
+    function OutputFilter(const Data: TBytes): TBytes;
+  end;
+
+  IInvokeableVarObject = interface
+  ['{FDC126C2-EF9F-4898-BF97-87C01B050F88}']
+    function Invoke(const Name: string; var Args: TVariants): Variant;
   end;
 
   IListEnumerator = interface
@@ -596,6 +601,10 @@ function VarIsIntf(const Value: Variant; const IID: TGUID): Boolean; overload;
 function VarToIntf(const Value: Variant; const IID: TGUID; out AIntf): Boolean;
 function IntfToObj(const Intf: IInterface): TInterfacedObject;
 
+function GetPropValue(Instance: TObject; PropInfo: PPropInfo): Variant;
+procedure SetPropValue(Instance: TObject; PropInfo: PPropInfo;
+  const Value: Variant);
+
 function CopyVarRec(const Item: TVarRec): TVarRec;
 function CreateConstArray(const Elements: array of const): TConstArray;
 procedure FinalizeVarRec(var Item: TVarRec);
@@ -669,11 +678,23 @@ uses RTLConsts, Variants
 
 type
 
-  TVarObjectType = class(TPublishableVariantType)
+  TVarObjectType = class(TInvokeableVariantType, IVarInstanceReference)
   protected
+{$IFDEF FPC}
+    procedure DispInvoke(Dest: PVarData; const Source: TVarData;
+      CallDesc: PCallDesc; Params: Pointer); override;
+{$ENDIF}
     { IVarInstanceReference }
-    function GetInstance(const V: TVarData): TObject; override;
+    function GetInstance(const V: TVarData): TObject;
   public
+    { IVarInvokeable }
+    function DoFunction(var Dest: TVarData; const V: TVarData;
+      const Name: string; const Arguments: TVarDataArray): Boolean; override;
+    function GetProperty(var Dest: TVarData; const V: TVarData;
+      const Name: string): Boolean; override;
+    function SetProperty(const V: TVarData; const Name: string;
+      const Value: TVarData): Boolean; override;
+
     procedure CastTo(var Dest: TVarData; const Source: TVarData;
       const AVarType: TVarType); override;
     procedure Clear(var V: TVarData); override;
@@ -1106,6 +1127,309 @@ begin
       else       result := nil;
     end;
 {$ENDIF}
+  end;
+end;
+
+{ GetPropValue/SetPropValue }
+
+procedure PropertyNotFound(const Name: string);
+begin
+  raise EPropertyError.CreateResFmt(@SUnknownProperty, [Name]);
+end;
+
+procedure PropertyConvertError(const Name: string);
+begin
+  raise EPropertyConvertError.CreateResFmt(@SInvalidPropertyType, [Name]);
+end;
+
+{$IFNDEF FPC}
+{$IFNDEF DELPHI2007_UP}
+type
+  TAccessStyle = (asFieldData, asAccessor, asIndexedAccessor);
+
+function GetAccessToProperty(Instance: TObject; PropInfo: PPropInfo;
+  AccessorProc: Longint; out FieldData: Pointer;
+  out Accessor: TMethod): TAccessStyle;
+begin
+  if (AccessorProc and $FF000000) = $FF000000 then
+  begin  // field - Getter is the field's offset in the instance data
+    FieldData := Pointer(Integer(Instance) + (AccessorProc and $00FFFFFF));
+    Result := asFieldData;
+  end
+  else
+  begin
+    if (AccessorProc and $FF000000) = $FE000000 then
+      // virtual method  - Getter is a signed 2 byte integer VMT offset
+      Accessor.Code := Pointer(PInteger(PInteger(Instance)^ + SmallInt(AccessorProc))^)
+    else
+      // static method - Getter is the actual address
+      Accessor.Code := Pointer(AccessorProc);
+
+    Accessor.Data := Instance;
+    if PropInfo^.Index = Integer($80000000) then  // no index
+      Result := asAccessor
+    else
+      Result := asIndexedAccessor;
+  end;
+end;
+
+function GetDynArrayProp(Instance: TObject; PropInfo: PPropInfo): Pointer;
+type
+  { Need a(ny) dynamic array type to force correct call setup.
+    (Address of result passed in EDX) }
+  TDynamicArray = array of Byte;
+type
+  TDynArrayGetProc = function: TDynamicArray of object;
+  TDynArrayIndexedGetProc = function (Index: Integer): TDynamicArray of object;
+var
+  M: TMethod;
+begin
+  case GetAccessToProperty(Instance, PropInfo, Longint(PropInfo^.GetProc),
+    Result, M) of
+    asFieldData:
+      Result := PPointer(Result)^;
+    asAccessor:
+      Result := Pointer(TDynArrayGetProc(M)());
+    asIndexedAccessor:
+      Result := Pointer(TDynArrayIndexedGetProc(M)(PropInfo^.Index));
+  end;
+end;
+
+procedure SetDynArrayProp(Instance: TObject; PropInfo: PPropInfo;
+  const Value: Pointer);
+type
+  TDynArraySetProc = procedure (const Value: Pointer) of object;
+  TDynArrayIndexedSetProc = procedure (Index: Integer;
+                                       const Value: Pointer) of object;
+var
+  P: Pointer;
+  M: TMethod;
+begin
+  case GetAccessToProperty(Instance, PropInfo, Longint(PropInfo^.SetProc),
+    P, M) of
+    asFieldData:
+      asm
+        MOV    ECX, PropInfo
+        MOV    ECX, [ECX].TPropInfo.PropType
+        MOV    ECX, [ECX]
+
+        MOV    EAX, [P]
+        MOV    EDX, Value
+        CALL   System.@DynArrayAsg
+      end;
+    asAccessor:
+      TDynArraySetProc(M)(Value);
+    asIndexedAccessor:
+      TDynArrayIndexedSetProc(M)(PropInfo^.Index, Value);
+  end;
+end;
+{$ENDIF}
+{$ELSE}
+function GetDynArrayProp(Instance: TObject; PropInfo: PPropInfo): Pointer;
+type
+  { Need a(ny) dynamic array type to force correct call setup.
+    (Address of result passed in EDX) }
+  TDynamicArray = array of Byte;
+type
+  TDynArrayGetProc = function: TDynamicArray of object;
+  TDynArrayIndexedGetProc = function (Index: Integer): TDynamicArray of object;
+var
+  AMethod: TMethod;
+begin
+  case (PropInfo^.PropProcs) and 3 of
+    ptfield:
+      Result := PPointer(Pointer(Instance) + PtrUInt(PropInfo^.GetProc))^;
+    ptstatic,
+    ptvirtual:
+    begin
+      if (PropInfo^.PropProcs and 3) = ptStatic then
+        AMethod.Code := PropInfo^.GetProc
+      else
+        AMethod.Code := PPointer(Pointer(Instance.ClassType) + PtrUInt(PropInfo^.GetProc))^;
+      AMethod.Data := Instance;
+      if ((PropInfo^.PropProcs shr 6) and 1) <> 0 then
+        Result := TDynArrayIndexedGetProc(AMethod)(PropInfo^.Index)
+      else
+        Result := TDynArrayGetProc(AMethod)();
+    end;
+  end;
+end;
+
+procedure SetDynArrayProp(Instance: TObject; PropInfo: PPropInfo;
+  const Value: Pointer);
+type
+  TDynArraySetProc = procedure (const Value: Pointer) of object;
+  TDynArrayIndexedSetProc = procedure (Index: Integer;
+                                       const Value: Pointer) of object;
+var
+  AMethod: TMethod;
+begin
+  case (PropInfo^.PropProcs shr 2) and 3 of
+    ptfield:
+      PPointer(Pointer(Instance) + PtrUInt(PropInfo^.SetProc))^ := Value;
+    ptstatic,
+    ptvirtual:
+    begin
+      if ((PropInfo^.PropProcs shr 2) and 3) = ptStatic then
+        AMethod.Code := PropInfo^.SetProc
+      else
+        AMethod.Code := PPointer(Pointer(Instance.ClassType) + PtrUInt(PropInfo^.SetProc))^;
+      AMethod.Data := Instance;
+      if ((PropInfo^.PropProcs shr 6) and 1) <> 0 then
+        TDynArrayIndexedSetProc(AMethod)(PropInfo^.Index, Value)
+      else
+        TDynArraySetProc(AMethod)(Value);
+    end;
+  end;
+end;
+{$ENDIF}
+
+function GetPropValue(Instance: TObject; PropInfo: PPropInfo): Variant;
+var
+  PropType: PTypeInfo;
+  DynArray: Pointer;
+begin
+  // assume failure
+  Result := Null;
+  PropType := PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF};
+  case PropType^.Kind of
+    tkInteger:
+      Result := GetOrdProp(Instance, PropInfo);
+    tkWChar:
+{$IFNDEF NEXTGEN}
+      Result := WideString(WideChar(GetOrdProp(Instance, PropInfo)));
+{$ELSE}
+      Result := string(WideChar(GetOrdProp(Instance, PropInfo)));
+{$ENDIF}
+    tkEnumeration:
+      if GetTypeData(PropType)^.BaseType{$IFNDEF FPC}^{$ENDIF} = TypeInfo(Boolean) then
+        Result := Boolean(GetOrdProp(Instance, PropInfo))
+      else
+        Result := GetOrdProp(Instance, PropInfo);
+    tkSet:
+      Result := GetOrdProp(Instance, PropInfo);
+    tkFloat:
+      if ((GetTypeName(PropType) = 'TDateTime') or
+          (GetTypeName(PropType) = 'TDate') or
+          (GetTypeName(PropType) = 'TTime')) then
+        Result := VarAsType(GetFloatProp(Instance, PropInfo), varDate)
+      else
+        Result := GetFloatProp(Instance, PropInfo);
+{$IFNDEF NEXTGEN}
+    tkString, {$IFDEF FPC}tkAString, {$ENDIF}tkLString:
+      Result := GetStrProp(Instance, PropInfo);
+    tkChar:
+      Result := Char(GetOrdProp(Instance, PropInfo));
+    tkWString:
+      Result := GetWideStrProp(Instance, PropInfo);
+{$IFDEF Supports_Unicode}
+    tkUString:
+      Result := GetUnicodeStrProp(Instance, PropInfo);
+{$ENDIF}
+{$ELSE}
+    tkUString:
+      Result := GetStrProp(Instance, PropInfo);
+{$ENDIF}
+    tkVariant:
+      Result := GetVariantProp(Instance, PropInfo);
+    tkInt64:
+{$IFDEF DELPHI2009_UP}
+    if (GetTypeName(PropType) = 'UInt64') then
+      Result := UInt64(GetInt64Prop(Instance, PropInfo))
+    else
+{$ENDIF}
+      Result := GetInt64Prop(Instance, PropInfo);
+{$IFDEF FPC}
+    tkBool:
+      Result := Boolean(GetOrdProp(Instance, PropInfo));
+    tkQWord:
+      Result := QWord(GetInt64Prop(Instance, PropInfo));
+{$ENDIF}
+    tkInterface:
+      Result := GetInterfaceProp(Instance, PropInfo);
+    tkDynArray:
+      begin
+        DynArray := GetDynArrayProp(Instance, PropInfo);
+        DynArrayToVariant(Result, DynArray, PropType);
+      end;
+    tkClass:
+      Result := ObjToVar(GetObjectProp(Instance, PropInfo));
+  else
+    PropertyConvertError(GetTypeName(PropType));
+  end;
+end;
+
+procedure SetPropValue(Instance: TObject; PropInfo: PPropInfo;
+  const Value: Variant);
+var
+  PropType: PTypeInfo;
+  TypeData: PTypeData;
+  Obj: TObject;
+  DynArray: Pointer;
+begin
+  PropType := PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF};
+  TypeData := GetTypeData(PropType);
+  // set the right type
+  case PropType^.Kind of
+    tkInteger, {$IFNDEF NEXTGEN}tkChar, {$ENDIF}tkWChar, tkEnumeration, tkSet:
+      SetOrdProp(Instance, PropInfo, Value);
+{$IFDEF FPC}
+    tkBool:
+      SetOrdProp(Instance, PropInfo, Value);
+    tkQWord:
+      SetInt64Prop(Instance, PropInfo, QWord(Value));
+{$ENDIF}
+    tkFloat:
+      SetFloatProp(Instance, PropInfo, Value);
+{$IFNDEF NEXTGEN}
+    tkString, {$IFDEF FPC}tkAString, {$ENDIF}tkLString:
+      SetStrProp(Instance, PropInfo, VarToStr(Value));
+    tkWString:
+      SetWideStrProp(Instance, PropInfo, VarToWideStr(Value));
+{$IFDEF Supports_Unicode}
+    tkUString:
+      SetUnicodeStrProp(Instance, PropInfo, VarToStr(Value)); //SB: ??
+{$ENDIF}
+{$ELSE}
+    tkUString:
+      SetStrProp(Instance, PropInfo, VarToStr(Value)); //SB: ??
+{$ENDIF}
+{$IFDEF DELPHI2009_UP}
+    tkInt64:
+      SetInt64Prop(Instance, PropInfo, Value);
+{$ELSE}
+    tkInt64:
+      SetInt64Prop(Instance, PropInfo, TVarData(VarAsType(Value, varInt64)).VInt64);
+{$ENDIF}
+    tkVariant:
+      SetVariantProp(Instance, PropInfo, Value);
+    tkInterface:
+        SetInterfaceProp(Instance, PropInfo, Value);
+    tkDynArray:
+      begin
+        DynArray := nil; // "nil array"
+        if VarIsNull(Value) or (VarArrayHighBound(Value, 1) >= 0) then begin
+          DynArrayFromVariant(DynArray, Value, PropType);
+        end;
+        SetDynArrayProp(Instance, PropInfo, DynArray);
+{$IFNDEF FPC}
+        DynArrayClear(DynArray, PropType);
+{$ENDIF}
+      end;
+    tkClass:
+      if VarIsNull(Value) then
+        SetOrdProp(Instance, PropInfo, 0)
+      else if VarIsObj(Value) then begin
+        Obj := VarToObj(Value);
+        if (Obj.ClassType.InheritsFrom(TypeData^.ClassType)) then
+          SetObjectProp(Instance, PropInfo, Obj)
+        else
+          PropertyConvertError(GetTypeName(PropType));
+      end
+      else
+        PropertyConvertError(GetTypeName(PropType));
+  else
+    PropertyConvertError(GetTypeName(PropType));
   end;
 end;
 
@@ -2723,6 +3047,124 @@ begin
 end;
 
 { TVarObjectType }
+{$IFDEF FPC}
+
+const
+  VAR_PARAMNOTFOUND = HRESULT($80020004);
+
+procedure TVarObjectType.DispInvoke(Dest: PVarData; const Source: TVarData;
+  CallDesc: PCallDesc; Params: Pointer);
+var
+  method_name: ansistring;
+  arg_count: byte;
+  args: TVarDataArray;
+  arg_idx: byte;
+  arg_type: byte;
+  arg_byref, has_result: boolean;
+  arg_ptr: pointer;
+  arg_data: PVarData;
+  dummy_data: TVarData;
+const
+  argtype_mask = $7F;
+  argref_mask = $80;
+begin
+  arg_count := CallDesc^.ArgCount;
+  method_name := ansistring(pchar(@CallDesc^.ArgTypes[arg_count]));
+  setLength(args, arg_count);
+  if arg_count > 0 then
+  begin
+    arg_ptr := Params;
+    for arg_idx := 0 to arg_count - 1 do
+    begin
+      arg_type := CallDesc^.ArgTypes[arg_idx] and argtype_mask;
+      arg_byref := (CallDesc^.ArgTypes[arg_idx] and argref_mask) <> 0;
+      arg_data := @args[arg_count - arg_idx - 1];
+      case arg_type of
+        varUStrArg: arg_data^.vType := varUString;
+        varStrArg: arg_data^.vType := varString;
+      else
+        arg_data^.vType := arg_type
+      end;
+      if arg_byref then
+      begin
+        arg_data^.vType := arg_data^.vType or varByRef;
+        arg_data^.vPointer := PPointer(arg_ptr)^;
+        Inc(arg_ptr,sizeof(Pointer));
+      end
+      else
+        case arg_type of
+          varError:
+            arg_data^.vError:=VAR_PARAMNOTFOUND;
+          varVariant:
+            begin
+              arg_data^ := PVarData(PPointer(arg_ptr)^)^;
+              Inc(arg_ptr,sizeof(Pointer));
+            end;
+          varDouble, varCurrency, varInt64, varQWord, varDate:
+            begin
+              arg_data^.vQWord := PQWord(arg_ptr)^; // 64bit on all platforms
+              inc(arg_ptr,sizeof(qword))
+            end
+        else
+          arg_data^.vAny := PPointer(arg_ptr)^; // 32 or 64bit
+          inc(arg_ptr,sizeof(pointer))
+        end;
+    end;
+  end;
+  has_result := (Dest <> nil);
+  if has_result then
+    variant(Dest^) := Unassigned;
+  case CallDesc^.CallType of
+
+    1:     { DISPATCH_METHOD }
+      if has_result then
+      begin
+        if arg_count = 0 then
+        begin
+          // no args -- try GetProperty first, then DoFunction
+          if not (GetProperty(Dest^,Source,method_name) or
+            DoFunction(Dest^,Source,method_name,args)) then
+            RaiseDispError
+        end
+        else
+          if not DoFunction(Dest^,Source,method_name,args) then
+            RaiseDispError;
+      end
+      else
+      begin
+        // may be procedure?
+        if not DoProcedure(Source,method_name,args) then
+        // may be function?
+        try
+          variant(dummy_data) := Unassigned;
+          if not DoFunction(dummy_data,Source,method_name,args) then
+            RaiseDispError;
+        finally
+          VarDataClear(dummy_data)
+        end;
+      end;
+
+    2:     { DISPATCH_PROPERTYGET -- currently never generated by compiler for Variant Dispatch }
+      if has_result then
+      begin
+        // must be property...
+        if not GetProperty(Dest^,Source,method_name) then
+          // may be function?
+          if not DoFunction(Dest^,Source,method_name,args) then
+            RaiseDispError
+      end
+      else
+        RaiseDispError;
+
+    4:    { DISPATCH_PROPERTYPUT }
+      if has_result or (arg_count<>1) or  // must be no result and a single arg
+        (not SetProperty(Source,method_name,args[0])) then
+        RaiseDispError;
+  else
+    RaiseDispError;
+  end;
+end;
+{$ENDIF}
 
 function TVarObjectType.GetInstance(const V: TVarData): TObject;
 begin
@@ -2735,6 +3177,33 @@ begin
   except
     Error(reInvalidCast);
   end;
+end;
+
+function TVarObjectType.DoFunction(var Dest: TVarData; const V: TVarData;
+  const Name: string; const Arguments: TVarDataArray): Boolean;
+begin
+  Result := False;
+end;
+
+function TVarObjectType.GetProperty(var Dest: TVarData;
+  const V: TVarData; const Name: string): Boolean;
+var
+  Obj: TObject;
+begin
+  Obj := GetInstance(V);
+  Variant(Dest) := GetPropValue(Obj, GetPropInfo(PTypeInfo(Obj.ClassInfo), Name));
+  Result := True;
+end;
+
+function TVarObjectType.SetProperty(const V: TVarData;
+  const Name: string; const Value: TVarData): Boolean;
+var
+  Obj: TObject;
+begin
+  //Writeln(Variant(Value));
+  Obj := GetInstance(V);
+  SetPropValue(Obj, GetPropInfo(PTypeInfo(Obj.ClassInfo), Name), Variant(Value));
+  Result := True;
 end;
 
 procedure TVarObjectType.CastTo(var Dest: TVarData; const Source: TVarData;

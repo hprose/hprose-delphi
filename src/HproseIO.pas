@@ -509,482 +509,6 @@ begin
     end;
 end;
 
-{ GetPropValue/SetPropValue }
-
-procedure PropertyNotFound(const Name: string);
-begin
-  raise EPropertyError.CreateResFmt(@SUnknownProperty, [Name]);
-end;
-
-procedure PropertyConvertError(const Name: string);
-begin
-  raise EPropertyConvertError.CreateResFmt(@SInvalidPropertyType, [Name]);
-end;
-
-{$IFNDEF FPC}
-{$IFNDEF DELPHI2007_UP}
-type
-  TAccessStyle = (asFieldData, asAccessor, asIndexedAccessor);
-
-function GetAccessToProperty(Instance: TObject; PropInfo: PPropInfo;
-  AccessorProc: Longint; out FieldData: Pointer;
-  out Accessor: TMethod): TAccessStyle;
-begin
-  if (AccessorProc and $FF000000) = $FF000000 then
-  begin  // field - Getter is the field's offset in the instance data
-    FieldData := Pointer(Integer(Instance) + (AccessorProc and $00FFFFFF));
-    Result := asFieldData;
-  end
-  else
-  begin
-    if (AccessorProc and $FF000000) = $FE000000 then
-      // virtual method  - Getter is a signed 2 byte integer VMT offset
-      Accessor.Code := Pointer(PInteger(PInteger(Instance)^ + SmallInt(AccessorProc))^)
-    else
-      // static method - Getter is the actual address
-      Accessor.Code := Pointer(AccessorProc);
-
-    Accessor.Data := Instance;
-    if PropInfo^.Index = Integer($80000000) then  // no index
-      Result := asAccessor
-    else
-      Result := asIndexedAccessor;
-  end;
-end;
-
-function GetDynArrayProp(Instance: TObject; PropInfo: PPropInfo): Pointer;
-type
-  { Need a(ny) dynamic array type to force correct call setup.
-    (Address of result passed in EDX) }
-  TDynamicArray = array of Byte;
-type
-  TDynArrayGetProc = function: TDynamicArray of object;
-  TDynArrayIndexedGetProc = function (Index: Integer): TDynamicArray of object;
-var
-  M: TMethod;
-begin
-  case GetAccessToProperty(Instance, PropInfo, Longint(PropInfo^.GetProc),
-    Result, M) of
-    asFieldData:
-      Result := PPointer(Result)^;
-    asAccessor:
-      Result := Pointer(TDynArrayGetProc(M)());
-    asIndexedAccessor:
-      Result := Pointer(TDynArrayIndexedGetProc(M)(PropInfo^.Index));
-  end;
-end;
-
-procedure SetDynArrayProp(Instance: TObject; PropInfo: PPropInfo;
-  const Value: Pointer);
-type
-  TDynArraySetProc = procedure (const Value: Pointer) of object;
-  TDynArrayIndexedSetProc = procedure (Index: Integer;
-                                       const Value: Pointer) of object;
-var
-  P: Pointer;
-  M: TMethod;
-begin
-  case GetAccessToProperty(Instance, PropInfo, Longint(PropInfo^.SetProc),
-    P, M) of
-    asFieldData:
-      asm
-        MOV    ECX, PropInfo
-        MOV    ECX, [ECX].TPropInfo.PropType
-        MOV    ECX, [ECX]
-
-        MOV    EAX, [P]
-        MOV    EDX, Value
-        CALL   System.@DynArrayAsg
-      end;
-    asAccessor:
-      TDynArraySetProc(M)(Value);
-    asIndexedAccessor:
-      TDynArrayIndexedSetProc(M)(PropInfo^.Index, Value);
-  end;
-end;
-{$ENDIF}
-{$ELSE}
-function GetDynArrayProp(Instance: TObject; PropInfo: PPropInfo): Pointer;
-type
-  { Need a(ny) dynamic array type to force correct call setup.
-    (Address of result passed in EDX) }
-  TDynamicArray = array of Byte;
-type
-  TDynArrayGetProc = function: TDynamicArray of object;
-  TDynArrayIndexedGetProc = function (Index: Integer): TDynamicArray of object;
-var
-  AMethod: TMethod;
-begin
-  case (PropInfo^.PropProcs) and 3 of
-    ptfield:
-      Result := PPointer(Pointer(Instance) + PtrUInt(PropInfo^.GetProc))^;
-    ptstatic,
-    ptvirtual:
-    begin
-      if (PropInfo^.PropProcs and 3) = ptStatic then
-        AMethod.Code := PropInfo^.GetProc
-      else
-        AMethod.Code := PPointer(Pointer(Instance.ClassType) + PtrUInt(PropInfo^.GetProc))^;
-      AMethod.Data := Instance;
-      if ((PropInfo^.PropProcs shr 6) and 1) <> 0 then
-        Result := TDynArrayIndexedGetProc(AMethod)(PropInfo^.Index)
-      else
-        Result := TDynArrayGetProc(AMethod)();
-    end;
-  end;
-end;
-
-procedure SetDynArrayProp(Instance: TObject; PropInfo: PPropInfo;
-  const Value: Pointer);
-type
-  TDynArraySetProc = procedure (const Value: Pointer) of object;
-  TDynArrayIndexedSetProc = procedure (Index: Integer;
-                                       const Value: Pointer) of object;
-var
-  AMethod: TMethod;
-begin
-  case (PropInfo^.PropProcs shr 2) and 3 of
-    ptfield:
-      PPointer(Pointer(Instance) + PtrUInt(PropInfo^.SetProc))^ := Value;
-    ptstatic,
-    ptvirtual:
-    begin
-      if ((PropInfo^.PropProcs shr 2) and 3) = ptStatic then
-        AMethod.Code := PropInfo^.SetProc
-      else
-        AMethod.Code := PPointer(Pointer(Instance.ClassType) + PtrUInt(PropInfo^.SetProc))^;
-      AMethod.Data := Instance;
-      if ((PropInfo^.PropProcs shr 6) and 1) <> 0 then
-        TDynArrayIndexedSetProc(AMethod)(PropInfo^.Index, Value)
-      else
-        TDynArraySetProc(AMethod)(Value);
-    end;
-  end;
-end;
-function GetInterfaceProp(Instance: TObject; PropInfo: PPropInfo): IInterface;
-type
-  TInterfaceGetProc = function: IInterface of object;
-  TInterfaceIndexedGetProc = function (Index: Integer): IInterface of object;
-var
-  P: ^IInterface;
-  AMethod: TMethod;
-begin
-  case (PropInfo^.PropProcs) and 3 of
-    ptfield:
-    begin
-      P := Pointer(Pointer(Instance) + PtrUInt(PropInfo^.GetProc));
-      Result := P^; // auto ref count
-    end;
-    ptstatic,
-    ptvirtual:
-    begin
-      if (PropInfo^.PropProcs and 3) = ptStatic then
-        AMethod.Code := PropInfo^.GetProc
-      else
-        AMethod.Code := PPointer(Pointer(Instance.ClassType) + PtrUInt(PropInfo^.GetProc))^;
-      AMethod.Data := Instance;
-      if ((PropInfo^.PropProcs shr 6) and 1) <> 0 then
-        Result := TInterfaceIndexedGetProc(AMethod)(PropInfo^.Index)
-      else
-        Result := TInterfaceGetProc(AMethod)();
-    end;
-  end;
-end;
-
-procedure SetInterfaceProp(Instance: TObject; PropInfo: PPropInfo;
-  const Value: IInterface);
-type
-  TInterfaceSetProc = procedure (const Value: IInterface) of object;
-  TInterfaceIndexedSetProc = procedure (Index: Integer;
-                                       const Value: IInterface) of object;
-var
-  P: ^IInterface;
-  AMethod: TMethod;
-begin
-  case (PropInfo^.PropProcs shr 2) and 3 of
-    ptfield:
-    begin
-      P := Pointer(Pointer(Instance) + PtrUInt(PropInfo^.SetProc));
-      P^ := Value; // auto ref count
-    end;
-    ptstatic,
-    ptvirtual:
-    begin
-      if ((PropInfo^.PropProcs shr 2) and 3) = ptStatic then
-        AMethod.Code := PropInfo^.SetProc
-      else
-        AMethod.Code := PPointer(Pointer(Instance.ClassType) + PtrUInt(PropInfo^.SetProc))^;
-      AMethod.Data := Instance;
-      if ((PropInfo^.PropProcs shr 6) and 1) <> 0 then
-        TInterfaceIndexedSetProc(AMethod)(PropInfo^.Index, Value)
-      else
-        TInterfaceSetProc(AMethod)(Value);
-    end;
-  end;
-end;
-{$ENDIF}
-
-function GetPropValue(Instance: TObject; PropInfo: PPropInfo): Variant;
-var
-  PropType: PTypeInfo;
-  DynArray: Pointer;
-begin
-  // assume failure
-  Result := Null;
-  PropType := PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF};
-  case PropType^.Kind of
-    tkInteger:
-      Result := GetOrdProp(Instance, PropInfo);
-    tkWChar:
-{$IFNDEF NEXTGEN}
-      Result := WideString(WideChar(GetOrdProp(Instance, PropInfo)));
-{$ELSE}
-      Result := string(WideChar(GetOrdProp(Instance, PropInfo)));
-{$ENDIF}
-    tkEnumeration:
-      if GetTypeData(PropType)^.BaseType{$IFNDEF FPC}^{$ENDIF} = TypeInfo(Boolean) then
-        Result := Boolean(GetOrdProp(Instance, PropInfo))
-      else
-        Result := GetOrdProp(Instance, PropInfo);
-    tkSet:
-      Result := GetOrdProp(Instance, PropInfo);
-    tkFloat:
-      if ((GetTypeName(PropType) = 'TDateTime') or
-          (GetTypeName(PropType) = 'TDate') or
-          (GetTypeName(PropType) = 'TTime')) then
-        Result := VarAsType(GetFloatProp(Instance, PropInfo), varDate)
-      else
-        Result := GetFloatProp(Instance, PropInfo);
-{$IFNDEF NEXTGEN}
-    tkString, {$IFDEF FPC}tkAString, {$ENDIF}tkLString:
-      Result := GetStrProp(Instance, PropInfo);
-    tkChar:
-      Result := Char(GetOrdProp(Instance, PropInfo));
-    tkWString:
-      Result := GetWideStrProp(Instance, PropInfo);
-{$IFDEF Supports_Unicode}
-    tkUString:
-      Result := GetUnicodeStrProp(Instance, PropInfo);
-{$ENDIF}
-{$ELSE}
-    tkUString:
-      Result := GetStrProp(Instance, PropInfo);
-{$ENDIF}
-    tkVariant:
-      Result := GetVariantProp(Instance, PropInfo);
-    tkInt64:
-{$IFDEF DELPHI2009_UP}
-    if (GetTypeName(PropType) = 'UInt64') then
-      Result := UInt64(GetInt64Prop(Instance, PropInfo))
-    else
-{$ENDIF}
-      Result := GetInt64Prop(Instance, PropInfo);
-{$IFDEF FPC}
-    tkBool:
-      Result := Boolean(GetOrdProp(Instance, PropInfo));
-    tkQWord:
-      Result := QWord(GetInt64Prop(Instance, PropInfo));
-{$ENDIF}
-    tkInterface:
-      Result := GetInterfaceProp(Instance, PropInfo);
-    tkDynArray:
-      begin
-        DynArray := GetDynArrayProp(Instance, PropInfo);
-        DynArrayToVariant(Result, DynArray, PropType);
-      end;
-    tkClass:
-      Result := ObjToVar(GetObjectProp(Instance, PropInfo));
-  else
-    PropertyConvertError(GetTypeName(PropType));
-  end;
-end;
-
-procedure SetPropValue(Instance: TObject; PropInfo: PPropInfo;
-  const Value: Variant);
-var
-  PropType: PTypeInfo;
-  TypeData: PTypeData;
-  Obj: TObject;
-  DynArray: Pointer;
-begin
-  PropType := PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF};
-  TypeData := GetTypeData(PropType);
-  // set the right type
-  case PropType^.Kind of
-    tkInteger, {$IFNDEF NEXTGEN}tkChar, {$ENDIF}tkWChar, tkEnumeration, tkSet:
-      SetOrdProp(Instance, PropInfo, Value);
-{$IFDEF FPC}
-    tkBool:
-      SetOrdProp(Instance, PropInfo, Value);
-    tkQWord:
-      SetInt64Prop(Instance, PropInfo, QWord(Value));
-{$ENDIF}
-    tkFloat:
-      SetFloatProp(Instance, PropInfo, Value);
-{$IFNDEF NEXTGEN}
-    tkString, {$IFDEF FPC}tkAString, {$ENDIF}tkLString:
-      SetStrProp(Instance, PropInfo, VarToStr(Value));
-    tkWString:
-      SetWideStrProp(Instance, PropInfo, VarToWideStr(Value));
-{$IFDEF Supports_Unicode}
-    tkUString:
-      SetUnicodeStrProp(Instance, PropInfo, VarToStr(Value)); //SB: ??
-{$ENDIF}
-{$ELSE}
-    tkUString:
-      SetStrProp(Instance, PropInfo, VarToStr(Value)); //SB: ??
-{$ENDIF}
-{$IFDEF DELPHI2009_UP}
-    tkInt64:
-      SetInt64Prop(Instance, PropInfo, Value);
-{$ELSE}
-    tkInt64:
-      SetInt64Prop(Instance, PropInfo, TVarData(VarAsType(Value, varInt64)).VInt64);
-{$ENDIF}
-    tkVariant:
-      SetVariantProp(Instance, PropInfo, Value);
-    tkInterface:
-      begin
-        SetInterfaceProp(Instance, PropInfo, Value);
-      end;
-    tkDynArray:
-      begin
-        DynArray := nil; // "nil array"
-        if VarIsNull(Value) or (VarArrayHighBound(Value, 1) >= 0) then begin
-          DynArrayFromVariant(DynArray, Value, PropType);
-        end;
-        SetDynArrayProp(Instance, PropInfo, DynArray);
-{$IFNDEF FPC}
-        DynArrayClear(DynArray, PropType);
-{$ENDIF}
-      end;
-    tkClass:
-      if VarIsNull(Value) then
-        SetOrdProp(Instance, PropInfo, 0)
-      else if VarIsObj(Value) then begin
-        Obj := VarToObj(Value);
-        if (Obj.ClassType.InheritsFrom(TypeData^.ClassType)) then
-          SetObjectProp(Instance, PropInfo, Obj)
-        else
-          PropertyConvertError(GetTypeName(PropType));
-      end
-      else
-        PropertyConvertError(GetTypeName(PropType));
-  else
-    PropertyConvertError(GetTypeName(PropType));
-  end;
-end;
-
-function GetVarTypeAndClass(Info: PTypeInfo; out AClass: TClass): TVarType;
-var
-  TypeData: PTypeData;
-  Name: string;
-begin
-  Result := varVariant;
-  AClass := nil;
-  Name := GetTypeName(Info);
-  if Name = 'Boolean' then
-    Result := varBoolean
-  else if (Name = 'TDateTime') or
-          (Name = 'TDate') or
-          (Name = 'TTime') then
-    Result := varDate
-{$IFDEF DELPHI2009_UP}
-  else if Name = 'UInt64' then
-    Result := varUInt64
-{$ENDIF}
-  else begin
-    TypeData := GetTypeData(Info);
-    case Info^.Kind of
-      tkInteger, tkEnumeration, tkSet:
-        case TypeData^.OrdType of
-          otSByte:
-            Result := varShortInt;
-          otUByte:
-            Result := varByte;
-          otSWord:
-            Result := varSmallInt;
-          otUWord:
-            Result := varWord;
-          otSLong:
-            Result := varInteger;
-          otULong:
-            Result := varLongWord;
-        end;
-{$IFNDEF NEXTGEN}
-      tkChar: begin
-        AClass := TObject;
-        Result := varByte;
-      end;
-{$ENDIF}
-      tkWChar: begin
-        AClass := TObject;
-        Result := varWord;
-      end;
-{$IFDEF FPC}
-      tkBool:
-        Result := varBoolean;
-      tkQWord:
-        Result := varQWord;
-{$ENDIF}
-      tkFloat:
-        case TypeData^.FloatType of
-          ftSingle:
-            Result := varSingle;
-          ftDouble, ftExtended:
-            Result := varDouble;
-          ftComp:
-            Result := varInt64;
-          ftCurr:
-            Result := varCurrency;
-        end;
-{$IFNDEF NEXTGEN}
-      tkString, {$IFDEF FPC}tkAString, {$ENDIF}tkLString:
-        Result := varString;
-      tkWString:
-        Result := varOleStr;
-{$IFDEF Supports_Unicode}
-      tkUString:
-        Result := varUString;
-{$ENDIF}
-{$ELSE}
-      tkUString:
-        Result := varOleStr;
-{$ENDIF}
-      tkInt64:
-        Result := varInt64;
-      tkInterface: begin
-        Result := varUnknown;
-        AClass := GetClassByInterface(TypeData.Guid);
-      end;
-      tkDynArray:
-        Result := TypeData.varType;
-      tkClass:
-        AClass := TypeData.ClassType;
-    end;
-  end;
-end;
-
-function StrToByte(const S:string): Byte; overload;
-begin
-  if Length(S) = 1 then
-    Result := Byte(S[1])
-  else
-    Result := Byte(StrToInt(S));
-end;
-
-{$IFNDEF NEXTGEN}
-function OleStrToWord(const S:WideString): Word; overload;
-{$ELSE}
-function OleStrToWord(const S:string): Word; overload;
-{$ENDIF}
-begin
-  if Length(S) = 1 then
-    Result := Word(S[1])
-  else
-    Result := Word(StrToInt(S));
-end;
-
 type
   TFakeReaderRefer = class(TInterfacedObject, IReaderRefer)
   public
@@ -1772,7 +1296,7 @@ begin
   for I := 0 to Count - 1 do begin
     PropInfo := GetPropInfo(AClass, ReadString);
     if (PropInfo <> nil) then
-      SetPropValue(Instance, PropInfo,
+      HproseCommon.SetPropValue(Instance, PropInfo,
                    Unserialize(PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF}))
     else Unserialize;
   end;
@@ -1790,7 +1314,7 @@ begin
   for I := 0 to Count - 1 do begin
     PropInfo := GetPropInfo(AClass, ReadString);
     if (PropInfo <> nil) then
-      SetPropValue(Result, PropInfo,
+      HproseCommon.SetPropValue(Result, PropInfo,
                    Unserialize(PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF}))
     else Unserialize;
   end;
@@ -1881,7 +1405,7 @@ begin
   for I := 0 to Count - 1 do begin
     PropInfo := GetPropInfo(Instance, AttrNames[I]);
     if (PropInfo <> nil) then
-      SetPropValue(Instance, PropInfo,
+      HproseCommon.SetPropValue(Instance, PropInfo,
                    Unserialize(PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF}))
     else Unserialize;
   end;
@@ -1909,7 +1433,7 @@ begin
   for I := 0 to Count - 1 do begin
     PropInfo := GetPropInfo(Result, AttrNames[I]);
     if (PropInfo <> nil) then
-      SetPropValue(Result, PropInfo,
+      HproseCommon.SetPropValue(Result, PropInfo,
                    Unserialize(PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF}))
     else Unserialize;
   end;
@@ -1951,7 +1475,7 @@ begin
     else for I := 0 to Count - 1 do begin
       PropInfo := GetPropInfo(Instance, AttrNames[I]);
       if (PropInfo <> nil) then
-        SetPropValue(Instance, PropInfo,
+        HproseCommon.SetPropValue(Instance, PropInfo,
                      Unserialize(PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF}))
       else Unserialize;
     end;
@@ -3958,7 +3482,7 @@ begin
     PropCount := GetStoredPropList(AObject, PropList);
     try
       for I := 0 to PropCount - 1 do
-        Serialize(GetPropValue(AObject, PropList^[I]));
+        Serialize(HproseCommon.GetPropValue(AObject, PropList^[I]));
     finally
       FreeMem(PropList);
     end;
@@ -3988,7 +3512,7 @@ begin
   PropCount := GetStoredPropList(AObject, PropList);
   try
     for I := 0 to PropCount - 1 do
-      Serialize(GetPropValue(AObject, PropList^[I]));
+      Serialize(HproseCommon.GetPropValue(AObject, PropList^[I]));
   finally
     FreeMem(PropList);
   end;
