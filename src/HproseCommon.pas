@@ -15,7 +15,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: May 26, 2014                             *
+ * LastModified: May 27, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -674,7 +674,8 @@ implementation
 uses RTLConsts, Variants
 {$IFNDEF FPC}, StrUtils{$ENDIF}
 {$IFDEF DELPHIXE4_UP}{$IFNDEF NEXTGEN}, AnsiStrings{$ENDIF}{$ENDIF}
-{$IFDEF Supports_Rtti}, Rtti{$ENDIF};
+{$IFDEF Supports_Rtti}, Rtti{$ENDIF}{$IFDEF DELPHIXE2_UP}, ObjAuto{$ENDIF}
+{$IFNDEF FPC}, ObjAutoX{$ENDIF};
 
 type
 
@@ -3181,29 +3182,49 @@ end;
 
 function TVarObjectType.DoFunction(var Dest: TVarData; const V: TVarData;
   const Name: string; const Arguments: TVarDataArray): Boolean;
+var
+  Obj: TObject;
+  Intf: IInvokeableVarObject;
+  Args: TVariants;
 begin
-  Result := False;
+  Obj := GetInstance(V);
+  Result := True;
+  if AnsiSameText(Name, 'Free') and (Length(Arguments) = 0) then
+    Obj.Free
+  else if Supports(Obj, IInvokeableVarObject, Intf) then begin
+    Args := TVariants(Arguments);
+    Variant(Dest) := Intf.Invoke(Name, Args);
+{$IFNDEF FPC}
+  end
+  else begin
+    Result := GetMethodInfo(Obj, Name) <> nil;
+    if Result then Variant(Dest) := ObjectInvoke(Obj, Name, TVariants(Arguments));
+{$ENDIF}
+  end;
 end;
 
 function TVarObjectType.GetProperty(var Dest: TVarData;
   const V: TVarData; const Name: string): Boolean;
 var
   Obj: TObject;
+  Info: PPropInfo;
 begin
   Obj := GetInstance(V);
-  Variant(Dest) := GetPropValue(Obj, GetPropInfo(PTypeInfo(Obj.ClassInfo), Name));
-  Result := True;
+  Info := GetPropInfo(PTypeInfo(Obj.ClassInfo), Name);
+  Result := Info <> nil;
+  if Result then Variant(Dest) := GetPropValue(Obj, Info);
 end;
 
 function TVarObjectType.SetProperty(const V: TVarData;
   const Name: string; const Value: TVarData): Boolean;
 var
   Obj: TObject;
+  Info: PPropInfo;
 begin
-  //Writeln(Variant(Value));
   Obj := GetInstance(V);
-  SetPropValue(Obj, GetPropInfo(PTypeInfo(Obj.ClassInfo), Name), Variant(Value));
-  Result := True;
+  Info := GetPropInfo(PTypeInfo(Obj.ClassInfo), Name);
+  Result := Info <> nil;
+  if Result then SetPropValue(Obj, Info, Variant(Value));
 end;
 
 procedure TVarObjectType.CastTo(var Dest: TVarData; const Source: TVarData;

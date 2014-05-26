@@ -15,7 +15,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: May 24, 2014                             *
+ * LastModified: May 27, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -50,7 +50,7 @@ type
     const Args: TVariants);
 {$ENDIF}
 
-  THproseClient = class(TComponent)
+  THproseClient = class(TComponent, IInvokeableVarObject)
   private
     FErrorEvent: THproseErrorEvent;
     FFilters: IList;
@@ -83,7 +83,8 @@ type
       overload; virtual;
   public
     constructor Create(AOwner: TComponent); override;
-    procedure UseService(const AUri: string); virtual;
+    class function New(const AUrl: string): Variant;
+    function UseService(const AUri: string = ''): Variant; virtual;
     procedure AddFilter(const Filter: IHproseFilter);
     function RemoveFilter(const Filter: IHproseFilter): Boolean;
     // Synchronous invoke
@@ -100,12 +101,11 @@ type
       ResultType: PTypeInfo; Simple: Boolean = False): Variant;
       overload; virtual;
     // Synchronous invoke
-    function Invoke(const Name: string; var Args: TVariants;
-      ByRef: Boolean = True;
+    function Invoke(const Name: string; var Args: TVariants): Variant; overload; virtual;
+    function Invoke(const Name: string; var Args: TVariants; ByRef: Boolean = True;
       ResultMode: THproseResultMode = Normal; Simple: Boolean = False): Variant;
       overload; virtual;
-    function Invoke(const Name: string; var Args: TVariants;
-      ResultType: PTypeInfo;
+    function Invoke(const Name: string; var Args: TVariants; ResultType: PTypeInfo;
       ByRef: Boolean = True; Simple: Boolean = False): Variant;
       overload; virtual;
 {$IFDEF Supports_Generics}
@@ -197,7 +197,7 @@ type
       ByRef: Boolean = True; Simple: Boolean = False); overload;
 {$ENDIF}
   published
-    property Uri: string read FUri write UseService;
+    property Uri: string read FUri;
     property Filter: IHproseFilter read GetFilter write SetFilter;
     // This event OnError only for asynchronous invoke
     property OnError: THproseErrorEvent read FErrorEvent write FErrorEvent;
@@ -307,6 +307,11 @@ begin
   inherited Create(AOwner);
   FErrorEvent := nil;
   FFilters := THashedList.Create;
+end;
+
+class function THproseClient.New(const AUrl: string): Variant;
+begin
+  Result := Self.Create(nil).UseService(AUrl);
 end;
 
 function THproseClient.GetFilter: IHproseFilter;
@@ -537,6 +542,12 @@ begin
 end;
 
 // Synchronous invoke
+
+function THproseClient.Invoke(const Name: string; var Args: TVariants): Variant;
+begin
+  Result := Invoke(Name, Args, PTypeInfo(nil), False, Normal, False);
+end;
+
 function THproseClient.Invoke(const Name: string; var Args: TVariants;
   ByRef: Boolean; ResultMode: THproseResultMode; Simple: Boolean): Variant;
 begin
@@ -715,9 +726,10 @@ begin
 end;
 {$ENDIF}
 
-procedure THproseClient.UseService(const AUri: string);
+function THproseClient.UseService(const AUri: string): Variant;
 begin
   if AUri <> '' then FUri := AUri;
+  Result := ObjToVar(Self);
 end;
 
 { TAsyncInvokeThread1 }

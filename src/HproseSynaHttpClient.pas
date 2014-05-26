@@ -15,7 +15,7 @@
  *                                                        *
  * hprose synapse http client unit for delphi.            *
  *                                                        *
- * LastModified: May 23, 2014                             *
+ * LastModified: May 27, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -57,7 +57,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure UseService(const AUri: string); override;
+    function UseService(const AUri: string): Variant; override;
   published
     {:Before HTTP operation you may define any non-standard headers for HTTP
      request, except of: 'Expect: 100-continue', 'Content-Length', 'Content-Type',
@@ -292,9 +292,9 @@ begin
   inherited;
 end;
 
-procedure THproseSynaHttpClient.UseService(const AUri: string);
+function THproseSynaHttpClient.UseService(const AUri: string): Variant;
 begin
-  inherited UseService(AUri);
+  Result := inherited UseService(AUri);
   ParseURL(FUri, FProtocol, FUser, FPassword, FHost, FPort, FPath, FPara);
 end;
 
