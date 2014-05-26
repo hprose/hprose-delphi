@@ -248,7 +248,7 @@ begin
   HttpSend.HTTPMethod('POST', FUri);
   SetCookie(Headers, FHost);
   SetLength(Result, HttpSend.Document.Size);
-  Move(HttpSend.Document.Memory^, Data[0], Length(Data));
+  Move(HttpSend.Document.Memory^, Result[0], Length(Result));
   HttpSend.Clear;
   HttpSend.Cookies.Clear;
   FHttpPool.Lock;
