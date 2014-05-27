@@ -627,8 +627,8 @@ type
   public
     class procedure Register(const TypeInfo: PTypeInfo); overload;
     class procedure Register<T>; overload;
-    class procedure Register<T: constructor, class>(const Alias: string); overload;
-    class procedure Register<T: constructor, TInterfacedObject; I: IInterface>(const Alias: string); overload;
+    class procedure Register<T: class>(const Alias: string); overload;
+    class procedure Register<T: TInterfacedObject; I: IInterface>(const Alias: string); overload;
     class function GetAlias<T: class>: string; overload;
     class function GetInterface<T: TInterfacedObject>: TGUID; overload;
     class function GetClass<I>: TInterfacedClass; overload;

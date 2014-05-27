@@ -15,14 +15,12 @@
  *                                                        *
  * hprose indy http client unit for delphi.               *
  *                                                        *
- * LastModified: May 24, 2014                             *
+ * LastModified: May 27, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
 }
 unit HproseIdHttpClient;
-
-{$I Hprose.inc}
 
 interface
 

@@ -27,6 +27,8 @@ unit ObjAutoX;
 
 interface
 
+{$IFNDEF FPC}
+
 {$IFNDEF DELPHIXE2_UP}
 uses
   TypInfo;
@@ -120,9 +122,9 @@ function GetMethodName(MethodInfo: PMethodInfoHeader): string;
 function GetReturnInfo(MethodInfo: PMethodInfoHeader): PReturnInfo; overload;
 function GetReturnInfo(Instance: TObject; MethodName: string): PReturnInfo; overload;
 function GetParams(Instance: TObject; MethodName: string): TParamInfoArray;
-
+{$ENDIF}
 implementation
-
+{$IFNDEF FPC}
 uses SysUtils, Variants, VarUtils, RTLConsts, HproseCommon;
 
 {$IFNDEF DELPHIXE2_UP}
@@ -1127,5 +1129,5 @@ begin
   end;
 {$ENDIF}
 end;
-
+{$ENDIF}
 end.

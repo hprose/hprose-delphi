@@ -1,4 +1,4 @@
-package HproseIndy9;
+package HproseIndy8;
 
 {$R *.res}
 {$R 'Hprose.dcr'}
@@ -23,18 +23,18 @@ package HproseIndy9;
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
-{$DESCRIPTION 'Hprose for Delphi with Indy9'}
+{$DESCRIPTION 'Hprose for Delphi with Indy8'}
 {$IMPLICITBUILD OFF}
-{$DEFINE RELEASE}
 
 requires
   rtl,
   indy;
 
 contains
-  HproseIdHttpClient in 'Indy9\HproseIdHttpClient.pas',
-  HproseClient in 'HproseClient.pas',
-  HproseCommon in 'HproseCommon.pas',
-  HproseIO in 'HproseIO.pas';
-
+  ObjAutoX in '..\Source\ObjAutoX.pas',
+  HproseCommon in '..\Source\HproseCommon.pas',
+  HproseIO in '..\Source\HproseIO.pas',
+  HproseClient in '..\Source\HproseClient.pas',
+  HproseIdHttpClient in '..\Source\Indy8\HproseIdHttpClient.pas';
 end.
+

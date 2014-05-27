@@ -8,8 +8,8 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <IncludeFiles Value="Synapse"/>
-        <OtherUnitFiles Value="Synapse"/>
+        <IncludeFiles Value="..\Source;..\Source\Synapse"/>
+        <OtherUnitFiles Value="..\Source;..\Source\Synapse"/>
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Other>
@@ -44,67 +44,67 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     <Version Major="1" Minor="4"/>
     <Files Count="16">
       <Item1>
-        <Filename Value="Synapse\jedi.inc"/>
+        <Filename Value="..\Source\Synapse\jedi.inc"/>
         <Type Value="Include"/>
       </Item1>
       <Item2>
-        <Filename Value="Synapse\ssdotnet.inc"/>
+        <Filename Value="..\Source\Synapse\ssdotnet.inc"/>
         <Type Value="Include"/>
       </Item2>
       <Item3>
-        <Filename Value="Synapse\ssfpc.inc"/>
+        <Filename Value="..\Source\Synapse\ssfpc.inc"/>
         <Type Value="Include"/>
       </Item3>
       <Item4>
-        <Filename Value="Synapse\sslinux.inc"/>
+        <Filename Value="..\Source\Synapse\sslinux.inc"/>
         <Type Value="Include"/>
       </Item4>
       <Item5>
-        <Filename Value="Synapse\sswin32.inc"/>
+        <Filename Value="..\Source\Synapse\sswin32.inc"/>
         <Type Value="Include"/>
       </Item5>
       <Item6>
-        <Filename Value="Synapse\blcksock.pas"/>
+        <Filename Value="..\Source\Synapse\blcksock.pas"/>
         <UnitName Value="blcksock"/>
       </Item6>
       <Item7>
-        <Filename Value="Synapse\httpsend.pas"/>
+        <Filename Value="..\Source\Synapse\httpsend.pas"/>
         <UnitName Value="httpsend"/>
       </Item7>
       <Item8>
-        <Filename Value="Synapse\synaip.pas"/>
+        <Filename Value="..\Source\Synapse\synaip.pas"/>
         <UnitName Value="synaip"/>
       </Item8>
       <Item9>
-        <Filename Value="Synapse\synafpc.pas"/>
+        <Filename Value="..\Source\Synapse\synafpc.pas"/>
         <UnitName Value="synafpc"/>
       </Item9>
       <Item10>
-        <Filename Value="Synapse\synautil.pas"/>
+        <Filename Value="..\Source\Synapse\synautil.pas"/>
         <UnitName Value="synautil"/>
       </Item10>
       <Item11>
-        <Filename Value="Synapse\synsock.pas"/>
+        <Filename Value="..\Source\Synapse\synsock.pas"/>
         <UnitName Value="synsock"/>
       </Item11>
       <Item12>
-        <Filename Value="Hprose.inc"/>
+        <Filename Value="..\Source\Hprose.inc"/>
         <Type Value="Include"/>
       </Item12>
       <Item13>
-        <Filename Value="HproseClient.pas"/>
-        <UnitName Value="HproseClient"/>
+        <Filename Value="..\Source\HproseCommon.pas"/>
+        <UnitName Value="HproseCommon"/>
       </Item13>
       <Item14>
-        <Filename Value="HproseCommon.pas"/>
-        <UnitName Value="HproseCommon"/>
+        <Filename Value="..\Source\HproseIO.pas"/>
+        <UnitName Value="HproseIO"/>
       </Item14>
       <Item15>
-        <Filename Value="HproseIO.pas"/>
-        <UnitName Value="HproseIO"/>
+        <Filename Value="..\Source\HproseClient.pas"/>
+        <UnitName Value="HproseClient"/>
       </Item15>
       <Item16>
-        <Filename Value="HproseSynaHttpClient.pas"/>
+        <Filename Value="..\Source\HproseSynaHttpClient.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="HproseSynaHttpClient"/>
       </Item16>
@@ -121,5 +121,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     <PublishOptions>
       <Version Value="2"/>
     </PublishOptions>
+    <CustomOptions Items="ExternHelp" Version="2">
+      <_ExternHelp Items="Count"/>
+    </CustomOptions>
   </Package>
 </CONFIG>
