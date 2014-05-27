@@ -786,8 +786,11 @@ end;
 procedure THproseClient.Invoke(const Name: string; var Args: TVariants;
   Callback: THproseCallback1;
   ResultMode: THproseResultMode; Simple: Boolean);
+var
+  ErrorEvent: THproseErrorEvent;
 begin
-  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, nil, nil, False, ResultMode, Simple);
+  ErrorEvent := nil;
+  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, ErrorEvent, nil, False, ResultMode, Simple);
 end;
 
 procedure THproseClient.Invoke(const Name: string; var Args: TVariants;
@@ -802,8 +805,11 @@ end;
 procedure THproseClient.Invoke(const Name: string; var Args: TVariants;
   Callback: THproseCallback1;
   ResultType: PTypeInfo; Simple: Boolean);
+var
+  ErrorEvent: THproseErrorEvent;
 begin
-  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, nil, ResultType, False, Normal, Simple);
+  ErrorEvent := nil;
+  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, ErrorEvent, ResultType, False, Normal, Simple);
 end;
 
 procedure THproseClient.Invoke(const Name: string; var Args: TVariants;
@@ -819,8 +825,11 @@ procedure THproseClient.Invoke(const Name: string; var Args: TVariants;
   Callback: THproseCallback2;
   ByRef: Boolean;
   ResultMode: THproseResultMode; Simple: Boolean);
+var
+  ErrorEvent: THproseErrorEvent;
 begin
-  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, nil, nil, ByRef, ResultMode, Simple);
+  ErrorEvent := nil;
+  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, ErrorEvent, nil, ByRef, ResultMode, Simple);
 end;
 
 procedure THproseClient.Invoke(const Name: string; var Args: TVariants;
@@ -837,8 +846,11 @@ procedure THproseClient.Invoke(const Name: string; var Args: TVariants;
   Callback: THproseCallback2;
   ResultType: PTypeInfo;
   ByRef: Boolean; Simple: Boolean);
+var
+  ErrorEvent: THproseErrorEvent;
 begin
-  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, nil, ResultType, ByRef, Normal, Simple);
+  ErrorEvent := nil;
+  TAsyncInvokeThread2.Create(Self, Name, Args, Callback, ErrorEvent, ResultType, ByRef, Normal, Simple);
 end;
 
 procedure THproseClient.Invoke(const Name: string; var Args: TVariants;
