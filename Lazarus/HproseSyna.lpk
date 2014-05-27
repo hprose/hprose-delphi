@@ -42,7 +42,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 "/>
     <Version Major="1" Minor="4"/>
-    <Files Count="16">
+    <Files Count="17">
       <Item1>
         <Filename Value="..\Source\Synapse\jedi.inc"/>
         <Type Value="Include"/>
@@ -108,12 +108,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         <HasRegisterProc Value="True"/>
         <UnitName Value="HproseSynaHttpClient"/>
       </Item16>
+      <Item17>
+        <Filename Value="HproseSynaHttpClient.lrs"/>
+        <Type Value="LRS"/>
+      </Item17>
     </Files>
     <Type Value="RunAndDesignTime"/>
-    <RequiredPkgs Count="1">
+    <RequiredPkgs Count="2">
       <Item1>
-        <PackageName Value="FCL"/>
+        <PackageName Value="LCL"/>
       </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+      </Item2>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>

@@ -15,7 +15,7 @@
  *                                                        *
  * hprose synapse http client unit for delphi.            *
  *                                                        *
- * LastModified: May 27, 2014                             *
+ * LastModified: May 28, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -26,7 +26,7 @@ unit HproseSynaHttpClient;
 
 interface
 
-uses Classes, HproseCommon, HproseClient, SysUtils;
+uses Classes, HproseCommon, HproseClient, SysUtils{$IFDEF FPC}, LResources{$ENDIF};
 
 type
 
@@ -305,5 +305,7 @@ end;
 
 initialization
   CookieManager := TCaseInsensitiveHashMap.Create(False, True);
-
+{$IFDEF FPC}
+  {$I HproseSynaHttpClient.lrs}
+{$ENDIF}
 end.
