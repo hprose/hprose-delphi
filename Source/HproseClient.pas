@@ -380,7 +380,7 @@ begin
   FErrorEvent := nil;
 end;
 
-constructor THproseCallback.Create(Callback: THproseCallback2); overload;
+constructor THproseCallback.Create(Callback: THproseCallback2);
 begin
   inherited Create;
   FCallback1 := nil;
@@ -388,7 +388,7 @@ begin
   FErrorEvent := nil;
 end;
 
-constructor THproseCallback.Create(ErrorEvent: THproseErrorEvent); overload;
+constructor THproseCallback.Create(ErrorEvent: THproseErrorEvent);
 begin
   inherited Create;
   FCallback1 := nil;
