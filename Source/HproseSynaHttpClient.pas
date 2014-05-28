@@ -306,6 +306,6 @@ end;
 initialization
   CookieManager := TCaseInsensitiveHashMap.Create(False, True);
 {$IFDEF FPC}
-  {$I HproseSynaHttpClient.lrs}
+  {$I HproseSyna.lrs}
 {$ENDIF}
 end.

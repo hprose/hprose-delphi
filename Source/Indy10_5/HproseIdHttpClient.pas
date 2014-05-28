@@ -24,7 +24,7 @@ unit HproseIdHttpClient;
 
 interface
 
-uses Classes, HproseCommon, HproseClient, SysUtils;
+uses Classes, HproseCommon, HproseClient, SysUtils{$IFDEF FPC}, LResources{$ENDIF};
 
 type
 
@@ -166,7 +166,9 @@ end;
 
 initialization
   CookieManager := TIdCookieManager.Create(nil);
-
+{$IFDEF FPC}
+  {$I HproseIndy.lrs}
+{$ENDIF}
 finalization
   FreeAndNil(CookieManager);
 end.

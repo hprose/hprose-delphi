@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="4">
+    <PathDelim Value="\"/>
+    <Name Value="HproseIndy"/>
+    <Author Value="Ma Bingyao(mabingyao@gmail.com)"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <IncludeFiles Value="D:\git\hprose-delphi\Source\"/>
+        <OtherUnitFiles Value="..\Source;..\Source\Indy10_5"/>
+        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+      </SearchPaths>
+      <Other>
+        <CompilerMessages>
+          <MsgFileName Value=""/>
+        </CompilerMessages>
+        <CompilerPath Value="$(CompPath)"/>
+      </Other>
+    </CompilerOptions>
+    <Description Value="Hprose with Indy"/>
+    <License Value="The MIT License (MIT)
+
+Copyright (c) 2008-2014 http://hprose.com
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the &quot;Software&quot;), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"/>
+    <Version Major="1" Minor="4"/>
+    <Files Count="7">
+      <Item1>
+        <Filename Value="HproseIndy.lrs"/>
+        <Type Value="LRS"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\Source\Hprose.inc"/>
+        <Type Value="Include"/>
+      </Item2>
+      <Item3>
+        <Filename Value="..\Source\HproseClient.pas"/>
+        <UnitName Value="HproseClient"/>
+      </Item3>
+      <Item4>
+        <Filename Value="..\Source\HproseCommon.pas"/>
+        <UnitName Value="HproseCommon"/>
+      </Item4>
+      <Item5>
+        <Filename Value="..\Source\HproseIO.pas"/>
+        <UnitName Value="HproseIO"/>
+      </Item5>
+      <Item6>
+        <Filename Value="..\Source\ObjAutoX.pas"/>
+        <UnitName Value="ObjAutoX"/>
+      </Item6>
+      <Item7>
+        <Filename Value="..\Source\Indy10_5\HproseIdHttpClient.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="HproseIdHttpClient"/>
+      </Item7>
+    </Files>
+    <Type Value="RunAndDesignTime"/>
+    <RequiredPkgs Count="3">
+      <Item1>
+        <PackageName Value="indylaz"/>
+        <MinVersion Major="10" Minor="5" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="LCL"/>
+      </Item2>
+      <Item3>
+        <PackageName Value="FCL"/>
+      </Item3>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>
