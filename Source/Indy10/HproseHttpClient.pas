@@ -11,32 +11,38 @@
 
 /**********************************************************\
  *                                                        *
- * HproseIdHttpClient.pas                                 *
+ * HproseHttpClient.pas                                   *
  *                                                        *
  * hprose indy http client unit for delphi.               *
  *                                                        *
- * LastModified: May 27, 2014                             *
+ * LastModified: May 28, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
 }
-unit HproseIdHttpClient;
+unit HproseHttpClient;
 
 interface
 
-uses Classes, HproseCommon, HproseClient, SysUtils{$IFDEF FPC}, LResources{$ENDIF};
+uses Classes, HproseCommon, HproseClient, IdHeaderList, SysUtils{$IFDEF FPC}, LResources{$ENDIF};
 
 type
 
-  THproseIdHttpClient = class(THproseClient)
+  THproseHeaderList = TIdHeaderList;
+
+  THproseHttpClient = class(THproseClient)
   private
     FHttpPool: IList;
-    FHeaders: TStringList;
+    FUserName: string;
+    FPassword: string;
+    FHeaders: THproseHeaderList;
     FProxyHost: string;
     FProxyPort: Integer;
     FProxyUser: string;
     FProxyPass: string;
     FUserAgent: string;
+    FKeepAlive: Boolean;
+    FKeepAliveTimeout: Integer;
     FTimeout: Integer;
   protected
     function SendAndReceive(Data: TBytes): TBytes; override;
@@ -47,7 +53,13 @@ type
     {:Before HTTP operation you may define any non-standard headers for HTTP
      request, except of: 'Expect: 100-continue', 'Content-Length', 'Content-Type',
      'Connection', 'Authorization', 'Proxy-Authorization' and 'Host' headers.}
-    property Headers: TStringList read FHeaders;
+    property Headers: THproseHeaderList read FHeaders;
+
+    {:If @true (default value is @false), keepalives in HTTP protocol 1.1 is enabled.}
+    property KeepAlive: Boolean read FKeepAlive write FKeepAlive;
+
+    {:Define timeout for keepalives in seconds! Default value is 300.}
+    property KeepAliveTimeout: integer read FKeepAliveTimeout write FKeepAliveTimeout;
 
     {:Address of proxy server (IP address or domain name).}
     property ProxyHost: string read FProxyHost Write FProxyHost;
@@ -65,34 +77,45 @@ type
      used: 'Hprose Http Client for Delphi (Indy10)'}
     property UserAgent: string read FUserAgent Write FUserAgent;
 
-    property Timeout: Integer read FTimeout Write FTimeout;
+    {:UserName for user authorization.}
+    property UserName: string read FUserName write FUserName;
+
+    {:Password for user authorization.}
+    property Password: string read FPassword write FPassword;
+
+    {:Specify default timeout for socket operations.}
+    property Timeout: Integer read FTimeout write FTimeout;
   end;
 
 procedure Register;
 
 implementation
 
-uses IdHttp, IdHeaderList, IdHTTPHeaderInfo, IdGlobalProtocols, IdCookieManager;
+uses IdHttp, IdGlobalProtocols, IdCookieManager;
 
 var
   CookieManager: TIdCookieManager = nil;
 
-{ THproseIdHttpClient }
+{ THproseHttpClient }
 
-constructor THproseIdHttpClient.Create(AOwner: TComponent);
+constructor THproseHttpClient.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FHttpPool := TArrayList.Create(10);
-  FHeaders := TIdHeaderList.Create(TIdHeaderQuotingType.QuotePlain);
+  FHeaders := THproseHeaderList.Create;
+  FUserName := '';
+  FPassword := '';
+  FKeepAlive := True;
+  FKeepAliveTimeout := 300;
   FProxyHost := '';
   FProxyPort := 8080;
   FProxyUser := '';
   FProxyPass := '';
-  FUserAgent := 'Hprose Http Client for Delphi (Indy10.5)';
+  FUserAgent := 'Hprose Http Client for Delphi (Indy10)';
   FTimeout := 30000;
 end;
 
-destructor THproseIdHttpClient.Destroy;
+destructor THproseHttpClient.Destroy;
 var
   I: Integer;
   IdHttp: TIdHttp;
@@ -109,7 +132,7 @@ begin
   inherited;
 end;
 
-function THproseIdHttpClient.SendAndReceive(Data: TBytes): TBytes;
+function THproseHttpClient.SendAndReceive(Data: TBytes): TBytes;
 var
   IdHttp: TIdHttp;
   OutStream, InStream: TBytesStream;
@@ -124,7 +147,6 @@ begin
     FHttpPool.Unlock;
   end;
   IdHttp.ReadTimeout := FTimeout;
-  IdHttp.Request.CustomHeaders.Assign(FHeaders);
   IdHttp.Request.UserAgent := FUserAgent;
   if FProxyHost <> '' then begin
     IdHttp.ProxyParams.ProxyServer := FProxyHost;
@@ -132,12 +154,22 @@ begin
     IdHttp.ProxyParams.ProxyUsername := FProxyUser;
     IdHttp.ProxyParams.ProxyPassword := FProxyPass;
   end;
-  IdHttp.Request.Connection := 'close';
+  if KeepAlive then begin
+    IdHttp.Request.Connection := 'keep-alive';
+    FHeaders.Values['Keep-Alive'] := IntToStr(FKeepAliveTimeout);
+  end
+  else IdHttp.Request.Connection := 'close';
+  if FUserName <> '' then begin
+    IdHttp.Request.BasicAuthentication := True;
+    IdHttp.Request.UserName := FUserName;
+    IdHttp.Request.Password := FPassword;
+  end;
   IdHttp.Request.ContentType := 'application/hprose';
   IdHttp.AllowCookies := True;
   IdHttp.CookieManager := CookieManager;
   IdHttp.HTTPOptions := IdHttp.HTTPOptions + [hoKeepOrigProtocol];
   IdHttp.ProtocolVersion := pv1_1;
+  IdHttp.Request.CustomHeaders := FHeaders;
   OutStream := TBytesStream.Create(Data);
   InStream := TBytesStream.Create;
   try
@@ -161,15 +193,14 @@ end;
 
 procedure Register;
 begin
-  RegisterComponents('Hprose', [THproseIdHttpClient]);
+  RegisterComponents('Hprose', [THproseHttpClient]);
 end;
 
 initialization
   CookieManager := TIdCookieManager.Create(nil);
 {$IFDEF FPC}
-  {$I HproseIndy.lrs}
+  {$I Hprose.lrs}
 {$ENDIF}
 finalization
   FreeAndNil(CookieManager);
 end.
-

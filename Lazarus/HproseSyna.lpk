@@ -104,12 +104,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         <UnitName Value="HproseClient"/>
       </Item15>
       <Item16>
-        <Filename Value="..\Source\HproseSynaHttpClient.pas"/>
+        <Filename Value="..\Source\Synapse\HproseHttpClient.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="HproseSynaHttpClient"/>
+        <UnitName Value="HproseHttpClient"/>
       </Item16>
       <Item17>
-        <Filename Value="HproseSyna.lrs"/>
+        <Filename Value="Hprose.lrs"/>
         <Type Value="LRS"/>
       </Item17>
     </Files>

@@ -38,5 +38,6 @@ contains
   HproseCommon in '..\Source\HproseCommon.pas',
   HproseIO in '..\Source\HproseIO.pas',
   HproseClient in '..\Source\HproseClient.pas',
-  HproseIdHttpClient in '..\Source\Indy10\HproseIdHttpClient.pas';
+  HproseHttpClient in '..\Source\Indy10\HproseHttpClient.pas';
+
 end.

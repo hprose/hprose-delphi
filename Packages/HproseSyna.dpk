@@ -1,20 +1,21 @@
 package HproseSyna;
 
 {$R *.res}
+{$R 'Hprose.dcr'}
 {$ALIGN 8}
 {$ASSERTIONS ON}
 {$BOOLEVAL OFF}
-{$DEBUGINFO ON}
+{$DEBUGINFO OFF}
 {$EXTENDEDSYNTAX ON}
 {$IMPORTEDDATA ON}
 {$IOCHECKS ON}
-{$LOCALSYMBOLS ON}
+{$LOCALSYMBOLS OFF}
 {$LONGSTRINGS ON}
 {$OPENSTRINGS ON}
 {$OPTIMIZATION ON}
 {$OVERFLOWCHECKS OFF}
 {$RANGECHECKS OFF}
-{$REFERENCEINFO ON}
+{$REFERENCEINFO OFF}
 {$SAFEDIVIDE OFF}
 {$STACKFRAMES OFF}
 {$TYPEDADDRESS OFF}
@@ -22,13 +23,17 @@ package HproseSyna;
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
-{$DESCRIPTION 'Hprose with Synapse'}
+{$DESCRIPTION 'Hprose for Delphi/Lazarus with Synapse'}
 {$IMPLICITBUILD OFF}
 
 requires
   rtl;
 
 contains
+  ObjAutoX in '..\Source\ObjAutoX.pas',
+  HproseCommon in '..\Source\HproseCommon.pas',
+  HproseIO in '..\Source\HproseIO.pas',
+  HproseClient in '..\Source\HproseClient.pas',
   blcksock in '..\Source\Synapse\blcksock.pas',
   httpsend in '..\Source\Synapse\httpsend.pas',
   synafpc in '..\Source\Synapse\synafpc.pas',
@@ -36,9 +41,6 @@ contains
   synautil in '..\Source\Synapse\synautil.pas',
   synsock in '..\Source\Synapse\synsock.pas',
   synacode in '..\Source\Synapse\synacode.pas',
-  ObjAutoX in '..\Source\ObjAutoX.pas',
-  HproseCommon in '..\Source\HproseCommon.pas',
-  HproseIO in '..\Source\HproseIO.pas',
-  HproseClient in '..\Source\HproseClient.pas',
-  HproseSynaHttpClient in '..\Source\HproseSynaHttpClient.pas';
+  HproseHttpClient in '..\Source\Synapse\HproseHttpClient.pas';
+
 end.

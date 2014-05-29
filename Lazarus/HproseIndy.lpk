@@ -44,7 +44,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     <Version Major="1" Minor="4"/>
     <Files Count="7">
       <Item1>
-        <Filename Value="HproseIndy.lrs"/>
+        <Filename Value="Hprose.lrs"/>
         <Type Value="LRS"/>
       </Item1>
       <Item2>
@@ -68,9 +68,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         <UnitName Value="ObjAutoX"/>
       </Item6>
       <Item7>
-        <Filename Value="..\Source\Indy10_5\HproseIdHttpClient.pas"/>
+        <Filename Value="..\Source\Indy10_5\HproseHttpClient.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="HproseIdHttpClient"/>
+        <UnitName Value="HproseHttpClient"/>
       </Item7>
     </Files>
     <Type Value="RunAndDesignTime"/>

@@ -2,30 +2,27 @@ package HproseIndy10_5;
 
 {$R *.res}
 {$R 'Hprose.dcr'}
-{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
 {$BOOLEVAL OFF}
-{$DEBUGINFO OFF}
+{$DEBUGINFO ON}
 {$EXTENDEDSYNTAX ON}
 {$IMPORTEDDATA ON}
 {$IOCHECKS ON}
 {$LOCALSYMBOLS ON}
 {$LONGSTRINGS ON}
 {$OPENSTRINGS ON}
-{$OPTIMIZATION OFF}
+{$OPTIMIZATION ON}
 {$OVERFLOWCHECKS OFF}
 {$RANGECHECKS OFF}
 {$REFERENCEINFO ON}
 {$SAFEDIVIDE OFF}
-{$STACKFRAMES ON}
+{$STACKFRAMES OFF}
 {$TYPEDADDRESS OFF}
 {$VARSTRINGCHECKS ON}
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
-{$DEFINE DEBUG}
-{$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'Hprose for Delphi with Indy10.5'}
 {$IMPLICITBUILD ON}
 
@@ -40,6 +37,6 @@ contains
   HproseCommon in '..\Source\HproseCommon.pas',
   HproseIO in '..\Source\HproseIO.pas',
   HproseClient in '..\Source\HproseClient.pas',
-  HproseIdHttpClient in '..\Source\Indy10_5\HproseIdHttpClient.pas';
+  HproseHttpClient in '..\Source\Indy10_5\HproseHttpClient.pas';
 
 end.
