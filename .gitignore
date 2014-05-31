@@ -1,0 +1,13 @@
+__history
+Lazarus/HproseIndy.pas
+Lazarus/HproseSyna.pas
+Lazarus/HproseLnet.pas
+*.o
+*.ppu
+*.compiled
+*.bak
+*.dcu
+*.otares
+*.dproj
+*.local
+*.ico
