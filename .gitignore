@@ -11,3 +11,4 @@ Lazarus/HproseLnet.pas
 *.dproj
 *.local
 *.ico
+*.identcache
