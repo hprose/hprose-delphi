@@ -14,7 +14,7 @@
  *                                                        *
  * hprose synapse http client unit for delphi.            *
  *                                                        *
- * LastModified: May 28, 2014                             *
+ * LastModified: Jun 15, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -466,8 +466,8 @@ begin
       Domain := VarToStr(CookieManager.Keys[I]);
       if AnsiPos(Domain, Host) <> 0 then begin
         CookieMap := VarToMap(CookieManager.Values[I]);
-		CookieMap.BeginRead;
-		try
+        CookieMap.BeginRead;
+        try
           Names := TArrayList.Create(False);
           for J := 0 to CookieMap.Count - 1 do begin
             Cookie := VarToMap(CookieMap.Values[J]);
@@ -479,17 +479,17 @@ begin
                 Cookies[Cookie['name']] := Cookie['value'];
             end;
           end;
-		finally
-		  CookieMap.EndRead;
-		end;
-		if Names.Count > 0 then begin
-	      CookieMap.BeginWrite;
-		  try
-		    for J := 0 to Names.Count - 1 do CookieMap.Delete(Names[J]);
-		  finally
-		    CookieMap.EndWrite;
-		  end;
-		end;
+        finally
+          CookieMap.EndRead;
+        end;
+        if Names.Count > 0 then begin
+          CookieMap.BeginWrite;
+          try
+            for J := 0 to Names.Count - 1 do CookieMap.Delete(Names[J]);
+          finally
+            CookieMap.EndWrite;
+          end;
+        end;
       end;
     end;
     Result := Cookies.Join('; ');
@@ -536,7 +536,7 @@ begin
   if Cookie <> '' then HttpSend.Headers.Add('Cookie: ' + Cookie);
   HttpSend.Document.WriteBuffer(Data[0], Length(Data));
   HttpSend.HTTPMethod('POST', FUri);
-  SetCookie(Headers, FHost);
+  SetCookie(HttpSend.Headers, FHost);
   SetLength(Result, HttpSend.Document.Size);
   Move(HttpSend.Document.Memory^, Result[0], Length(Result));
   HttpSend.Clear;
