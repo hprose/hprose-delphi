@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: May 27, 2014                             *
+ * LastModified: Jun 17, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -930,7 +930,7 @@ end;
 function ObjToVar(const Value: TObject): Variant;
 begin
   VarClear(Result);
-  TVarData(Result).VPointer := Pointer(Value);
+  TObject(TVarData(Result).VPointer) := Value;
   TVarData(Result).VType := varObject;
 end;
 
