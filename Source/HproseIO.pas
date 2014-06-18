@@ -14,7 +14,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: May 26, 2014                             *
+ * LastModified: Jun 18, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -984,7 +984,7 @@ begin
   FStream.ReadBuffer(P^[0], Len);
   VarArrayUnLock(Result);
   CheckTag(HproseTagQuote);
-  FRefer.SetRef(VarArrayRef(Result));
+  FRefer.SetRef(Result);
 end;
 
 function THproseReader.ReadGuidWithoutTag: string;
@@ -1007,7 +1007,7 @@ begin
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ReadBoolean;
   VarArrayUnlock(Result);
-  FRefer.SetRef(N, VarArrayRef(Result));
+  FRefer.SetRef(N, Result);
 end;
 
 function THproseReader.ReadShortIntArray(Count: Integer): Variant;
@@ -1020,7 +1020,7 @@ begin
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ShortInt(ReadInteger);
   VarArrayUnlock(Result);
-  FRefer.SetRef(N, VarArrayRef(Result));
+  FRefer.SetRef(N, Result);
 end;
 
 function THproseReader.ReadByteArray(Count: Integer): Variant;
@@ -1033,7 +1033,7 @@ begin
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := Byte(ReadInteger);
   VarArrayUnlock(Result);
-  FRefer.SetRef(N, VarArrayRef(Result));
+  FRefer.SetRef(N, Result);
 end;
 
 function THproseReader.ReadSmallIntArray(Count: Integer): Variant;
@@ -1046,7 +1046,7 @@ begin
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := SmallInt(ReadInteger);
   VarArrayUnlock(Result);
-  FRefer.SetRef(N, VarArrayRef(Result));
+  FRefer.SetRef(N, Result);
 end;
 
 function THproseReader.ReadWordArray(Count: Integer): Variant;
@@ -1059,7 +1059,7 @@ begin
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := Word(ReadInteger);
   VarArrayUnlock(Result);
-  FRefer.SetRef(N, VarArrayRef(Result));
+  FRefer.SetRef(N, Result);
 end;
 
 function THproseReader.ReadIntegerArray(Count: Integer): Variant;
@@ -1072,7 +1072,7 @@ begin
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ReadInteger;
   VarArrayUnlock(Result);
-  FRefer.SetRef(N, VarArrayRef(Result));
+  FRefer.SetRef(N, Result);
 end;
 
 function THproseReader.ReadLongWordArray(Count: Integer): Variant;
@@ -1085,7 +1085,7 @@ begin
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := LongWord(ReadInt64);
   VarArrayUnlock(Result);
-  FRefer.SetRef(N, VarArrayRef(Result));
+  FRefer.SetRef(N, Result);
 end;
 
 function THproseReader.ReadSingleArray(Count: Integer): Variant;
@@ -1098,7 +1098,7 @@ begin
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ReadExtended;
   VarArrayUnlock(Result);
-  FRefer.SetRef(N, VarArrayRef(Result));
+  FRefer.SetRef(N, Result);
 end;
 
 function THproseReader.ReadDoubleArray(Count: Integer): Variant;
@@ -1111,7 +1111,7 @@ begin
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ReadExtended;
   VarArrayUnlock(Result);
-  FRefer.SetRef(N, VarArrayRef(Result));
+  FRefer.SetRef(N, Result);
 end;
 
 function THproseReader.ReadCurrencyArray(Count: Integer): Variant;
@@ -1124,7 +1124,7 @@ begin
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ReadCurrency;
   VarArrayUnlock(Result);
-  FRefer.SetRef(N, VarArrayRef(Result));
+  FRefer.SetRef(N, Result);
 end;
 
 function THproseReader.ReadDateTimeArray(Count: Integer): Variant;
@@ -1137,7 +1137,7 @@ begin
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ReadDateTime;
   VarArrayUnlock(Result);
-  FRefer.SetRef(N, VarArrayRef(Result));
+  FRefer.SetRef(N, Result);
 end;
 
 function THproseReader.ReadWideStringArray(Count: Integer): Variant;
@@ -1150,7 +1150,7 @@ begin
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := ReadString;
   VarArrayUnlock(Result);
-  FRefer.SetRef(N, VarArrayRef(Result));
+  FRefer.SetRef(N, Result);
 end;
 
 function THproseReader.ReadVariantArray(Count: Integer): Variant;
@@ -1163,7 +1163,7 @@ begin
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := Unserialize;
   VarArrayUnlock(Result);
-  FRefer.SetRef(N, VarArrayRef(Result));
+  FRefer.SetRef(N, Result);
 end;
 
 function THproseReader.ReadInterfaceArray(Count: Integer): Variant;
@@ -1176,7 +1176,7 @@ begin
   P := VarArrayLock(Result);
   for I := 0 to Count - 1 do P^[I] := Unserialize;
   VarArrayUnlock(Result);
-  FRefer.SetRef(N, VarArrayRef(Result));
+  FRefer.SetRef(N, Result);
 end;
 
 function THproseReader.ReadDynArrayWithoutTag(varType: Integer): Variant;
