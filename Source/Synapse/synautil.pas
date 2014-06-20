@@ -53,10 +53,16 @@
 {$R-}
 {$H+}
 
+{$IFNDEF FPC}
 {$IFDEF UNICODE}
   {$WARN IMPLICIT_STRING_CAST OFF}
   {$WARN IMPLICIT_STRING_CAST_LOSS OFF}
   {$WARN SUSPICIOUS_TYPECAST OFF}
+{$ENDIF}
+{$ENDIF}
+
+{$IFDEF WINCE}
+{$DEFINE MSWINDOWS}
 {$ENDIF}
 
 unit synautil;
@@ -68,7 +74,7 @@ uses
   Windows,
 {$ELSE}
   {$IFDEF FPC}
-    UnixUtil, Unix, BaseUnix,
+    UnixUtil, Unix, BaseUnix, SynaFpc,
   {$ELSE}
     Libc,
   {$ENDIF}
@@ -76,7 +82,7 @@ uses
 {$IFDEF CIL}
   System.IO,
 {$ENDIF}
-  SysUtils, Classes, SynaFpc;
+  SysUtils, Classes;
 
 {$IFDEF VER100}
 type
@@ -602,7 +608,7 @@ begin
   x := rpos(':', Value);
   if (x > 0) and ((Length(Value) - x) > 2) then
     Value := Copy(Value, 1, x + 2);
-  Value := ReplaceString(Value, ':', {$IFDEF DELPHIXE_UP}FormatSettings.{$ENDIF}TimeSeparator);
+  Value := ReplaceString(Value, ':', {$IF DEFINED(DELPHIXE_UP) OR DEFINED(FPC)}FormatSettings.{$ENDIF}TimeSeparator);
   Result := -1;
   try
     Result := StrToTime(Value);
@@ -1097,7 +1103,7 @@ begin
   begin
     s := Trim(FetchEx(v, ';', '"'));
     if Pos(Uppercase(parameter), Uppercase(s)) = 1 then
-    begin                       
+    begin
       Delete(s, 1, Length(Parameter));
       s := Trim(s);
       if s = '' then
@@ -1677,7 +1683,7 @@ begin
     x := Pos(':', s);
     if x > 0 then
     begin
-      y:= Pos('=',s); 
+      y:= Pos('=',s);
       if not ((y > 0) and (y < x)) then
       begin
         s[x] := '=';
@@ -1915,11 +1921,11 @@ var
   bol:      PANSIChar;
   lng:      integer;
   s:        ANSIString;
-  BackStop: ANSIString;
+  //BackStop: ANSIString;
   eob1:     PANSIChar;
   eob2:     PANSIChar;
 begin
-  BackStop := '--'+ABoundary;
+  //BackStop := '--'+ABoundary;
   eob2     := nil;
   // Copying until Boundary will be reached
   while (APtr<AEtx) do
@@ -2055,7 +2061,7 @@ var
 begin
   for n :=  1 to 12 do
   begin
-    CustomMonthNames[n] := {$IFDEF DELPHIXE_UP}FormatSettings.{$ENDIF}ShortMonthNames[n];
-    MyMonthNames[0, n] := {$IFDEF DELPHIXE_UP}FormatSettings.{$ENDIF}ShortMonthNames[n];
+    CustomMonthNames[n] := {$IF DEFINED(DELPHIXE_UP) OR DEFINED(FPC)}FormatSettings.{$IFEND}ShortMonthNames[n];
+    MyMonthNames[0, n] := {$IF DEFINED(DELPHIXE_UP) OR DEFINED(FPC)}FormatSettings.{$IFEND}ShortMonthNames[n];
   end;
 end.

@@ -962,6 +962,11 @@ function ResolvePort(Port: AnsiString; Family, SockProtocol, SockType: integer):
 {==============================================================================}
 implementation
 
+{$IFDEF FPC}
+uses
+  synafpc;
+{$ENDIF}
+
 var
   SynSockCount: Integer = 0;
   LibHandle: THandle = 0;

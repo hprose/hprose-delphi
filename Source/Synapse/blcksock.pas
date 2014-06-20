@@ -91,9 +91,11 @@ Core with implementation basic socket classes.
   {$ENDIF}
 {$ENDIF}
 
+{$IFNDEF FPC}
 {$IFDEF UNICODE}
   {$WARN IMPLICIT_STRING_CAST OFF}
   {$WARN IMPLICIT_STRING_CAST_LOSS OFF}
+{$ENDIF}
 {$ENDIF}
 
 unit blcksock;
