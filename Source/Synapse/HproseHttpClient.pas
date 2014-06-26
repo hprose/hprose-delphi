@@ -14,7 +14,7 @@
  *                                                        *
  * hprose synapse http client unit for delphi.            *
  *                                                        *
- * LastModified: Jun 15, 2014                             *
+ * LastModified: Jun 25, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -504,6 +504,7 @@ function THproseHttpClient.SendAndReceive(Data: TBytes): TBytes;
 var
   HttpSend: THttpSend;
   Cookie: string;
+  Error: string;
 begin
   FHttpPool.Lock;
   try
@@ -535,17 +536,23 @@ begin
                       LowerCase(FProtocol) = 'https');
   if Cookie <> '' then HttpSend.Headers.Add('Cookie: ' + Cookie);
   HttpSend.Document.WriteBuffer(Data[0], Length(Data));
-  HttpSend.HTTPMethod('POST', FUri);
-  SetCookie(HttpSend.Headers, FHost);
-  SetLength(Result, HttpSend.Document.Size);
-  Move(HttpSend.Document.Memory^, Result[0], Length(Result));
-  HttpSend.Clear;
-  HttpSend.Cookies.Clear;
-  FHttpPool.Lock;
-  try
-    FHttpPool.Add(ObjToVar(HttpSend));
-  finally
-    FHttpPool.Unlock;
+  if (HttpSend.HTTPMethod('POST', FUri)) then begin
+    SetCookie(HttpSend.Headers, FHost);
+    SetLength(Result, HttpSend.Document.Size);
+    Move(HttpSend.Document.Memory^, Result[0], Length(Result));
+    HttpSend.Clear;
+    HttpSend.Cookies.Clear;
+    FHttpPool.Lock;
+    try
+      FHttpPool.Add(ObjToVar(HttpSend));
+    finally
+      FHttpPool.Unlock;
+    end;
+  end
+  else begin
+    Error := IntToStr(HttpSend.Sock.LastError) + ':' + HttpSend.Sock.LastErrorDesc;
+    FreeAndNil(HttpSend);
+    raise EHproseException.Create(Error);
   end;
 end;
 
