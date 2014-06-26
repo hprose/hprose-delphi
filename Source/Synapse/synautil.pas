@@ -608,7 +608,7 @@ begin
   x := rpos(':', Value);
   if (x > 0) and ((Length(Value) - x) > 2) then
     Value := Copy(Value, 1, x + 2);
-  Value := ReplaceString(Value, ':', {$IF DEFINED(DELPHIXE_UP) OR DEFINED(FPC)}FormatSettings.{$ENDIF}TimeSeparator);
+  Value := ReplaceString(Value, ':', {$IF DEFINED(DELPHIXE_UP) OR DEFINED(FPC)}FormatSettings.{$IFEND}TimeSeparator);
   Result := -1;
   try
     Result := StrToTime(Value);
