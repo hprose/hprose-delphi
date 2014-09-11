@@ -14,7 +14,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: Jun 18, 2014                             *
+ * LastModified: Sep 11, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -359,8 +359,8 @@ implementation
 {$ZEROBASEDSTRINGS OFF}
 {$ENDIF}
 
-uses DateUtils, Math, RTLConsts, StrUtils,
-{$IFNDEF FPC}SysConst, {$ENDIF}
+uses DateUtils, Math, StrUtils,
+{$IFNDEF FPC}RTLConsts, SysConst, {$ENDIF}
 {$IFDEF Supports_Rtti}Rtti, {$ENDIF}
      Variants;
 type
@@ -2663,7 +2663,7 @@ begin
     FStream.ReadBuffer(Tag, 1);
     OStream.WriteBuffer(Tag, 1);
   until (Tag = HproseTagQuote);
-  OStream.CopyFrom(FStream, Len + 1);
+  OStream.CopyFrom(FStream, Int64(Len) + 1);
 end;
 
 procedure THproseReader.ReadStringRaw(const OStream: TStream);

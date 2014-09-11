@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Jun 18, 2014                             *
+ * LastModified: Sep 11, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -25,7 +25,7 @@ unit HproseCommon;
 
 interface
 
-uses Classes, SyncObjs, SysUtils, TypInfo;
+uses Classes, SyncObjs, SysUtils, TypInfo, Variants;
 
 type
 
@@ -67,7 +67,7 @@ type
 
   IInvokeableVarObject = interface
   ['{FDC126C2-EF9F-4898-BF97-87C01B050F88}']
-    function Invoke(const Name: string; var Args: TVariants): Variant;
+    function Invoke(const Name: string; const Arguments: TVarDataArray): Variant;
   end;
 
   IListEnumerator = interface
@@ -668,7 +668,7 @@ implementation
 {$ZEROBASEDSTRINGS OFF}
 {$ENDIF}
 
-uses RTLConsts, Variants
+uses RTLConsts
 {$IFNDEF FPC}, StrUtils{$ENDIF}
 {$IFDEF DELPHIXE4_UP}{$IFNDEF NEXTGEN}, AnsiStrings{$ENDIF}{$ENDIF}
 {$IFDEF Supports_Rtti}, Rtti{$ENDIF}{$IFDEF DELPHIXE2_UP}, ObjAuto{$ENDIF}
@@ -3130,15 +3130,13 @@ function TVarObjectType.DoFunction(var Dest: TVarData; const V: TVarData;
 var
   Obj: TObject;
   Intf: IInvokeableVarObject;
-  Args: TVariants;
 begin
   Obj := GetInstance(V);
   Result := True;
   if AnsiSameText(Name, 'Free') and (Length(Arguments) = 0) then
     Obj.Free
   else if Supports(Obj, IInvokeableVarObject, Intf) then begin
-    Args := TVariants(Arguments);
-    Variant(Dest) := Intf.Invoke(Name, Args);
+    Variant(Dest) := Intf.Invoke(Name, Arguments);
 {$IFNDEF FPC}
   end
   else begin

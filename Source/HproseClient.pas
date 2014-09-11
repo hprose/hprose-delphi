@@ -14,7 +14,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: Jun 17, 2014                             *
+ * LastModified: Sep 11, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -25,7 +25,7 @@ unit HproseClient;
 
 interface
 
-uses HproseCommon, Classes, SysUtils, TypInfo;
+uses HproseCommon, Classes, SysUtils, TypInfo, Variants;
 
 type
 {$IFDEF Supports_Anonymous_Method}
@@ -118,7 +118,7 @@ type
       ResultType: PTypeInfo; Simple: Boolean = False): Variant;
       overload;
     // Synchronous invoke
-    function Invoke(const Name: string; var Args: TVariants): Variant; overload;
+    function Invoke(const Name: string; const Arguments: TVarDataArray): Variant; overload;
     function Invoke(const Name: string; var Args: TVariants; ByRef: Boolean = True;
       ResultMode: THproseResultMode = Normal; Simple: Boolean = False): Variant;
       overload;
@@ -324,7 +324,7 @@ function HproseCallback(ErrorEvent: THproseErrorEvent): Variant; overload;
 implementation
 
 uses
-  HproseIO, Variants;
+  HproseIO;
 
 type
 
@@ -709,7 +709,7 @@ begin
   Result := True;
 end;
 
-function THproseClient.Invoke(const Name: string; var Args: TVariants): Variant;
+function THproseClient.Invoke(const Name: string; const Arguments: TVarDataArray): Variant;
 var
   Async: Boolean;
   Callback: THproseCallback;
@@ -718,6 +718,7 @@ var
   ErrorEvent: THproseErrorEvent;
   HType: THproseType;
   Info: PTypeInfo;
+  Args: TVariants;
   Len: Integer;
 begin
   Async := False;
@@ -727,6 +728,7 @@ begin
   ErrorEvent := nil;
   HType := nil;
   Info := nil;
+  Args := TVariants(Arguments);
   Len := Length(Args);
   while (Len > 0) and VarToObj(Args[Len - 1], THproseType, HType) and Assigned(HType) do begin
     if Assigned(HType.FTypeInfo) then Info := HType.FTypeInfo;
@@ -747,7 +749,7 @@ begin
       if Assigned(Callback1) then
         Invoke(Name, Args, Callback1, ErrorEvent, Info, Normal, False)
       else
-        Invoke(Name, Args, Callback2, ErrorEvent, Info, False, Normal, False)
+        Invoke(Name, Args, Callback2, ErrorEvent, Info, True, Normal, False)
   else
     Result := Invoke(Name, Args, Info, False, Normal, False);
 end;
@@ -808,8 +810,11 @@ end;
 {$IFDEF Supports_Generics}
 // Synchronous invoke
 function THproseClient.Invoke<T>(const Name: string): T;
+var
+  Args: array of TVarRec;
 begin
-  Result := Self.Invoke<T>(Name, [], True);
+  SetLength(Args, 0);
+  Result := Self.Invoke<T>(Name, Args, True);
 end;
 
 function THproseClient.Invoke<T>(const Name: string;
@@ -838,18 +843,23 @@ procedure THproseClient.Invoke(const Name: string;
   Callback: THproseCallback1;
   ResultMode: THproseResultMode);
 var
+  Args: array of TVarRec;
   ErrorEvent: THproseErrorEvent;
 begin
+  SetLength(Args, 0);
   ErrorEvent := nil;
-  Invoke(Name, [], Callback, ErrorEvent, nil, ResultMode, True);
+  Invoke(Name, Args, Callback, ErrorEvent, nil, ResultMode, True);
 end;
 
 procedure THproseClient.Invoke(const Name: string;
   Callback: THproseCallback1;
   ErrorEvent: THproseErrorEvent;
   ResultMode: THproseResultMode);
+var
+  Args: array of TVarRec;
 begin
-  Invoke(Name, [], Callback, ErrorEvent, nil, ResultMode, True);
+  SetLength(Args, 0);
+  Invoke(Name, Args, Callback, ErrorEvent, nil, ResultMode, True);
 end;
 
 // Asynchronous invoke
@@ -857,18 +867,23 @@ procedure THproseClient.Invoke(const Name: string;
   Callback: THproseCallback1;
   ResultType: PTypeInfo);
 var
+  Args: array of TVarRec;
   ErrorEvent: THproseErrorEvent;
 begin
+  SetLength(Args, 0);
   ErrorEvent := nil;
-  Invoke(Name, [], Callback, ErrorEvent, ResultType, Normal, True);
+  Invoke(Name, Args, Callback, ErrorEvent, ResultType, Normal, True);
 end;
 
 procedure THproseClient.Invoke(const Name: string;
   Callback: THproseCallback1;
   ErrorEvent: THproseErrorEvent;
   ResultType: PTypeInfo);
+var
+  Args: array of TVarRec;
 begin
-  Invoke(Name, [], Callback, ErrorEvent, ResultType, Normal, True);
+  SetLength(Args, 0);
+  Invoke(Name, Args, Callback, ErrorEvent, ResultType, Normal, True);
 end;
 
 // Asynchronous invoke
