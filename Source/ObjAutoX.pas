@@ -14,7 +14,7 @@
  *                                                        *
  * ObjAutoX unit for delphi.                              *
  *                                                        *
- * LastModified: May 27, 2014                             *
+ * LastModified: Sep 11, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -375,11 +375,11 @@ begin
   Count := 0;
   VMT   := ClassType;
   repeat
-    MethodInfo := PPointer(Integer(VMT) + vmtMethodTable)^;
+    MethodInfo := PPointer(NativeInt(VMT) + vmtMethodTable)^;
     if MethodInfo <> nil then
       Inc(Count, PWord(MethodInfo)^);
     // Find the parent VMT
-    VMT := PPointer(Integer(VMT) + vmtParent)^;
+    VMT := PPointer(NativeInt(VMT) + vmtParent)^;
     if VMT = nil then
       Break;
     VMT := PPointer(VMT)^;
@@ -388,21 +388,21 @@ begin
   I   := 0;
   VMT := ClassType;
   repeat
-    MethodInfo := PPointer(Integer(VMT) + vmtMethodTable)^;
+    MethodInfo := PPointer(NativeInt(VMT) + vmtMethodTable)^;
     if MethodInfo <> nil then
     begin
       Count := PWord(MethodInfo)^;
-      Inc(Integer(MethodInfo), SizeOf(Word));
+      Inc(NativeUInt(MethodInfo), SizeOf(Word));
       while Count > 0 do
       begin
         Result[I] := MethodInfo;
         Inc(I);
-        Inc(Integer(MethodInfo), PMethodInfoHeader(MethodInfo)^.Len);
+        Inc(NativeUInt(MethodInfo), PMethodInfoHeader(MethodInfo)^.Len);
         Dec(Count);
       end;
     end;
     // Find the parent VMT
-    VMT := PPointer(Integer(VMT) + vmtParent)^;
+    VMT := PPointer(NativeInt(VMT) + vmtParent)^;
     if VMT = nil then
       Exit;
     VMT := PPointer(VMT)^;
@@ -418,23 +418,23 @@ begin
   // Find the method
   VMT := PPointer(Instance)^;
   repeat
-    MethodInfo := PPointer(Integer(VMT) + vmtMethodTable)^;
+    MethodInfo := PPointer(NativeInt(VMT) + vmtMethodTable)^;
     if MethodInfo <> nil then
     begin
       // Scan method table for the method
       Count := PWord(MethodInfo)^;
-      Inc(Integer(MethodInfo), 2);
+      Inc(NativeUInt(MethodInfo), 2);
       while Count > 0 do
       begin
         Result := MethodInfo;
         if SamePropTypeName(Result^.Name, MethodName) then
           Exit;
-        Inc(Integer(MethodInfo), PMethodInfoHeader(MethodInfo)^.Len);
+        Inc(NativeUInt(MethodInfo), PMethodInfoHeader(MethodInfo)^.Len);
         Dec(Count);
       end;
     end;
     // Find the parent VMT
-    VMT := PPointer(Integer(VMT) + vmtParent)^;
+    VMT := PPointer(NativeInt(VMT) + vmtParent)^;
     if VMT = nil then
     begin
       Result := nil;
@@ -524,21 +524,21 @@ begin
   MethodInfo := MethodHeader;
   MethodAddr := MethodHeader^.Addr;
   MethodName := GetMethodName(MethodHeader);
-  Inc(Integer(MethodInfo), SizeOf(TMethodInfoHeader) - SizeOf(ShortString) + 1 +
+  Inc(NativeUInt(MethodInfo), SizeOf(TMethodInfoHeader) - SizeOf(ShortString) + 1 +
     Length(PMethodInfoHeader(MethodInfo)^.Name));
   ReturnInfo := MethodInfo;
-  Inc(Integer(MethodInfo), SizeOf(TReturnInfo));
+  Inc(NativeUInt(MethodInfo), SizeOf(TReturnInfo));
 
 {$IFNDEF DELPHI2010_UP}
-  InfoEnd := Pointer(Integer(MethodHeader) + MethodHeader^.Len);
+  InfoEnd := Pointer(NativeUInt(MethodHeader) + MethodHeader^.Len);
   Count := 0;
-  while Integer(MethodInfo) < Integer(InfoEnd) do
+  while NativeInt(MethodInfo) < NativeInt(InfoEnd) do
   begin
     if Count >= MaxParams then
       raise Exception.CreateFmt(sMethodOver, [MethodName, MaxParams]);
     ParamInfos[Count] := MethodInfo;
     Inc(Count);
-    Inc(Integer(MethodInfo), SizeOf(TParamInfo) - SizeOf(ShortString) + 1 +
+    Inc(NativeUInt(MethodInfo), SizeOf(TParamInfo) - SizeOf(ShortString) + 1 +
       Length(PParamInfo(MethodInfo)^.Name));
   end;
 
@@ -551,10 +551,10 @@ begin
   for I := 0 to Count - 1 do
   begin
     ParamInfos[I] := MethodInfo;
-    Inc(Integer(MethodInfo), SizeOf(TParamInfo) - SizeOf(ShortString) + 1 +
+    Inc(NativeUInt(MethodInfo), SizeOf(TParamInfo) - SizeOf(ShortString) + 1 +
       Length(PParamInfo(MethodInfo)^.Name));
     // Skip attribute data
-    Inc(Integer(MethodInfo), PWord(MethodInfo)^);
+    Inc(NativeUInt(MethodInfo), PWord(MethodInfo)^);
   end;
 
   if High(Params)+1 >= Count then
@@ -652,7 +652,7 @@ begin
             SUB     ESP, 4
 {$ENDIF ALIGN_STACK}
   end;
-  Dec(Integer(Frame), 4 + 4); // Access numbers include RET and EBP
+  Dec(NativeUInt(Frame), 4 + 4); // Access numbers include RET and EBP
 
   // Push the parameters on the stack (or put them into the correct register)
   ResultParam := nil;
@@ -684,7 +684,7 @@ begin
       Regs[Param^.Access] := PCardinal(PushData)^
     else
     begin
-      if [pfVar, pfOut, pfResult] * Param^.Flags <> [] then
+      if [pfVar, pfOut, pfResult, pfAddress, pfReference] * Param^.Flags <> [] then
         PCardinal(@Frame[Param^.Access])^ := PCardinal(PushData)^
       else
       begin
@@ -695,8 +695,13 @@ begin
           8:
           begin
             PCardinal(@Frame[Param^.Access])^     := PCardinal(PushData)^;
-            PCardinal(@Frame[Param^.Access + 4])^ :=
-              PCardinal(Integer(PushData) + 4)^;
+            PCardinal(@Frame[Param^.Access + 4])^ := PCardinal(NativeUInt(PushData) + 4)^;
+          end;
+          10:
+          begin
+            PCardinal(@Frame[Param^.Access    ])^ := PCardinal(PushData)^;
+            PCardinal(@Frame[Param^.Access + 4])^ := PCardinal(NativeUInt(PushData) + 4)^;
+            PWord    (@Frame[Param^.Access + 8])^ := PWord    (NativeUInt(PushData) + 8)^;
           end;
           else
             Move(PushData^, Frame[Param^.Access and not 3], Size);
@@ -707,6 +712,9 @@ begin
 
   // Do the call
   asm
+{$IFDEF PIC}
+            MOV     SavedEBX, EBX
+{$ENDIF PIC}
 {$IFDEF ALIGN_STACK}
             ADD     ESP, 4
 {$ENDIF ALIGN_STACK}
@@ -719,6 +727,9 @@ begin
 {$IFDEF ALIGN_STACK}
             ADD     ESP, AlignBytes
 {$ENDIF ALIGN_STACK}
+{$IFDEF PIC}
+            MOV     EBX, SavedEBX
+{$ENDIF PIC}
   end;
 
   if ReturnInfo^.CallingConvention = ccCdecl then
@@ -743,7 +754,7 @@ begin
         TVarData(RetVal).VInteger := Integer(Boolean(Regs[paEAX]))
       else
         TVarData(RetVal).VInteger := Integer(Regs[paEAX]);
-      PCardinal(Integer(@TVarData(RetVal).VInteger) + 4)^ := Regs[paEDX];
+      PCardinal(NativeUInt(@TVarData(RetVal).VInteger) + 4)^ := Regs[paEDX];
     end;
     Result                 := RetVal;
     TVarData(RetVal).VType := varEmpty;
@@ -993,7 +1004,7 @@ begin
     else
     begin
       Regs[paEAX] := TVarData(ReturnValue).VLongWord;
-      Regs[paEDX] := PCardinal(Integer(@TVarData(ReturnValue).VLongWord) + 4)^;
+      Regs[paEDX] := PCardinal(NativeUInt(@TVarData(ReturnValue).VLongWord) + 4)^;
     end;
   end;
 
@@ -1060,7 +1071,7 @@ end;
 function GetReturnInfo(MethodInfo: PMethodInfoHeader): PReturnInfo;
 begin
 {$IFNDEF DELPHIXE3_UP}
-  Result := PReturnInfo(Integer(MethodInfo) + SizeOf(TMethodInfoHeader) -
+  Result := PReturnInfo(NativeUInt(MethodInfo) + SizeOf(TMethodInfoHeader) -
                         SizeOf(ShortString) + 1 + Length(MethodInfo^.Name));
 {$ELSE}
   Result := PReturnInfo(MethodInfo.NameFld.Tail);
@@ -1089,23 +1100,23 @@ begin
   MethodHeader := GetMethodInfo(Instance, MethodName);
   ReturnInfo := GetReturnInfo(MethodHeader);
   MethodInfo := ReturnInfo;
-  Inc(Integer(MethodInfo), SizeOf(TReturnInfo));
+  Inc(NativeUInt(MethodInfo), SizeOf(TReturnInfo));
 {$IFDEF DELPHIXE4_UP}
   if ReturnInfo.Version <> 3 then
     raise Exception.CreateFmt(SNoRTTIInfoType, [MethodName]);
 {$ENDIF}
 
 {$IFNDEF DELPHI2010_UP}
-  InfoEnd := Pointer(Integer(MethodHeader) + MethodHeader^.Len);
+  InfoEnd := Pointer(NativeUInt(MethodHeader) + MethodHeader^.Len);
   Count := 0;
   SetLength(Result, MaxParams);
-  while Integer(MethodInfo) < Integer(InfoEnd) do
+  while NativeInt(MethodInfo) < NativeInt(InfoEnd) do
   begin
     if Count >= MaxParams then
       raise Exception.CreateFmt(sMethodOver, [MethodName, MaxParams]);
     Result[Count] := MethodInfo;
     Inc(Count);
-    Inc(Integer(MethodInfo), SizeOf(TParamInfo) - SizeOf(ShortString) + 1 +
+    Inc(NativeUInt(MethodInfo), SizeOf(TParamInfo) - SizeOf(ShortString) + 1 +
       Length(PParamInfo(MethodInfo)^.Name));
   end;
   SetLength(Result, Count);
@@ -1120,11 +1131,11 @@ begin
   {$IFDEF DELPHIXE3_UP}
     MethodInfo := PParamInfo(MethodInfo).NameFld.Tail;
   {$ELSE}
-    Inc(Integer(MethodInfo), SizeOf(TParamInfo) - SizeOf(ShortString) + 1 +
+    Inc(NativeUInt(MethodInfo), SizeOf(TParamInfo) - SizeOf(ShortString) + 1 +
       Length(PParamInfo(MethodInfo)^.Name));
   {$ENDIF}
     // Skip attribute data
-    Inc(Integer(MethodInfo), PWord(MethodInfo)^);
+    Inc(NativeUInt(MethodInfo), PWord(MethodInfo)^);
   end;
 {$ENDIF}
 end;
