@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Sep 11, 2014                             *
+ * LastModified: Sep 13, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -61,8 +61,8 @@ type
 
   IHproseFilter = interface
   ['{4AD7CCF2-1121-4CA4-92A7-5704C5956BA4}']
-    function InputFilter(const Data: TBytes): TBytes;
-    function OutputFilter(const Data: TBytes): TBytes;
+    function InputFilter(const Data: TBytes; const Context: TObject): TBytes;
+    function OutputFilter(const Data: TBytes; const Context: TObject): TBytes;
   end;
 
   IInvokeableVarObject = interface

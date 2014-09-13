@@ -14,7 +14,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: Sep 11, 2014                             *
+ * LastModified: Sep 13, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -540,7 +540,7 @@ var
 begin
   for I := FFilters.Count - 1 downto 0 do begin
     VarToIntf(FFilters[I], IHproseFilter, Filter);
-    Data := Filter.InputFilter(Data);
+    Data := Filter.InputFilter(Data, Self);
   end;
   if Data[Length(Data) - 1] <> HproseTagEnd then
     raise EHproseException.Create('Wrong Response: ' + #13#10 + StringOf(Data));
@@ -601,7 +601,7 @@ var
 begin
   for I := FFilters.Count - 1 downto 0 do begin
     VarToIntf(FFilters[I], IHproseFilter, Filter);
-    Data := Filter.InputFilter(Data);
+    Data := Filter.InputFilter(Data, Self);
   end;
   if Data[Length(Data) - 1] <> HproseTagEnd then
     raise EHproseException.Create('Wrong Response: ' + #13#10 + StringOf(Data));
@@ -665,7 +665,7 @@ begin
   end;
   for I := 0 to FFilters.Count - 1 do begin
     VarToIntf(FFilters[I], IHproseFilter, Filter);
-    Result := Filter.OutputFilter(Result);
+    Result := Filter.OutputFilter(Result, Self);
   end;
 end;
 
@@ -696,7 +696,7 @@ begin
   end;
   for I := 0 to FFilters.Count - 1 do begin
     VarToIntf(FFilters[I], IHproseFilter, Filter);
-    Result := Filter.OutputFilter(Result);
+    Result := Filter.OutputFilter(Result, Self);
   end;
 end;
 
