@@ -75,6 +75,24 @@
   {$define DELPHIXE7_UP}
 {$endif}
 
+{$ifdef VER290}
+  {$define DELPHIXE8}
+  {$define DELPHIXE8_UP}
+{$endif}
+
+{$ifdef VER300}
+  {$define DELPHIXE9}
+  {$define DELPHIXE9_UP}
+{$endif}
+
+{$ifdef DELPHIXE9_UP}
+  {$define DELPHIXE8_UP}
+{$endif}
+
+{$ifdef DELPHIXE8_UP}
+  {$define DELPHIXE7_UP}
+{$endif}
+
 {$ifdef DELPHIXE7_UP}
   {$define DELPHIXE6_UP}
 {$endif}
