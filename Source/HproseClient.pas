@@ -14,7 +14,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: Sep 13, 2014                             *
+ * LastModified: Apr 22, 2015                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -53,6 +53,7 @@ type
 
   THproseClient = class(TComponent, IInvokeableVarObject)
   private
+    FNameSpace: string;
     FErrorEvent: THproseErrorEvent;
     FFilters: IList;
     function GetFilter: IHproseFilter;
@@ -100,8 +101,8 @@ type
     function Blocking: Boolean; virtual;
   public
     constructor Create(AOwner: TComponent); override;
-    class function New(const AUrl: string): Variant;
-    function UseService(const AUri: string = ''): Variant; virtual;
+    class function New(const AUrl: string; const NameSpace: string = ''): Variant;
+    function UseService(const AUri: string = ''; const NameSpace: string = ''): Variant; virtual;
     procedure AddFilter(const Filter: IHproseFilter);
     function RemoveFilter(const Filter: IHproseFilter): Boolean;
     // Synchronous invoke
@@ -236,6 +237,7 @@ type
   published
     property Uri: string read FUri;
     property Filter: IHproseFilter read GetFilter write SetFilter;
+    property NameSpace: string read FNameSpace write FNameSpace;
     // This event OnError only for asynchronous invoke
     property OnError: THproseErrorEvent read FErrorEvent write FErrorEvent;
   end;
@@ -496,13 +498,15 @@ end;
 constructor THproseClient.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  FUri := '';
+  FNameSpace := '';
   FErrorEvent := nil;
   FFilters := THashedList.Create;
 end;
 
-class function THproseClient.New(const AUrl: string): Variant;
+class function THproseClient.New(const AUrl: string; const NameSpace: string): Variant;
 begin
-  Result := Self.Create(nil).UseService(AUrl);
+  Result := Self.Create(nil).UseService(AUrl, NameSpace);
 end;
 
 function THproseClient.GetFilter: IHproseFilter;
@@ -803,8 +807,14 @@ end;
 function THproseClient.Invoke(const Name: string; var Args: TVariants;
   ResultType: PTypeInfo; ByRef: Boolean;
   ResultMode: THproseResultMode; Simple: Boolean): Variant;
+var
+  FullName: string;
 begin
-  Result := DoInput(Args, ResultType, ResultMode, SendAndReceive(DoOutput(Name, Args, ByRef, Simple)));
+  if FNameSpace <> '' then
+    FullName := FNameSpace + '_' + Name
+  else
+    FullName := Name;
+  Result := DoInput(Args, ResultType, ResultMode, SendAndReceive(DoOutput(FullName, Args, ByRef, Simple)));
 end;
 
 {$IFDEF Supports_Generics}
@@ -822,9 +832,14 @@ function THproseClient.Invoke<T>(const Name: string;
 var
   Context: TObject;
   InStream, OutStream: TStream;
+  FullName: string;
 begin
+  if FNameSpace <> '' then
+    FullName := FNameSpace + '_' + Name
+  else
+    FullName := Name;
   Result := Default(T);
-  DoInput(TypeInfo(T), SendAndReceive(DoOutput(Name, Args, Simple)), Result);
+  DoInput(TypeInfo(T), SendAndReceive(DoOutput(FullName, Args, Simple)), Result);
 end;
 
 function THproseClient.Invoke<T>(const Name: string; var Args: TVariants;
@@ -832,9 +847,14 @@ function THproseClient.Invoke<T>(const Name: string; var Args: TVariants;
 var
   Context: TObject;
   InStream, OutStream: TStream;
+  FullName: string;
 begin
+  if FNameSpace <> '' then
+    FullName := FNameSpace + '_' + Name
+  else
+    FullName := Name;
   Result := Default(T);
-  DoInput(Args, TypeInfo(T), SendAndReceive(DoOutput(Name, Args, ByRef, Simple)), Result);
+  DoInput(Args, TypeInfo(T), SendAndReceive(DoOutput(FullName, Args, ByRef, Simple)), Result);
 end;
 {$ENDIF}
 
@@ -928,19 +948,25 @@ procedure THproseClient.Invoke(const Name: string; const Args: array of const;
   Callback: THproseCallback1;
   ErrorEvent: THproseErrorEvent;
   ResultType: PTypeInfo; ResultMode: THproseResultMode; Simple: Boolean);
+var
+  FullName: string;
 begin
+  if FNameSpace <> '' then
+    FullName := FNameSpace + '_' + Name
+  else
+    FullName := Name;
   if Blocking then
-    TAsyncInvokeThread1.Create(Self, Name, Args, Callback, ErrorEvent, ResultType, ResultMode, Simple)
+    TAsyncInvokeThread1.Create(Self, FullName, Args, Callback, ErrorEvent, ResultType, ResultMode, Simple)
   else
     try
-      SendAndReceive(DoOutput(Name, Args, Simple),
-        TAsyncInvokeContext.Create(Self, Name, Callback, ErrorEvent, ResultType, ResultMode).Callback);
+      SendAndReceive(DoOutput(FullName, Args, Simple),
+        TAsyncInvokeContext.Create(Self, FullName, Callback, ErrorEvent, ResultType, ResultMode).Callback);
     except
       on E: Exception do begin
         if Assigned(ErrorEvent) then
-          ErrorEvent(Name, E)
+          ErrorEvent(FullName, E)
         else if Assigned(FErrorEvent) then
-          FErrorEvent(Name, E);
+          FErrorEvent(FullName, E);
       end;
     end;
 end;
@@ -988,19 +1014,25 @@ procedure THproseClient.Invoke(const Name: string; var Args: TVariants;
   ErrorEvent: THproseErrorEvent;
   ResultType: PTypeInfo;
   ResultMode: THproseResultMode; Simple: Boolean);
+var
+  FullName: string;
 begin
+  if FNameSpace <> '' then
+    FullName := FNameSpace + '_' + Name
+  else
+    FullName := Name;
   if Blocking then
-    TAsyncInvokeThread2.Create(Self, Name, Args, Callback, ErrorEvent, ResultType, False, ResultMode, Simple)
+    TAsyncInvokeThread2.Create(Self, FullName, Args, Callback, ErrorEvent, ResultType, False, ResultMode, Simple)
   else
     try
-      SendAndReceive(DoOutput(Name, Args, False, Simple),
-        TAsyncInvokeContext.Create(Self, Name, Callback, ErrorEvent, ResultType, ResultMode).Callback);
+      SendAndReceive(DoOutput(FullName, Args, False, Simple),
+        TAsyncInvokeContext.Create(Self, FullName, Callback, ErrorEvent, ResultType, ResultMode).Callback);
     except
       on E: Exception do begin
         if Assigned(ErrorEvent) then
-          ErrorEvent(Name, E)
+          ErrorEvent(FullName, E)
         else if Assigned(FErrorEvent) then
-          FErrorEvent(Name, E);
+          FErrorEvent(FullName, E);
       end;
     end;
 end;
@@ -1052,19 +1084,25 @@ procedure THproseClient.Invoke(const Name: string; var Args: TVariants;
   ErrorEvent: THproseErrorEvent;
   ResultType: PTypeInfo;
   ByRef: Boolean; ResultMode: THproseResultMode; Simple: Boolean);
+var
+  FullName: string;
 begin
+  if FNameSpace <> '' then
+    FullName := FNameSpace + '_' + Name
+  else
+    FullName := Name;
   if Blocking then
-    TAsyncInvokeThread2.Create(Self, Name, Args, Callback, ErrorEvent, ResultType, ByRef, ResultMode, Simple)
+    TAsyncInvokeThread2.Create(Self, FullName, Args, Callback, ErrorEvent, ResultType, ByRef, ResultMode, Simple)
   else
     try
-      SendAndReceive(DoOutput(Name, Args, ByRef, Simple),
-        TAsyncInvokeContext.Create(Self, Name, Callback, ErrorEvent, ResultType, ResultMode).Callback);
+      SendAndReceive(DoOutput(FullName, Args, ByRef, Simple),
+        TAsyncInvokeContext.Create(Self, FullName, Callback, ErrorEvent, ResultType, ResultMode).Callback);
     except
       on E: Exception do begin
         if Assigned(ErrorEvent) then
-          ErrorEvent(Name, E)
+          ErrorEvent(FullName, E)
         else if Assigned(FErrorEvent) then
-          FErrorEvent(Name, E);
+          FErrorEvent(FullName, E);
       end;
     end;
 end;
@@ -1080,19 +1118,25 @@ end;
 procedure THproseClient.Invoke<T>(const Name: string; const Args: array of const;
   Callback: THproseCallback1<T>;
   ErrorEvent: THproseErrorEvent; Simple: Boolean);
+var
+  FullName: string;
 begin
+  if FNameSpace <> '' then
+    FullName := FNameSpace + '_' + Name
+  else
+    FullName := Name;
   if Blocking then
-    TAsyncInvokeThread1<T>.Create(Self, Name, Args, Callback, ErrorEvent, Simple)
+    TAsyncInvokeThread1<T>.Create(Self, FullName, Args, Callback, ErrorEvent, Simple)
   else
     try
-      SendAndReceive(DoOutput(Name, Args, Simple),
-        TAsyncInvokeContext<T>.Create(Self, Name, Callback, ErrorEvent).Callback);
+      SendAndReceive(DoOutput(FullName, Args, Simple),
+        TAsyncInvokeContext<T>.Create(Self, FullName, Callback, ErrorEvent).Callback);
     except
       on E: Exception do begin
         if Assigned(ErrorEvent) then
-          ErrorEvent(Name, E)
+          ErrorEvent(FullName, E)
         else if Assigned(FErrorEvent) then
-          FErrorEvent(Name, E);
+          FErrorEvent(FullName, E);
       end;
     end;
 end;
@@ -1108,27 +1152,34 @@ procedure THproseClient.Invoke<T>(const Name: string; var Args: TVariants;
   Callback: THproseCallback2<T>;
   ErrorEvent: THproseErrorEvent;
   ByRef: Boolean; Simple: Boolean);
+var
+  FullName: string;
 begin
+  if FNameSpace <> '' then
+    FullName := FNameSpace + '_' + Name
+  else
+    FullName := Name;
   if Blocking then
-    TAsyncInvokeThread2<T>.Create(Self, Name, Args, Callback, ErrorEvent, ByRef, Simple)
+    TAsyncInvokeThread2<T>.Create(Self, FullName, Args, Callback, ErrorEvent, ByRef, Simple)
   else
     try
-      SendAndReceive(DoOutput(Name, Args, ByRef, Simple),
-        TAsyncInvokeContext<T>.Create(Self, Name, Callback, ErrorEvent).Callback);
+      SendAndReceive(DoOutput(FullName, Args, ByRef, Simple),
+        TAsyncInvokeContext<T>.Create(Self, FullName, Callback, ErrorEvent).Callback);
     except
       on E: Exception do begin
         if Assigned(ErrorEvent) then
-          ErrorEvent(Name, E)
+          ErrorEvent(FullName, E)
         else if Assigned(FErrorEvent) then
-          FErrorEvent(Name, E);
+          FErrorEvent(FullName, E);
       end;
     end;
 end;
 {$ENDIF}
 
-function THproseClient.UseService(const AUri: string): Variant;
+function THproseClient.UseService(const AUri: string; const NameSpace: string): Variant;
 begin
   if AUri <> '' then FUri := AUri;
+  FNameSpace := NameSpace;
   Result := ObjToVar(Self);
 end;
 
@@ -1462,4 +1513,3 @@ end;
 {$ENDIF}
 
 end.
-
