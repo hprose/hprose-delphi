@@ -101,8 +101,8 @@ type
     function Blocking: Boolean; virtual;
   public
     constructor Create(AOwner: TComponent); override;
-    class function New(const AUrl: string; const NameSpace: string = ''): Variant;
-    function UseService(const AUri: string = ''; const NameSpace: string = ''): Variant; virtual;
+    class function New(const AUrl: string; const ANameSpace: string = ''): Variant;
+    function UseService(const AUri: string = ''; const ANameSpace: string = ''): Variant; virtual;
     procedure AddFilter(const Filter: IHproseFilter);
     function RemoveFilter(const Filter: IHproseFilter): Boolean;
     // Synchronous invoke
@@ -504,9 +504,9 @@ begin
   FFilters := THashedList.Create;
 end;
 
-class function THproseClient.New(const AUrl: string; const NameSpace: string): Variant;
+class function THproseClient.New(const AUrl: string; const ANameSpace: string): Variant;
 begin
-  Result := Self.Create(nil).UseService(AUrl, NameSpace);
+  Result := Self.Create(nil).UseService(AUrl, ANameSpace);
 end;
 
 function THproseClient.GetFilter: IHproseFilter;
@@ -558,6 +558,7 @@ begin
     InStream := TBytesStream.Create(Data);
     HproseReader := THproseReader.Create(InStream);
     try
+      Tag := 0;
       while Data[Instream.Position] <> HproseTagEnd do begin
         InStream.ReadBuffer(Tag, 1);
         if Tag = HproseTagResult then begin
@@ -590,6 +591,7 @@ function THproseClient.DoInput(ResultType: PTypeInfo;
 var
   Args: TVariants;
 begin
+  SetLength(Args, 0);
   Result := DoInput(Args, ResultType, ResultMode, Data);
 end;
 
@@ -1176,10 +1178,10 @@ begin
 end;
 {$ENDIF}
 
-function THproseClient.UseService(const AUri: string; const NameSpace: string): Variant;
+function THproseClient.UseService(const AUri: string; const ANameSpace: string): Variant;
 begin
   if AUri <> '' then FUri := AUri;
-  FNameSpace := NameSpace;
+  FNameSpace := ANameSpace;
   Result := ObjToVar(Self);
 end;
 
@@ -1356,6 +1358,7 @@ var
   Result: Variant;
 begin
   try
+    SetLength(Args, 0);
     Result := FClient.DoInput(Args, FResultType, FResultMode, Data);
   except
     on E: Exception do begin
@@ -1512,4 +1515,4 @@ begin
 end;
 {$ENDIF}
 
-end.
+end.

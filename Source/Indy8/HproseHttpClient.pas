@@ -14,7 +14,7 @@
  *                                                        *
  * hprose indy http client unit for delphi.               *
  *                                                        *
- * LastModified: May 28, 2014                             *
+ * LastModified: Apr 22, 2015                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -49,7 +49,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function UseService(const AUri: string = ''): Variant; override;
+    function UseService(const AUri: string = ''; const ANameSpace: string = ''): Variant; override;
   published
     {:Before HTTP operation you may define any non-standard headers for HTTP
      request, except of: 'Expect: 100-continue', 'Content-Length', 'Content-Type',
@@ -233,9 +233,9 @@ begin
   inherited;
 end;
 
-function THproseHttpClient.UseService(const AUri: string): Variant;
+function THproseHttpClient.UseService(const AUri: string; const ANameSpace: string): Variant;
 begin
-  Result := inherited UseService(AUri);
+  Result := inherited UseService(AUri, ANameSpace);
   FreeAndNil(FIdUri);
   FIdUri := TIdURI.Create(FUri);
 end;

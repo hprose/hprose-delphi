@@ -81,7 +81,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function UseService(const AUri: string): Variant; override;
+    function UseService(const AUri: string = ''; const ANameSpace: string = ''): Variant; override;
   published
     {:Before HTTP operation you may define any non-standard headers for HTTP
      request, except of: 'Expect: 100-continue', 'Content-Length', 'Content-Type',
@@ -588,9 +588,9 @@ begin
   inherited;
 end;
 
-function THproseHttpClient.UseService(const AUri: string): Variant;
+function THproseHttpClient.UseService(const AUri: string; const ANameSpace: string): Variant;
 begin
-  Result := inherited UseService(AUri);
+  Result := inherited UseService(AUri, ANameSpace);
   ParseURL(FUri, FProtocol, FUser, FPassword, FHost, FPort, FPath, FPara);
 end;
 
@@ -604,4 +604,4 @@ initialization
 {$IFDEF FPC}
   {$I Hprose.lrs}
 {$ENDIF}
-end.
+end.
