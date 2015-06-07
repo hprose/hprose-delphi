@@ -3130,7 +3130,16 @@ function TVarObjectType.DoFunction(var Dest: TVarData; const V: TVarData;
 var
   Obj: TObject;
   Intf: IInvokeableVarObject;
+  Args: TVarDataArray;
 begin
+  if (Length(Arguments) = 1) and
+     (Arguments[0].VType = varError) and
+     (Arguments[0].VError = -2147352572) // Parameter not found.
+  then begin
+    SetLength(Args, 0);
+    Result := DoFunction(Dest, V, Name, Args);
+    Exit;
+  end;
   Obj := GetInstance(V);
   Result := True;
   if AnsiSameText(Name, 'Free') and (Length(Arguments) = 0) then
