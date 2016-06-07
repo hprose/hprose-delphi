@@ -177,9 +177,12 @@
 
 {$ifdef FPC}
   {$define Supports_UInt64}
-  {$define Supports_Unicode}
   {$mode DELPHI}
 {$endif}
+
+{$if defined(FPC) and (FPC_FULLVERSION > 20400)}
+  {$define Supports_Unicode}
+{$ifend}
 
 {$ifdef CPUX64}
   {$define CPU64}

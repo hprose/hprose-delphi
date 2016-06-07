@@ -1334,7 +1334,11 @@ begin
       SetWideStrProp(Instance, PropInfo, VarToWideStr(Value));
 {$IFDEF Supports_Unicode}
     tkUString:
+  {$IFDEF FPC}
       SetUnicodeStrProp(Instance, PropInfo, VarToUnicodeStr(Value)); //SB: ??
+  {$ELSE}
+      SetUnicodeStrProp(Instance, PropInfo, VarToStr(Value)); //SB: ??
+  {$ENDIF}
 {$ENDIF}
 {$ELSE}
     tkUString:
@@ -3160,7 +3164,7 @@ var
 begin
   if (Length(Arguments) = 1) and
      (Arguments[0].VType = varError) and
-     (Arguments[0].VError = -2147352572) // Parameter not found.
+     (HRESULT(Arguments[0].VError) = -2147352572) // Parameter not found.
   then begin
     SetLength(Args, 0);
     Result := DoFunction(Dest, V, Name, Args);
