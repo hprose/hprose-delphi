@@ -94,6 +94,7 @@ type
     procedure Clear;
     function Contains(const Value: Variant): Boolean;
     function Delete(Index: Integer): Variant;
+    procedure DeleteRange(Index, Count: Integer);
     procedure Exchange(Index1, Index2: Integer);
     function GetEnumerator: IListEnumerator;
     function IndexOf(const Value: Variant): Integer;
@@ -160,6 +161,7 @@ type
     procedure Clear; virtual; abstract;
     function Contains(const Value: Variant): Boolean; virtual; abstract;
     function Delete(Index: Integer): Variant; virtual; abstract;
+    procedure DeleteRange(Index, Count: Integer); virtual; abstract;
     procedure Exchange(Index1, Index2: Integer); virtual; abstract;
     function GetEnumerator: IListEnumerator; virtual;
     function IndexOf(const Value: Variant): Integer; virtual; abstract;
@@ -207,6 +209,7 @@ type
     procedure Grow; overload; virtual;
     procedure Grow(N: Integer); overload; virtual;
     procedure Shift(Index, N: Integer); virtual;
+    procedure UnShift(Index, N: Integer); virtual;
     procedure Put(Index: Integer; const Value: Variant); override;
     function GetCapacity: Integer; override;
     function GetCount: Integer; override;
@@ -222,6 +225,7 @@ type
     procedure Clear; override;
     function Contains(const Value: Variant): Boolean; override;
     function Delete(Index: Integer): Variant; override;
+    procedure DeleteRange(Index, Count: Integer); override;
     procedure Exchange(Index1, Index2: Integer); override;
     function IndexOf(const Value: Variant): Integer; override;
     procedure Insert(Index: Integer; const Value: Variant); override;
@@ -2141,19 +2145,32 @@ begin
   SetLength(FList, FCapacity);
 end;
 
+procedure TArrayList.UnShift(Index, N: Integer);
+var
+  I: Integer;
+begin
+  Dec(FCount, N);
+  for I := Index to Index + N - 1 do VarClear(FList[I]);
+  if Index < FCount then begin
+    System.Move(FList[Index + N], FList[Index],
+      (FCount - Index) * SizeOf(Variant));
+    FillChar(FList[FCount], N * SizeOf(Variant), 0);
+  end;
+end;
+
 function TArrayList.Delete(Index: Integer): Variant;
 begin
   if (Index >= 0) and (Index < FCount) then begin
     Result := FList[Index];
-    Dec(FCount);
+    UnShift(Index, 1);
+  end;
+end;
 
-    VarClear(FList[Index]);
-
-    if Index < FCount then begin
-      System.Move(FList[Index + 1], FList[Index],
-        (FCount - Index) * SizeOf(Variant));
-      FillChar(FList[FCount], SizeOf(Variant), 0);
-    end;
+procedure TArrayList.DeleteRange(Index, Count: Integer);
+begin
+  if (Index >= 0) and (Index < FCount) then begin
+    if Count > FCount - Index then Count := Fcount - Index;
+    UnShift(Index, Count);
   end;
 end;
 
