@@ -3174,13 +3174,14 @@ begin
   Result := True;
   if AnsiSameText(Name, 'Free') and (Length(Arguments) = 0) then
     Obj.Free
-  else if Supports(Obj, IInvokeableVarObject, Intf) then begin
+  else if Supports(Obj, IInvokeableVarObject, Intf) then
     Variant(Dest) := Intf.Invoke(Name, Arguments);
-{$IFNDEF FPC}
-  end
   else begin
+{$IFNDEF FPC}
     Result := GetMethodInfo(Obj, Name) <> nil;
     if Result then Variant(Dest) := ObjectInvoke(Obj, Name, TVariants(Arguments));
+{$ELSE}
+    Result := False;
 {$ENDIF}
   end;
 end;
