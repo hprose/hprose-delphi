@@ -128,7 +128,25 @@ type
     constructor Create(Capacity: Integer = 4; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); overload; virtual; abstract;
     constructor Create(Sync: Boolean;
-      ReadWriteSync: Boolean = False); overload; virtual; abstract;
+      ReadWriteSync: Boolean = False); overload; virtual;
+    constructor Create(const AList: IList; Sync: Boolean = True;
+      ReadWriteSync: Boolean = False); overload; virtual;
+    constructor Create(const Container: Variant; Sync: Boolean = True;
+      ReadWriteSync: Boolean = False); overload; virtual;
+    constructor Create(const ConstArray: array of const; Sync: Boolean = True;
+      ReadWriteSync: Boolean = False); overload; virtual;
+    {$IFDEF BCB}
+        constructor Create0; virtual; // for C++ Builder
+        constructor Create1(Capacity: Integer); virtual; // for C++ Builder
+        constructor Create2(Capacity: Integer; Sync: Boolean); virtual; // for C++ Builder
+        constructor CreateS(Sync: Boolean); virtual; // for C++ Builder
+        constructor CreateL1(const AList: IList); virtual; // for C++ Builder
+        constructor CreateA1(const Container: Variant); virtual; // for C++ Builder
+        constructor CreateCA1(const ConstArray: array of const); virtual; // for C++ Builder
+        constructor CreateL2(const AList: IList; Sync: Boolean); virtual; // for C++ Builder
+        constructor CreateA2(const Container: Variant; Sync: Boolean); virtual; // for C++ Builder
+        constructor CreateCA2(const ConstArray: array of const; Sync: Boolean); virtual; // for C++ Builder
+    {$ENDIF}
     destructor Destroy; override;
     function Add(const Value: Variant): Integer; virtual; abstract;
     procedure AddAll(const ArrayList: IList); overload; virtual; abstract;
@@ -188,14 +206,6 @@ type
   public
     constructor Create(Capacity: Integer = 4; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); overload; override;
-    constructor Create(Sync: Boolean;
-      ReadWriteSync: Boolean = False); overload; override;
-{$IFDEF BCB}
-    constructor Create0; virtual; // for C++ Builder
-    constructor Create1(Capacity: Integer); virtual; // for C++ Builder
-    constructor Create2(Capacity: Integer; Sync: Boolean); virtual; // for C++ Builder
-    constructor CreateS(Sync: Boolean); virtual; // for C++ Builder
-{$ENDIF}
     function Add(const Value: Variant): Integer; override;
     procedure AddAll(const AList: IList); overload; override;
     procedure AddAll(const Container: Variant); overload; override;
@@ -1809,6 +1819,89 @@ end;
 
 { TAbstractList }
 
+
+constructor TAbstractList.Create(Sync, ReadWriteSync: Boolean);
+begin
+  Create(4, Sync, ReadWriteSync);
+end;
+
+constructor TAbstractList.Create(const AList: IList; Sync, ReadWriteSync: Boolean);
+begin
+  Create(AList.Count, Sync, ReadWriteSync);
+  AddAll(AList);
+end;
+
+constructor TAbstractList.Create(const Container: Variant; Sync, ReadWriteSync: Boolean);
+var
+  AList: IList;
+begin
+  if VarIsList(Container) then begin
+    AList := VarToList(Container);
+    Create(AList, Sync, ReadWriteSync);
+  end
+  else if VarIsArray(Container) then begin
+    Create(Length(Container), Sync, ReadWriteSync);
+    Add(Container);
+  end;
+end;
+
+constructor TAbstractList.Create(const ConstArray: array of const; Sync, ReadWriteSync: Boolean);
+begin
+  Create(Length(ConstArray), Sync, ReadWriteSync);
+  AddAll(ConstArray);
+end;
+
+{$IFDEF BCB}
+constructor TAbstractList.Create0;
+begin
+  Create;
+end;
+constructor TAbstractList.Create1(Capacity: Integer);
+begin
+  Create(Capacity);
+end;
+constructor TAbstractList.Create2(Capacity: Integer; Sync: Boolean);
+begin
+  Create(Capacity, Sync);
+end;
+
+constructor TAbstractList.CreateS(Sync: Boolean);
+begin
+  Create(Sync);
+end;
+
+constructor TAbstractList.CreateL1(const AList: IList); virtual;
+begin
+  Create(AList);
+end;
+
+constructor TAbstractList.CreateA1(const Container: Variant); virtual;
+begin
+  Create(Container);
+end;
+
+constructor TAbstractList.CreateCA1(const ConstArray: array of const);
+begin
+  Create(ConstArray);
+end;
+
+constructor TAbstractList.CreateL2(const AList: IList; Sync: Boolean);
+begin
+  Create(AList, Sync);
+end;
+
+constructor TAbstractList.CreateA2(const Container: Variant; Sync: Boolean);
+begin
+  Create(Container, Sync);
+end;
+
+constructor TAbstractList.CreateCA2(const ConstArray: array of const; Sync: Boolean);
+begin
+  Create(ConstArray, Sync);
+end;
+
+{$ENDIF}
+
 destructor TAbstractList.Destroy;
 begin
   Clear;
@@ -2027,31 +2120,6 @@ begin
   FCount := 0;
   SetLength(FList, FCapacity);
 end;
-
-constructor TArrayList.Create(Sync, ReadWriteSync: Boolean);
-begin
-  Create(4, Sync, ReadWriteSync);
-end;
-
-{$IFDEF BCB}
-constructor TArrayList.Create0;
-begin
-  Create;
-end;
-constructor TArrayList.Create1(Capacity: Integer);
-begin
-  Create(Capacity);
-end;
-constructor TArrayList.Create2(Capacity: Integer; Sync: Boolean);
-begin
-  Create(Capacity, Sync);
-end;
-
-constructor TArrayList.CreateS(Sync: Boolean);
-begin
-  Create(Sync);
-end;
-{$ENDIF}
 
 function TArrayList.Delete(Index: Integer): Variant;
 begin
