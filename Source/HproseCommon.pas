@@ -74,6 +74,7 @@ type
   ['{767477EC-A143-4DC6-9962-A6837A7AEC01}']
     function GetCurrent: Variant;
     function MoveNext: Boolean;
+    procedure Reset;
     property Current: Variant read GetCurrent;
   end;
 
@@ -314,6 +315,7 @@ type
   ['{5DE7A194-4476-42A6-A1E7-CB1D20AA7B0A}']
     function GetCurrent: TMapEntry;
     function MoveNext: Boolean;
+    procedure Reset;
     property Current: TMapEntry read GetCurrent;
   end;
 
@@ -1789,6 +1791,7 @@ type
   public
     constructor Create(AList: TAbstractList);
     function MoveNext: Boolean;
+    procedure Reset;
     property Current: Variant read GetCurrent;
   end;
 
@@ -1815,8 +1818,12 @@ begin
     Result := False;
 end;
 
-{ TAbstractList }
+function TListEnumerator.Reset;
+begin
+  FIndex := -1;
+end;
 
+{ TAbstractList }
 
 constructor TAbstractList.Create(Sync, ReadWriteSync: Boolean);
 begin
@@ -2626,6 +2633,7 @@ type
   public
     constructor Create(AMap: TAbstractMap);
     function MoveNext: Boolean;
+    procedure Reset;
     property Current: TMapEntry read GetCurrent;
   end;
 
@@ -2651,6 +2659,11 @@ begin
   end
   else
     Result := False;
+end;
+
+function TMapEnumerator.Reset;
+begin
+  FIndex := -1;
 end;
 
 { TAbstractMap }
