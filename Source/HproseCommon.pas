@@ -87,7 +87,7 @@ type
     procedure SetCapacity(NewCapacity: Integer);
     procedure SetCount(NewCount: Integer);
     function Add(const Value: Variant): Integer;
-    procedure AddAll(const ArrayList: IList); overload;
+    procedure AddAll(const AList: IList); overload;
     procedure AddAll(const Container: Variant); overload;
     procedure AddAll(const ConstArray: array of const); overload;
     procedure Assign(const Source: IList);
@@ -98,6 +98,9 @@ type
     function GetEnumerator: IListEnumerator;
     function IndexOf(const Value: Variant): Integer;
     procedure Insert(Index: Integer; const Value: Variant);
+    procedure InsertRange(Index: Integer; const AList: IList); overload;
+    procedure InsertRange(Index: Integer; const Container: Variant); overload;
+    procedure InsertRange(Index: Integer; const ConstArray: array of const);
     function Join(const Glue: string = ',';
                   const LeftPad: string = '';
                   const RightPad: string = ''): string;
@@ -150,7 +153,7 @@ type
     {$ENDIF}
     destructor Destroy; override;
     function Add(const Value: Variant): Integer; virtual; abstract;
-    procedure AddAll(const ArrayList: IList); overload; virtual; abstract;
+    procedure AddAll(const AList: IList); overload; virtual; abstract;
     procedure AddAll(const Container: Variant); overload; virtual; abstract;
     procedure AddAll(const ConstArray: array of const); overload; virtual; abstract;
     procedure Assign(const Source: IList); virtual;
@@ -161,6 +164,9 @@ type
     function GetEnumerator: IListEnumerator; virtual;
     function IndexOf(const Value: Variant): Integer; virtual; abstract;
     procedure Insert(Index: Integer; const Value: Variant); virtual; abstract;
+    procedure InsertRange(Index: Integer; const AList: IList); overload; virtual; abstract;
+    procedure InsertRange(Index: Integer; const Container: Variant); overload; virtual; abstract;
+    procedure InsertRange(Index: Integer; const ConstArray: array of const); overload; virtual; abstract;
     function Join(const Glue: string = ',';
                   const LeftPad: string = '';
                   const RightPad: string = ''): string; virtual;
@@ -198,7 +204,9 @@ type
     FList: TVariants;
   protected
     function Get(Index: Integer): Variant; override;
-    procedure Grow; virtual;
+    procedure Grow; overload; virtual;
+    procedure Grow(N: Integer); overload; virtual;
+    procedure Shift(Index, N: Integer); virtual;
     procedure Put(Index: Integer; const Value: Variant); override;
     function GetCapacity: Integer; override;
     function GetCount: Integer; override;
@@ -217,6 +225,9 @@ type
     procedure Exchange(Index1, Index2: Integer); override;
     function IndexOf(const Value: Variant): Integer; override;
     procedure Insert(Index: Integer; const Value: Variant); override;
+    procedure InsertRange(Index: Integer; const AList: IList); overload; override;
+    procedure InsertRange(Index: Integer; const Container: Variant); overload; override;
+    procedure InsertRange(Index: Integer; const ConstArray: array of const); overload; override;
     procedure Move(CurIndex, NewIndex: Integer); override;
     function Remove(const Value: Variant): Integer; override;
     function ToArray: TVariants; overload; override;
@@ -629,6 +640,7 @@ function CopyVarRec(const Item: TVarRec): TVarRec;
 function CreateConstArray(const Elements: array of const): TConstArray;
 procedure FinalizeVarRec(var Item: TVarRec);
 procedure FinalizeConstArray(var Arr: TConstArray);
+function VarRecToVar(const V: TVarRec): Variant;
 
 procedure RegisterClass(const AClass: TClass; const Alias: string); overload;
 procedure RegisterClass(const AClass: TInterfacedClass; const IID: TGUID; const Alias: string); overload;
@@ -1781,6 +1793,48 @@ begin
   Arr := nil;
 end;
 
+function VarRecToVar(const V: TVarRec): Variant;
+begin
+  case V.VType of
+    vtInteger:       Result := V.VInteger;
+    vtBoolean:       Result := V.VBoolean;
+    vtExtended:      Result := V.VExtended^;
+{$IFNDEF NEXTGEN}
+    vtChar:          Result := WideString(V.VChar);
+    vtString:        Result := AnsiString(V.VString^);
+    vtPChar:         Result := AnsiString(V.VPChar);
+    vtAnsiString:    Result := AnsiString(V.VAnsiString);
+    vtPWideChar:     Result := WideString(V.VPWideChar);
+    vtWideString:    Result := WideString(V.VWideString);
+{$ELSE}
+    vtPWideChar:     Result := string(V.VPWideChar);
+    vtWideString:    Result := string(V.VWideString);
+{$ENDIF}
+    vtWideChar:      Result := WideString(V.VWideChar);
+    vtCurrency:      Result := V.VCurrency^;
+    vtVariant:       Result := V.VVariant^;
+    vtInt64:         Result := V.VInt64^;
+{$IFDEF FPC}
+    vtQWord:         Result := V.VQWord^;
+{$ENDIF}
+{$IFDEF Supports_Unicode}
+    vtUnicodeString: Result := UnicodeString(V.VUnicodeString);
+{$ENDIF}
+    vtPointer:       Result := NativeInt(V.VPointer);
+    vtClass:         Result := NativeInt(V.VClass);
+    vtObject:
+      if V.VObject = nil then
+        Result := Null
+      else
+        Result := ObjToVar(V.VObject);
+    vtInterface:
+      if IInterface(V.VInterface) = nil then
+        Result := Null
+      else
+        Result := IInterface(V.VInterface);
+  end;
+end;
+
 type
 
   TListEnumerator = class(TInterfacedObject, IListEnumerator)
@@ -1818,7 +1872,7 @@ begin
     Result := False;
 end;
 
-function TListEnumerator.Reset;
+procedure TListEnumerator.Reset;
 begin
   FIndex := -1;
 end;
@@ -2034,74 +2088,35 @@ end;
 
 procedure TArrayList.AddAll(const AList: IList);
 var
-  TotalCount, I: Integer;
+  I: Integer;
 begin
-  TotalCount := FCount + AList.Count;
-  if TotalCount > FCapacity then begin
-    FCapacity := TotalCount;
-    Grow;
-  end;
+  Grow(AList.Count);
   for I := 0 to AList.Count - 1 do Add(AList[I]);
 end;
 
 procedure TArrayList.AddAll(const Container: Variant);
 var
-  I: Integer;
+  I, N, Low, High: Integer;
 begin
   if VarIsList(Container) then begin
     AddAll(VarToList(Container));
   end
   else if VarIsArray(Container) then begin
-    for I := VarArrayLowBound(Container, 1) to
-             VarArrayHighBound(Container, 1) do
-      Add(Container[I]);
+    N := Length(Container);
+    Grow(N);
+    Low := VarArrayLowBound(Container, 1);
+    High := Low + N - 1;
+    for I := Low to High do Add(Container[I]);
   end;
 end;
 
 procedure TArrayList.AddAll(const ConstArray: array of const);
 var
   I, N: Integer;
-  V: TVarRec;
 begin
   N := Length(ConstArray);
-  for I := 0 to N - 1 do begin
-    V := ConstArray[I];
-    case V.VType of
-      vtInteger:       Add(V.VInteger);
-      vtBoolean:       Add(V.VBoolean);
-      vtExtended:      Add(V.VExtended^);
-{$IFNDEF NEXTGEN}
-      vtChar:          Add(WideString(V.VChar)[1]);
-      vtString:        Add(AnsiString(V.VString^));
-      vtPChar:         Add(AnsiString(V.VPChar));
-      vtAnsiString:    Add(AnsiString(V.VAnsiString));
-      vtPWideChar:     Add(WideString(V.VPWideChar));
-      vtWideString:    Add(WideString(V.VWideString));
-{$ELSE}
-      vtPWideChar:     Add(string(V.VPWideChar));
-      vtWideString:    Add(string(V.VWideString));
-{$ENDIF}
-      vtObject:
-        if V.VObject = nil then Add(Null) else Add(ObjToVar(V.VObject));
-      vtWideChar:      Add(WideString(V.VWideChar));
-      vtCurrency:      Add(V.VCurrency^);
-      vtVariant:       Add(V.VVariant^);
-      vtInterface:
-        if IInterface(V.VInterface) = nil then
-          Add(Null)
-        else
-          Add(IInterface(V.VInterface));
-      vtInt64:         Add(V.VInt64^);
-{$IFDEF FPC}
-      vtQWord:         Add(V.VQWord^);
-{$ENDIF}
-{$IFDEF Supports_Unicode}
-      vtUnicodeString: Add(UnicodeString(V.VUnicodeString));
-{$ENDIF}
-      vtPointer:       Add(NativeInt(V.VPointer));
-      vtClass:         Add(NativeInt(V.VClass));
-    end;
-  end;
+  Grow(N);
+  for I := 0 to N - 1 do Add(VarRecToVar(ConstArray[I]));
 end;
 
 procedure TArrayList.Clear;
@@ -2188,6 +2203,26 @@ begin
   SetCapacity(FCapacity + Delta);
 end;
 
+procedure TArrayList.Grow(N: Integer);
+var
+  TotalCount: Integer;
+begin
+  TotalCount := FCount + N;
+  if TotalCount > FCapacity then begin
+    FCapacity := TotalCount;
+    Grow;
+  end;
+end;
+
+procedure TArrayList.Shift(Index, N: Integer);
+begin
+  if Index < FCount then begin
+    System.Move(FList[Index], FList[Index + N],
+      (FCount - Index) * SizeOf(Variant));
+    FillChar(FList[Index], N * SizeOf(Variant), 0);
+  end;
+end;
+
 function TArrayList.IndexOf(const Value: Variant): Integer;
 var
   I: Integer;
@@ -2205,13 +2240,54 @@ begin
   if (Index < 0) or (Index > FCount) then
     raise EArrayListError.CreateResFmt(@SListIndexError, [Index]);
   if FCount = FCapacity then Grow;
-  if Index < FCount then begin
-    System.Move(FList[Index], FList[Index + 1],
-      (FCount - Index) * SizeOf(Variant));
-    FillChar(FList[Index], SizeOf(Variant), 0);
-  end;
+  Shift(Index, 1);
   FList[Index] := Value;
   Inc(FCount);
+end;
+
+procedure TArrayList.InsertRange(Index: Integer; const AList: IList);
+var
+  I, N: Integer;
+begin
+  if (Index < 0) or (Index > FCount) then
+    raise EArrayListError.CreateResFmt(@SListIndexError, [Index]);
+  N := AList.Count;
+  Grow(N);
+  Shift(Index, N);
+  for I := 0 to N - 1 do FList[Index + I] := AList[I];
+  Inc(FCount, N);
+end;
+
+procedure TArrayList.InsertRange(Index: Integer; const Container: Variant);
+var
+  I, N, Low, High: Integer;
+begin
+  if VarIsList(Container) then begin
+    InsertRange(Index, VarToList(Container));
+  end
+  else if VarIsArray(Container) then begin
+    if (Index < 0) or (Index > FCount) then
+      raise EArrayListError.CreateResFmt(@SListIndexError, [Index]);
+    N := Length(Container);
+    Grow(N);
+    Shift(Index, N);
+    Low := VarArrayLowBound(Container, 1);
+    High := Low + N - 1;
+    for I := Low to High do FList[Index + I] := Container[I];
+  end;
+end;
+
+procedure TArrayList.InsertRange(Index: Integer; const ConstArray: array of const);
+var
+  I, N: Integer;
+begin
+  if (Index < 0) or (Index > FCount) then
+    raise EArrayListError.CreateResFmt(@SListIndexError, [Index]);
+  N := Length(ConstArray);
+  Grow(N);
+  Shift(Index, N);
+  for I := 0 to N - 1 do FList[Index + I] := VarRecToVar(ConstArray[I]);
+  Inc(FCount, N);
 end;
 
 procedure TArrayList.Move(CurIndex, NewIndex: Integer);
@@ -2661,7 +2737,7 @@ begin
     Result := False;
 end;
 
-function TMapEnumerator.Reset;
+procedure TMapEnumerator.Reset;
 begin
   FIndex := -1;
 end;
