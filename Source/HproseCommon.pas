@@ -367,7 +367,14 @@ type
     constructor Create(Capacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); overload; virtual; abstract;
     constructor Create(Sync: Boolean;
-      ReadWriteSync: Boolean = False); overload; virtual; abstract;
+      ReadWriteSync: Boolean = False); overload; virtual;
+{$IFDEF BCB}
+    constructor Create0; virtual;
+    constructor Create1(Capacity: Integer); virtual;
+    constructor Create2(Capacity: Integer; Factor: Single); virtual;
+    constructor Create3(Capacity: Integer; Factor: Single; Sync: Boolean); virtual;
+    constructor CreateS(Sync: Boolean); virtual;
+{$ENDIF}
     destructor Destroy; override;
     procedure Clear; virtual; abstract;
     function ContainsKey(const Key: Variant): Boolean; virtual; abstract;
@@ -429,15 +436,6 @@ type
   public
     constructor Create(Capacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); overload; override;
-    constructor Create(Sync: Boolean;
-      ReadWriteSync: Boolean = False); overload; override;
-{$IFDEF BCB}
-    constructor Create0; virtual;
-    constructor Create1(Capacity: Integer); virtual;
-    constructor Create2(Capacity: Integer; Factor: Single); virtual;
-    constructor Create3(Capacity: Integer; Factor: Single; Sync: Boolean); virtual;
-    constructor CreateS(Sync: Boolean); virtual;
-{$ENDIF}
     procedure Clear; override;
     function ContainsKey(const Key: Variant): Boolean; override;
     function ContainsValue(const Value: Variant): Boolean; override;
@@ -2657,6 +2655,38 @@ end;
 
 { TAbstractMap }
 
+constructor TAbstractMap.Create(Sync, ReadWriteSync: Boolean);
+begin
+  Create(16, 0.75, Sync, ReadWriteSync);
+end;
+
+{$IFDEF BCB}
+constructor TAbstractMap.Create0;
+begin
+  Create;
+end;
+
+constructor TAbstractMap.Create1(Capacity: Integer);
+begin
+  Create(Capacity);
+end;
+
+constructor TAbstractMap.Create2(Capacity: Integer; Factor: Single);
+begin
+  Create(Capacity, Factor);
+end;
+
+constructor TAbstractMap.Create3(Capacity: Integer; Factor: Single; Sync: Boolean);
+begin
+  Create(Capacity, Factor, Sync);
+end;
+
+constructor TAbstractMap.CreateS(Sync: Boolean);
+begin
+  Create(Sync);
+end;
+{$ENDIF}
+
 destructor TAbstractMap.Destroy;
 begin
   FreeAndNil(FLock);
@@ -2825,38 +2855,6 @@ begin
   InitData(THashedList.Create(Capacity, Factor, False),
            TArrayList.Create(Capacity, False));
 end;
-
-constructor THashMap.Create(Sync, ReadWriteSync: Boolean);
-begin
-  Create(16, 0.75, Sync, ReadWriteSync);
-end;
-
-{$IFDEF BCB}
-constructor THashMap.Create0;
-begin
-  Create;
-end;
-
-constructor THashMap.Create1(Capacity: Integer);
-begin
-  Create(Capacity);
-end;
-
-constructor THashMap.Create2(Capacity: Integer; Factor: Single);
-begin
-  Create(Capacity, Factor);
-end;
-
-constructor THashMap.Create3(Capacity: Integer; Factor: Single; Sync: Boolean);
-begin
-  Create(Capacity, Factor, Sync);
-end;
-
-constructor THashMap.CreateS(Sync: Boolean);
-begin
-  Create(Sync);
-end;
-{$ENDIF}
 
 function THashMap.Delete(const Key: Variant): Variant;
 begin
