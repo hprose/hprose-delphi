@@ -279,10 +279,14 @@ type
   ['{D2392014-7451-40EF-809E-D25BFB0FA661}']
   end;
 
+  { THashedList }
+
   THashedList = class(TArrayList, IHashedList)
   private
     FHashBucket: THashBucket;
   protected
+    procedure DeleteHash(Index, N: Integer);
+    procedure InsertHash(Index, N: Integer);
     function HashOf(const Value: Variant): Integer; virtual;
     function IndexCompare(Index: Integer; const Value: Variant):
       Boolean; virtual;
@@ -300,9 +304,13 @@ type
     function Add(const Value: Variant): Integer; override;
     procedure Clear; override;
     function Delete(Index: Integer): Variant; override;
+    procedure DeleteRange(Index, Count: Integer); override;
     procedure Exchange(Index1, Index2: Integer); override;
     function IndexOf(const Value: Variant): Integer; override;
     procedure Insert(Index: Integer; const Value: Variant); override;
+    procedure InsertRange(Index: Integer; const AList: IList); overload; override;
+    procedure InsertRange(Index: Integer; const Container: Variant); overload; override;
+    procedure InsertRange(Index: Integer; const ConstArray: array of const); overload; override;
   end;
 
   ICaseInsensitiveHashedList = interface(IHashedList)
@@ -971,47 +979,6 @@ begin
   TVarData(Result).VType := varObject;
 end;
 
-function VarEquals(const Left, Right: Variant): Boolean;
-var
-  L, R: PVarData;
-  LA, RA: PVarArray;
-begin
-  Result := False;
-  L := FindVarData(Left);
-  R := FindVarData(Right);
-  if VarIsArray(Left) and VarIsArray(Right) then begin
-    if (L^.VType and varByRef) <> 0 then
-      LA := PVarArray(L^.VPointer^)
-    else
-      LA := L^.VArray;
-    if (R^.VType and varByRef) <> 0 then
-      RA := PVarArray(R^.VPointer^)
-    else
-      RA := R^.VArray;
-    if LA = RA then Result := True;
-  end
-  else begin
-    if (L^.VType = varUnknown) and
-       (R^.VType = varUnknown) then
-      Result := L^.VUnknown = R^.VUnknown
-    else if (L^.VType = varUnknown or varByRef) and
-            (R^.VType = varUnknown) then
-      Result := Pointer(L^.VPointer^) = R^.VUnknown
-    else if (L^.VType = varUnknown) and
-            (R^.VType = varUnknown or varByRef) then
-      Result := L^.VUnknown = Pointer(R^.VPointer^)
-    else if (L^.VType = varUnknown or varByRef) and
-            (R^.VType = varUnknown or varByRef) then
-      Result := Pointer(L^.VPointer^) = Pointer(R^.VPointer^)
-    else
-      try
-        Result := Left = Right;
-      except
-        Result := False;
-      end;
-  end;
-end;
-
 function VarIsObj(const Value: Variant): Boolean;
 begin
   Result := VarIsObj(Value, TObject);
@@ -1519,21 +1486,6 @@ const
   htObject  = $70000000;
   htArray   = $80000000;
 
-{$IFDEF NEXTGEN}
-function HashOfString(const Value: string): Integer;
-{$ELSE}
-function HashOfString(const Value: WideString): Integer;
-{$ENDIF}
-var
-  I, N: Integer;
-begin
-  N := Length(Value);
-  Result := 0;
-  for I := 1 to N do
-    Result := ((Result shl 2) or (Result shr 30)) xor Ord(Value[I]);
-  Result := htOleStr or (Result and $0FFFFFFF);
-end;
-
 function GetHashType(VType: Word): Integer;
 begin
   case VType of
@@ -1550,10 +1502,17 @@ begin
 {$IFDEF DELPHI2009_UP}
     varUInt64:   Result := htInt64;
 {$ENDIF}
+{$IFDEF FPC}
+    varQWord:    Result := htInt64;
+{$ENDIF}
     varSingle:   Result := htDouble;
     varDouble:   Result := htDouble;
     varCurrency: Result := htDouble;
     varOleStr:   Result := htOleStr;
+    varString:   Result := htOleStr;
+{$IFDEF Supports_Unicode}
+    varUString:  Result := htOleStr;
+{$ENDIF}
     varDate:     Result := htDate;
     varUnknown:  Result := htObject;
     varVariant:  Result := htObject;
@@ -1563,6 +1522,64 @@ begin
     else
       Result := htNull;
   end;
+end;
+
+function VarEquals(const Left, Right: Variant): Boolean;
+var
+  L, R: PVarData;
+  LA, RA: PVarArray;
+begin
+  Result := False;
+  L := FindVarData(Left);
+  R := FindVarData(Right);
+  if VarIsArray(Left) and VarIsArray(Right) then begin
+    if (L^.VType and varByRef) <> 0 then
+      LA := PVarArray(L^.VPointer^)
+    else
+      LA := L^.VArray;
+    if (R^.VType and varByRef) <> 0 then
+      RA := PVarArray(R^.VPointer^)
+    else
+      RA := R^.VArray;
+    if LA = RA then Result := True;
+  end
+  else begin
+    if (L^.VType = varUnknown) and
+       (R^.VType = varUnknown) then
+      Result := L^.VUnknown = R^.VUnknown
+    else if (L^.VType = varUnknown or varByRef) and
+            (R^.VType = varUnknown) then
+      Result := Pointer(L^.VPointer^) = R^.VUnknown
+    else if (L^.VType = varUnknown) and
+            (R^.VType = varUnknown or varByRef) then
+      Result := L^.VUnknown = Pointer(R^.VPointer^)
+    else if (L^.VType = varUnknown or varByRef) and
+            (R^.VType = varUnknown or varByRef) then
+      Result := Pointer(L^.VPointer^) = Pointer(R^.VPointer^)
+    else if GetHashType(L^.VType and varTypeMask) = GetHashType(R^.VType and varTypeMask) then
+      try
+        Result := Left = Right;
+      except
+        Result := False;
+      end
+    else
+      Result := False;
+  end;
+end;
+
+{$IFDEF NEXTGEN}
+function HashOfString(const Value: string): Integer;
+{$ELSE}
+function HashOfString(const Value: WideString): Integer;
+{$ENDIF}
+var
+  I, N: Integer;
+begin
+  N := Length(Value);
+  Result := 0;
+  for I := 1 to N do
+    Result := ((Result shl 2) or (Result shr 30)) xor Ord(Value[I]);
+  Result := htOleStr or (Result and $0FFFFFFF);
 end;
 
 function HashOfVariant(const Value: Variant): Integer;
@@ -1586,6 +1603,10 @@ begin
 {$IFDEF DELPHI2009_UP}
     varUInt64:   Result := htInt64 or (P^.VUInt64 and $0FFFFFFF)
                            xor (not (P^.VUInt64 shr 3) and $10000000);
+{$ENDIF}
+{$IFDEF FPC}
+     varQWord:   Result := htInt64 or (P^.VQWord and $0FFFFFFF)
+                       xor (not (P^.VQWord shr 3) and $10000000);
 {$ENDIF}
     varSingle:   Result := htDouble or (P^.VInteger and $0FFFFFFF);
     varDouble:   Result := htDouble or ((P^.VInteger xor (P^.VInt64 shr 32))
@@ -1617,6 +1638,10 @@ begin
         varUInt64:   Result := htInt64 or (PUInt64(P^.VPointer)^ and $0FFFFFFF)
                                xor (not (PUInt64(P^.VPointer)^ shr 3)
                                and $10000000);
+{$ENDIF}
+{$IFDEF FPC}
+         varQWord:   Result := htInt64 or (PQWord(P^.VPointer)^ and $0FFFFFFF)
+                           xor (not (PQWord(P^.VPointer)^ shr 3) and $10000000);
 {$ENDIF}
         varSingle:   Result := htDouble or (PInteger(P^.VPointer)^
                                and $0FFFFFFF);
@@ -2491,7 +2516,7 @@ begin
   if OldHashCode = NewHashCode then
     Result := nil
   else begin
-     HashIndex := (OldHashCode and $7FFFFFFF) mod FCapacity;
+    HashIndex := (OldHashCode and $7FFFFFFF) mod FCapacity;
     Result := FIndices[HashIndex];
     Prev := nil;
     while Result <> nil do begin
@@ -2577,22 +2602,38 @@ begin
 end;
 {$ENDIF}
 
-function THashedList.Delete(Index: Integer): Variant;
+procedure THashedList.DeleteHash(Index, N: Integer);
 var
-  OldHashCode, NewHashCode, I, OldCount: Integer;
+  I, HashCode, NewHashCode, Count: Integer;
 begin
-  OldCount := Count;
-  Result := inherited Delete(Index);
-  if (Index >= 0) and (Index < OldCount) then begin
-    if Index < Count then begin
-      OldHashCode := HashOf(Result);
-      for I := Index to Count - 1 do begin
-        NewHashCode := HashOf(FList[I]);
-        FHashBucket.Modify(OldHashCode, NewHashCode, I);
-        OldHashCode := NewHashCode;
-      end;
+  Count := FCount - N;
+  if Index < Count then begin
+    for I := Index to Count - 1 do begin
+      HashCode := HashOf(FList[I]);
+      NewHashCode := HashOf(FList[I + N]);
+      FHashBucket.Modify(HashCode, NewHashCode, I);
     end;
-    FHashBucket.Delete(HashOf(Result), Count);
+  end;
+  for I := Count to FCount - 1 do begin
+    FHashBucket.Delete(HashOf(FList[I]), I);
+  end;
+end;
+
+function THashedList.Delete(Index: Integer): Variant;
+begin
+  if (Index >= 0) and (Index < FCount) then begin
+    Result := FList[Index];
+    DeleteHash(Index, 1);
+    UnShift(Index, 1);
+  end;
+end;
+
+procedure THashedList.DeleteRange(Index, Count: Integer);
+begin
+  if (Index >= 0) and (Index < FCount) then begin
+    if Count > FCount - Index then Count := FCount - Index;
+    DeleteHash(Index, Count);
+    UnShift(Index, Count);
   end;
 end;
 
@@ -2606,14 +2647,15 @@ procedure THashedList.Exchange(Index1, Index2: Integer);
 var
   HashCode1, HashCode2: Integer;
 begin
-  HashCode1 := HashOf(Get(Index1));
-  HashCode2 := HashOf(Get(Index2));
+  inherited Exchange(Index1, Index2);
+
+  HashCode1 := HashOf(FList[Index1]);
+  HashCode2 := HashOf(FList[Index2]);
   if HashCode1 <> HashCode2 then begin
-    FHashBucket.Modify(HashCode1, HashCode2, Index1);
-    FHashBucket.Modify(HashCode2, HashCode1, Index2);
+    FHashBucket.Modify(HashCode1, HashCode2, Index2);
+    FHashBucket.Modify(HashCode2, HashCode1, Index1);
   end;
 
-  inherited Exchange(Index1, Index2);
 end;
 
 function THashedList.HashOf(const Value: Variant): Integer;
@@ -2629,7 +2671,8 @@ function THashedList.IndexCompare(Index: Integer;
 var
   Item: Variant;
 begin
-  Item := Get(Index);
+  Item := FList[Index];
+(*
   if VarIsStr(Item) and VarIsStr(Value) then
 {$IFNDEF NEXTGEN}
     Result := WideCompareStr(Item, Value) = 0
@@ -2637,7 +2680,8 @@ begin
     Result := CompareStr(Item, Value) = 0
 {$ENDIF}
   else
-    Result := VarEquals(Item, Value)
+*)
+    Result := VarEquals(Item, Value);
 end;
 
 function THashedList.IndexOf(const Value: Variant): Integer;
@@ -2645,38 +2689,68 @@ begin
   Result := FHashBucket.IndexOf(HashOf(Value), Value, IndexCompare);
 end;
 
-procedure THashedList.Insert(Index: Integer; const Value: Variant);
+procedure THashedList.InsertHash(Index, N: Integer);
 var
-  NewHashCode, OldHashCode, I, LastIndex: Integer;
+  HashCode, NewHashCode, I: Integer;
 begin
-  LastIndex := Count;
-  inherited Insert(Index, Value);
-
-  NewHashCode := HashOf(Value);
-
-  if Index < LastIndex then begin
-    for I := Index to LastIndex - 1 do begin
-      OldHashCode := HashOf(Get(I + 1));
-      FHashBucket.Modify(OldHashCode, NewHashCode, I);
-      NewHashCode := OldHashCode;
+  if Index < FCount then begin
+    for I := Index to FCount + N - 1 do begin
+      NewHashCode := HashOf(FList[I]);
+      HashCode := HashOf(FList[I + N]);
+      FHashBucket.Modify(HashCode, NewHashCode, I);
+    end;
+    for I := FCount - N to FCount - 1 do begin
+      HashCode := HashOf(FList[I]);
+      FHashBucket.Add(HashCode, I);
     end;
   end;
+end;
 
-  FHashBucket.Add(NewHashCode, LastIndex);
+procedure THashedList.Insert(Index: Integer; const Value: Variant);
+begin
+  inherited Insert(Index, Value);
+  InsertHash(Index, 1);
+end;
+
+procedure THashedList.InsertRange(Index: Integer; const AList: IList);
+begin
+  inherited InsertRange(Index, AList);
+  InsertHash(Index, AList.Count);
+end;
+
+procedure THashedList.InsertRange(Index: Integer; const Container: Variant);
+begin
+  if VarIsList(Container) then begin
+    InsertRange(Index, VarToList(Container));
+  end
+  else if VarIsArray(Container) then begin
+    inherited InsertRange(Index, Container);
+    InsertHash(Index, Length(Container));
+  end;
+end;
+
+procedure THashedList.InsertRange(Index: Integer; const ConstArray: array of const);
+begin
+  inherited InsertRange(Index, ConstArray);
+  InsertHash(Index, Length(ConstArray));
 end;
 
 procedure THashedList.Put(Index: Integer; const Value: Variant);
 var
-  OldHashCode, NewHashCode: Integer;
+  HashCode, I: Integer;
 begin
-  OldHashCode := HashOf(Get(Index));
-  NewHashCode := HashOf(Value);
+  HashCode := HashOf(Value);
+  if Index < FCount then
+    FHashBucket.Modify(HashOf(FList[Index]), HashCode, Index)
+  else if Index = FCount then
+    FHashBucket.Add(HashCode, Index)
+  else begin
+    FHashBucket.Add(HashCode, Index);
+    HashCode := HashOf(Unassigned);
+    for I := FCount to Index - 1 do FHashBucket.Add(HashCode, I);
+  end;
 
   inherited Put(Index, Value);
-
-  if (OldHashCode <> NewHashCode) and
-    (FHashBucket.Modify(OldHashCode, NewHashCode, Index) = nil) then
-    FHashBucket.Add(NewHashCode, Index);
 end;
 
 { TCaseInsensitiveHashedList }
