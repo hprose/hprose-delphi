@@ -14,7 +14,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: Sep 11, 2014                             *
+ * LastModified: Jun 8, 2016                              *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -485,28 +485,6 @@ begin
   end;
 end;
 {$ENDIF}
-
-function GetStoredPropList(Instance: TObject; out PropList: PPropList): Integer;
-var
-  I, Count: Integer;
-  TempList: PPropList;
-begin
-  Count := GetPropList(PTypeInfo(Instance.ClassInfo), TempList);
-  PropList := nil;
-  Result := 0;
-  if Count > 0 then
-    try
-      for I := 0 to Count - 1 do
-        if IsStoredProp(Instance, TempList^[I]) then
-          Inc(Result);
-      GetMem(PropList, Result * SizeOf(Pointer));
-      for I := 0 to Result - 1 do
-        if IsStoredProp(Instance, TempList^[I]) then
-          PropList^[I] := TempList^[I];
-    finally
-      FreeMem(TempList);
-    end;
-end;
 
 type
   TFakeReaderRefer = class(TInterfacedObject, IReaderRefer)

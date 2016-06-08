@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Jun 7, 2016                              *
+ * LastModified: Jun 8, 2016                              *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -598,9 +598,19 @@ function VarIsIntf(const Value: Variant; const IID: TGUID): Boolean; overload;
 function VarToIntf(const Value: Variant; const IID: TGUID; out AIntf): Boolean;
 function IntfToObj(const Intf: IInterface): TInterfacedObject;
 
-function GetPropValue(Instance: TObject; PropInfo: PPropInfo): Variant;
+function GetPropValue(Instance: TObject; PropInfo: PPropInfo): Variant; overload;
+function GetPropValue(Instance: TObject; const Name: string): Variant; overload;
 procedure SetPropValue(Instance: TObject; PropInfo: PPropInfo;
-  const Value: Variant);
+  const Value: Variant); overload;
+procedure SetPropValue(Instance: TObject; const Name: string;
+  const Value: Variant); overload;
+
+function GetStoredPropList(Instance: TObject; out PropList: PPropList): Integer;
+
+function GetProperties(Instance: TObject): IMap;
+function GetStoredProperties(Instance: TObject): IMap;
+
+procedure SetProperties(Instance: TObject; const Properties: IMap);
 
 function CopyVarRec(const Item: TVarRec): TVarRec;
 function CreateConstArray(const Elements: array of const): TConstArray;
@@ -1305,6 +1315,11 @@ begin
   end;
 end;
 
+function GetPropValue(Instance: TObject; const Name: string): Variant;
+begin
+  Result := GetPropValue(Instance, GetPropInfo(Instance, Name));
+end;
+
 procedure SetPropValue(Instance: TObject; PropInfo: PPropInfo;
   const Value: Variant);
 var
@@ -1381,6 +1396,87 @@ begin
   else
     PropertyConvertError(GetTypeName(PropType));
   end;
+end;
+
+procedure SetPropValue(Instance: TObject; const Name: string;
+  const Value: Variant);
+begin
+  SetPropValue(Instance, GetPropInfo(Instance, Name), Value);
+end;
+
+function GetStoredPropList(Instance: TObject; out PropList: PPropList): Integer;
+var
+  I, J, Count: Integer;
+  TempList: PPropList;
+begin
+  Count := GetPropList(PTypeInfo(Instance.ClassInfo), TempList);
+  PropList := nil;
+  Result := 0;
+  if Count > 0 then
+    try
+      for I := 0 to Count - 1 do
+        if IsStoredProp(Instance, TempList^[I]) then
+          Inc(Result);
+      GetMem(PropList, Result * SizeOf(Pointer));
+      J := 0;
+      for I := 0 to Count - 1 do
+        if IsStoredProp(Instance, TempList^[I]) then begin
+          PropList^[J] := TempList^[I];
+          Inc(J);
+        end;
+    finally
+      FreeMem(TempList);
+    end;
+end;
+
+function GetProperties(Instance: TObject): IMap;
+var
+  I, Count: Integer;
+  TempList: PPropList;
+  PropInfo: PPropInfo;
+begin
+  Count := GetPropList(PTypeInfo(Instance.ClassInfo), TempList);
+  Result := THashMap.create;
+  if Count > 0 then
+    try
+      for I := 0 to Count - 1 do begin
+        PropInfo := TempList^[I];
+        Result[PropInfo^.Name] := GetPropValue(Instance, PropInfo);
+      end;
+    finally
+      FreeMem(TempList);
+    end;
+end;
+
+function GetStoredProperties(Instance: TObject): IMap;
+var
+  I, Count: Integer;
+  TempList: PPropList;
+  PropInfo: PPropInfo;
+begin
+  Count := GetPropList(PTypeInfo(Instance.ClassInfo), TempList);
+  Result := THashMap.create;
+  if Count > 0 then
+    try
+      for I := 0 to Count - 1 do begin
+        PropInfo := TempList^[I];
+        if IsStoredProp(Instance, PropInfo) then begin
+          Result[PropInfo^.Name] := GetPropValue(Instance, PropInfo);
+        end;
+      end;
+    finally
+      FreeMem(TempList);
+    end;
+end;
+
+procedure SetProperties(Instance: TObject; const Properties: IMap);
+var
+  I, Count: Integer;
+begin
+  Count := Properties.Count;
+  if (Count > 0) then
+    for I := 0 to Count - 1 do
+      SetPropValue(Instance, VarToStr(Properties.Keys[I]), Properties.Values[I]);
 end;
 
 const
@@ -3175,7 +3271,7 @@ begin
   if AnsiSameText(Name, 'Free') and (Length(Arguments) = 0) then
     Obj.Free
   else if Supports(Obj, IInvokeableVarObject, Intf) then
-    Variant(Dest) := Intf.Invoke(Name, Arguments);
+    Variant(Dest) := Intf.Invoke(Name, Arguments)
   else begin
 {$IFNDEF FPC}
     Result := GetMethodInfo(Obj, Name) <> nil;
