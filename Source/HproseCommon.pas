@@ -88,6 +88,7 @@ type
     function Add(const Value: Variant): Integer;
     procedure AddAll(const ArrayList: IList); overload;
     procedure AddAll(const Container: Variant); overload;
+    procedure AddAll(const ConstArray: array of const); overload;
     procedure Assign(const Source: IList);
     procedure Clear;
     function Contains(const Value: Variant): Boolean;
@@ -132,6 +133,7 @@ type
     function Add(const Value: Variant): Integer; virtual; abstract;
     procedure AddAll(const ArrayList: IList); overload; virtual; abstract;
     procedure AddAll(const Container: Variant); overload; virtual; abstract;
+    procedure AddAll(const ConstArray: array of const); overload; virtual; abstract;
     procedure Assign(const Source: IList); virtual;
     procedure Clear; virtual; abstract;
     function Contains(const Value: Variant): Boolean; virtual; abstract;
@@ -197,6 +199,7 @@ type
     function Add(const Value: Variant): Integer; override;
     procedure AddAll(const AList: IList); overload; override;
     procedure AddAll(const Container: Variant); overload; override;
+    procedure AddAll(const ConstArray: array of const); overload; override;
     procedure Clear; override;
     function Contains(const Value: Variant): Boolean; override;
     function Delete(Index: Integer): Variant; override;
@@ -1954,6 +1957,52 @@ begin
     for I := VarArrayLowBound(Container, 1) to
              VarArrayHighBound(Container, 1) do
       Add(Container[I]);
+  end;
+end;
+
+procedure TArrayList.AddAll(const ConstArray: array of const);
+var
+  I, N: Integer;
+  V: TVarRec;
+begin
+  N := Length(ConstArray);
+  for I := 0 to N - 1 do begin
+    V := ConstArray[I];
+    case V.VType of
+      vtInteger:       Add(V.VInteger);
+      vtBoolean:       Add(V.VBoolean);
+      vtExtended:      Add(V.VExtended^);
+{$IFNDEF NEXTGEN}
+      vtChar:          Add(WideString(V.VChar)[1]);
+      vtString:        Add(AnsiString(V.VString^));
+      vtPChar:         Add(AnsiString(V.VPChar));
+      vtAnsiString:    Add(AnsiString(V.VAnsiString));
+      vtPWideChar:     Add(WideString(V.VPWideChar));
+      vtWideString:    Add(WideString(V.VWideString));
+{$ELSE}
+      vtPWideChar:     Add(string(V.VPWideChar));
+      vtWideString:    Add(string(V.VWideString));
+{$ENDIF}
+      vtObject:
+        if V.VObject = nil then Add(Null) else Add(ObjToVar(V.VObject));
+      vtWideChar:      Add(WideString(V.VWideChar));
+      vtCurrency:      Add(V.VCurrency^);
+      vtVariant:       Add(V.VVariant^);
+      vtInterface:
+        if IInterface(V.VInterface) = nil then
+          Add(Null)
+        else
+          Add(IInterface(V.VInterface));
+      vtInt64:         Add(V.VInt64^);
+{$IFDEF FPC}
+      vtQWord:         Add(V.VQWord^);
+{$ENDIF}
+{$IFDEF Supports_Unicode}
+      vtUnicodeString: Add(UnicodeString(V.VUnicodeString));
+{$ENDIF}
+      vtPointer:       Add(NativeInt(V.VPointer));
+      vtClass:         Add(NativeInt(V.VClass));
+    end;
   end;
 end;
 
