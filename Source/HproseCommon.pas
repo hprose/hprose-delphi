@@ -117,6 +117,7 @@ type
     function First: Variant;
     function Last: Variant;
     procedure Pack;
+    procedure Reverse;
     property Item[Index: Integer]: Variant read Get write Put; default;
     property Capacity: Integer read GetCapacity write SetCapacity;
     property Count: Integer read GetCount write SetCount;
@@ -178,11 +179,11 @@ type
     procedure InsertRange(Index: Integer; const ConstArray: array of const); overload; virtual; abstract;
     function Join(const Glue: string = ',';
                   const LeftPad: string = '';
-                  const RightPad: string = ''): string; virtual;
+                  const RightPad: string = ''): string;
     class function Split(Str: string; const Separator: string = ',';
       Limit: Integer = 0; TrimItem: Boolean = False;
       SkipEmptyItem: Boolean = False; Sync: Boolean = True;
-      ReadWriteSync: Boolean = False): IList; virtual;
+      ReadWriteSync: Boolean = False): IList;
     procedure InitLock;
     procedure InitReadWriteLock;
     procedure Lock;
@@ -198,6 +199,7 @@ type
     function First: Variant;
     function Last: Variant;
     procedure Pack;
+    procedure Reverse;
     property Item[Index: Integer]: Variant read Get write Put; default;
     property Capacity: Integer read GetCapacity write SetCapacity;
     property Count: Integer read GetCount write SetCount;
@@ -431,12 +433,12 @@ type
     function Join(const ItemGlue: string = ';';
                   const KeyValueGlue: string = '=';
                   const LeftPad: string = '';
-                  const RightPad: string = ''): string; virtual;
+                  const RightPad: string = ''): string;
     class function Split(Str: string; const ItemSeparator: string = ';';
       const KeyValueSeparator: string = '='; Limit: Integer = 0;
       TrimKey: Boolean = False; TrimValue: Boolean = False;
       SkipEmptyKey: Boolean = False; SkipEmptyValue: Boolean = False;
-      Sync: Boolean = True; ReadWriteSync: Boolean = False): IMap; virtual;
+      Sync: Boolean = True; ReadWriteSync: Boolean = False): IMap;
     procedure InitLock;
     procedure InitReadWriteLock;
     procedure Lock;
@@ -2143,6 +2145,15 @@ var
   I: Integer;
 begin
   for I := Count - 1 downto 0 do if VarIsClear(Get(I)) then Delete(I);
+end;
+
+procedure TAbstractList.Reverse;
+var
+  I, Last: Integer;
+begin
+  if Count < 2 then Exit;
+  Last := Count - 1;
+  for I := 0 to Last shr 1 do Exchange(I, Last - I);
 end;
 
 { TArrayList }
