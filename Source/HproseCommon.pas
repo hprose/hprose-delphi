@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Jun 8, 2016                              *
+ * LastModified: Jun 11, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -78,44 +78,51 @@ type
     property Current: Variant read GetCurrent;
   end;
 
-  IList = interface(IReadWriteSync)
-  ['{DE925411-42B8-4DB3-A00C-B585C087EC4C}']
+  IImmutableList = interface(IReadWriteSync)
+  ['{1D116D24-E964-E019-FC27-AFE4BF2A181D}']
     function Get(Index: Integer): Variant;
-    procedure Put(Index: Integer; const Value: Variant);
     function GetCapacity: Integer;
     function GetCount: Integer;
-    procedure SetCapacity(NewCapacity: Integer);
-    procedure SetCount(NewCount: Integer);
-    function Add(const Value: Variant): Integer;
-    procedure AddAll(const AList: IList); overload;
-    procedure AddAll(const Container: Variant); overload;
-    procedure AddAll(const ConstArray: array of const); overload;
-    procedure Assign(const Source: IList);
-    procedure Clear;
     function Contains(const Value: Variant): Boolean;
-    function Delete(Index: Integer): Variant;
-    procedure DeleteRange(Index, Count: Integer);
-    procedure Exchange(Index1, Index2: Integer);
     function GetEnumerator: IListEnumerator;
     function IndexOf(const Value: Variant): Integer;
     function LastIndexOf(const Value: Variant): Integer;
-    procedure Insert(Index: Integer; const Value: Variant);
-    procedure InsertRange(Index: Integer; const AList: IList); overload;
-    procedure InsertRange(Index: Integer; const Container: Variant); overload;
-    procedure InsertRange(Index: Integer; const ConstArray: array of const);
     function Join(const Glue: string = ',';
                   const LeftPad: string = '';
                   const RightPad: string = ''): string;
-    procedure InitLock;
-    procedure InitReadWriteLock;
     procedure Lock;
     procedure Unlock;
-    procedure Move(CurIndex, NewIndex: Integer);
-    function Remove(const Value: Variant): Integer;
     function ToArray: TVariants; overload;
     function ToArray(VarType: TVarType): Variant; overload;
     function First: Variant;
     function Last: Variant;
+    property Item[Index: Integer]: Variant read Get; default;
+    property Capacity: Integer read GetCapacity;
+    property Count: Integer read GetCount;
+  end;
+
+  IList = interface(IImmutableList)
+  ['{DE925411-42B8-4DB3-A00C-B585C087EC4C}']
+    procedure Put(Index: Integer; const Value: Variant);
+    procedure SetCapacity(NewCapacity: Integer);
+    procedure SetCount(NewCount: Integer);
+    function Add(const Value: Variant): Integer;
+    procedure AddAll(const AList: IImmutableList); overload;
+    procedure AddAll(const Container: Variant); overload;
+    procedure AddAll(const ConstArray: array of const); overload;
+    procedure Assign(const Source: IImmutableList);
+    procedure Clear;
+    function Delete(Index: Integer): Variant;
+    procedure DeleteRange(Index, Count: Integer);
+    procedure Exchange(Index1, Index2: Integer);
+    procedure Insert(Index: Integer; const Value: Variant);
+    procedure InsertRange(Index: Integer; const AList: IImmutableList); overload;
+    procedure InsertRange(Index: Integer; const Container: Variant); overload;
+    procedure InsertRange(Index: Integer; const ConstArray: array of const);
+    procedure InitLock;
+    procedure InitReadWriteLock;
+    procedure Move(CurIndex, NewIndex: Integer);
+    function Remove(const Value: Variant): Integer;
     procedure Pack;
     procedure Reverse;
     property Item[Index: Integer]: Variant read Get write Put; default;
@@ -161,10 +168,10 @@ type
     {$ENDIF}
     destructor Destroy; override;
     function Add(const Value: Variant): Integer; virtual; abstract;
-    procedure AddAll(const AList: IList); overload; virtual; abstract;
+    procedure AddAll(const AList: IImmutableList); overload; virtual; abstract;
     procedure AddAll(const Container: Variant); overload; virtual; abstract;
     procedure AddAll(const ConstArray: array of const); overload; virtual; abstract;
-    procedure Assign(const Source: IList); virtual;
+    procedure Assign(const Source: IImmutableList); virtual;
     procedure Clear; virtual; abstract;
     function Contains(const Value: Variant): Boolean; virtual; abstract;
     function Delete(Index: Integer): Variant; virtual; abstract;
@@ -174,7 +181,7 @@ type
     function IndexOf(const Value: Variant): Integer; virtual; abstract;
     function LastIndexOf(const Value: Variant): Integer; virtual; abstract;
     procedure Insert(Index: Integer; const Value: Variant); virtual; abstract;
-    procedure InsertRange(Index: Integer; const AList: IList); overload; virtual; abstract;
+    procedure InsertRange(Index: Integer; const AList: IImmutableList); overload; virtual; abstract;
     procedure InsertRange(Index: Integer; const Container: Variant); overload; virtual; abstract;
     procedure InsertRange(Index: Integer; const ConstArray: array of const); overload; virtual; abstract;
     function Join(const Glue: string = ',';
@@ -233,7 +240,7 @@ type
     constructor Create(Capacity: Integer = 4; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); overload; override;
     function Add(const Value: Variant): Integer; override;
-    procedure AddAll(const AList: IList); overload; override;
+    procedure AddAll(const AList: IImmutableList); overload; override;
     procedure AddAll(const Container: Variant); overload; override;
     procedure AddAll(const ConstArray: array of const); overload; override;
     procedure Clear; override;
@@ -244,7 +251,7 @@ type
     function IndexOf(const Value: Variant): Integer; override;
     function LastIndexOf(const Value: Variant): Integer; override;
     procedure Insert(Index: Integer; const Value: Variant); override;
-    procedure InsertRange(Index: Integer; const AList: IList); overload; override;
+    procedure InsertRange(Index: Integer; const AList: IImmutableList); overload; override;
     procedure InsertRange(Index: Integer; const Container: Variant); overload; override;
     procedure InsertRange(Index: Integer; const ConstArray: array of const); overload; override;
     procedure Move(CurIndex, NewIndex: Integer); override;
@@ -332,7 +339,7 @@ type
     function IndexOf(const Value: Variant): Integer; override;
     function LastIndexOf(const Value: Variant): Integer; override;
     procedure Insert(Index: Integer; const Value: Variant); override;
-    procedure InsertRange(Index: Integer; const AList: IList); overload; override;
+    procedure InsertRange(Index: Integer; const AList: IImmutableList); overload; override;
     procedure InsertRange(Index: Integer; const Container: Variant); overload; override;
     procedure InsertRange(Index: Integer; const ConstArray: array of const); overload; override;
   end;
@@ -370,8 +377,8 @@ type
   ['{28B78387-CB07-4C28-B642-09716DAA2170}']
     procedure Assign(const Source: IMap);
     function GetCount: Integer;
-    function GetKeys: IList;
-    function GetValues: IList;
+    function GetKeys: IImmutableList;
+    function GetValues: IImmutableList;
     function GetKey(const Value: Variant): Variant;
     function Get(const Key: Variant): Variant;
     procedure Put(const Key, Value: Variant);
@@ -388,7 +395,7 @@ type
     procedure InitReadWriteLock;
     procedure Lock;
     procedure Unlock;
-    procedure PutAll(const AList: IList); overload;
+    procedure PutAll(const AList: IImmutableList); overload;
     procedure PutAll(const AMap: IMap); overload;
     procedure PutAll(const Container: Variant); overload;
     function ToList(ListClass: TListClass; Sync: Boolean = True;
@@ -396,8 +403,8 @@ type
     property Count: Integer read GetCount;
     property Key[const Value: Variant]: Variant read GetKey;
     property Value[const Key: Variant]: Variant read Get write Put; default;
-    property Keys: IList read GetKeys;
-    property Values: IList read GetValues;
+    property Keys: IImmutableList read GetKeys;
+    property Values: IImmutableList read GetValues;
   end;
 
   TAbstractMap = class(TInterfacedObject, IMap)
@@ -405,10 +412,10 @@ type
     FLock: TCriticalSection;
     FReadWriteLock: TMultiReadExclusiveWriteSynchronizer;
   protected
-    procedure Assign(const Source: IMap);
+    procedure Assign(const Source: IMap); virtual; abstract;
     function GetCount: Integer; virtual; abstract;
-    function GetKeys: IList; virtual; abstract;
-    function GetValues: IList; virtual; abstract;
+    function GetKeys: IImmutableList; virtual; abstract;
+    function GetValues: IImmutableList; virtual; abstract;
     function GetKey(const Value: Variant): Variant; virtual; abstract;
     function Get(const Key: Variant): Variant; virtual; abstract;
     procedure Put(const Key, Value: Variant); virtual; abstract;
@@ -447,7 +454,7 @@ type
     procedure EndRead;
     function BeginWrite: Boolean;
     procedure EndWrite;
-    procedure PutAll(const AList: IList); overload; virtual; abstract;
+    procedure PutAll(const AList: IImmutableList); overload; virtual; abstract;
     procedure PutAll(const AMap: IMap); overload; virtual; abstract;
     procedure PutAll(const Container: Variant); overload; virtual; abstract;
     function ToList(ListClass: TListClass; Sync: Boolean = True;
@@ -455,8 +462,8 @@ type
     property Count: Integer read GetCount;
     property Key[const Value: Variant]: Variant read GetKey;
     property Value[const Key: Variant]: Variant read Get write Put; default;
-    property Keys: IList read GetKeys;
-    property Values: IList read GetValues;
+    property Keys: IImmutableList read GetKeys;
+    property Values: IImmutableList read GetValues;
   end;
 
   TMapClass = class of TAbstractMap;
@@ -476,8 +483,8 @@ type
     FValues: IList;
   protected
     function GetCount: Integer; override;
-    function GetKeys: IList; override;
-    function GetValues: IList; override;
+    function GetKeys: IImmutableList; override;
+    function GetValues: IImmutableList; override;
     function GetKey(const Value: Variant): Variant; override;
     function Get(const Key: Variant): Variant; override;
     procedure Put(const Key, Value: Variant); override;
@@ -485,11 +492,12 @@ type
   public
     constructor Create(Capacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); overload; override;
+    procedure Assign(const Source: IMap); override;
     procedure Clear; override;
     function ContainsKey(const Key: Variant): Boolean; override;
     function ContainsValue(const Value: Variant): Boolean; override;
     function Delete(const Key: Variant): Variant; override;
-    procedure PutAll(const AList: IList); overload; override;
+    procedure PutAll(const AList: IImmutableList); overload; override;
     procedure PutAll(const AMap: IMap); overload; override;
     procedure PutAll(const Container: Variant); overload; override;
     function ToList(ListClass: TListClass; Sync: Boolean = True;
@@ -499,8 +507,8 @@ type
     property Key[const Value: Variant]: Variant read GetKey;
     property Value[const Key: Variant]: Variant read Get write Put; default;
     property Count: Integer read GetCount;
-    property Keys: IList read GetKeys;
-    property Values: IList read GetValues;
+    property Keys: IImmutableList read GetKeys;
+    property Values: IImmutableList read GetValues;
   end;
 
   { function ContainsValue is an O(1) operation in THashedMap,
@@ -648,7 +656,6 @@ function VarToObj(const Value: Variant; AClass: TClass):
 function VarToObj(const Value: Variant; AClass: TClass; out AObject):
   Boolean; overload;
 function ObjToVar(const Value: TObject): Variant;
-function VarEquals(const Left, Right: Variant): Boolean;
 function VarIsList(const Value: Variant): Boolean;
 function VarIsMap(const Value: Variant): Boolean;
 function VarToList(const Value: Variant): IList;
@@ -657,6 +664,8 @@ function VarIsIntf(const Value: Variant): Boolean; overload;
 function VarIsIntf(const Value: Variant; const IID: TGUID): Boolean; overload;
 function VarToIntf(const Value: Variant; const IID: TGUID; out AIntf): Boolean;
 function IntfToObj(const Intf: IInterface): TInterfacedObject;
+
+function VarEquals(const Left, Right: Variant): Boolean;
 
 function GetPropValue(Instance: TObject; PropInfo: PPropInfo): Variant; overload;
 function GetPropValue(Instance: TObject; const Name: string): Variant; overload;
@@ -2064,7 +2073,7 @@ begin
   FReadWriteLock.EndWrite;
 end;
 
-procedure TAbstractList.Assign(const Source: IList);
+procedure TAbstractList.Assign(const Source: IImmutableList);
 var
   I: Integer;
 begin
@@ -2166,7 +2175,7 @@ begin
   Inc(FCount);
 end;
 
-procedure TArrayList.AddAll(const AList: IList);
+procedure TArrayList.AddAll(const AList: IImmutableList);
 var
   I: Integer;
 begin
@@ -2351,7 +2360,7 @@ begin
   Inc(FCount);
 end;
 
-procedure TArrayList.InsertRange(Index: Integer; const AList: IList);
+procedure TArrayList.InsertRange(Index: Integer; const AList: IImmutableList);
 var
   I, N: Integer;
 begin
@@ -2817,7 +2826,7 @@ begin
   InsertHash(Index, 1);
 end;
 
-procedure THashedList.InsertRange(Index: Integer; const AList: IList);
+procedure THashedList.InsertRange(Index: Integer; const AList: IImmutableList);
 begin
   inherited InsertRange(Index, AList);
   InsertHash(Index, AList.Count);
@@ -3026,12 +3035,6 @@ begin
   FReadWriteLock.EndWrite;
 end;
 
-procedure TAbstractMap.Assign(const Source: IMap);
-begin
-  Keys.Assign(Source.Keys);
-  Values.Assign(Source.Values);
-end;
-
 function TAbstractMap.Join(const ItemGlue, KeyValueGlue, LeftPad,
   RightPad: string): string;
 var
@@ -3116,6 +3119,12 @@ end;
 
 { THashMap }
 
+procedure THashMap.Assign(const Source: IMap);
+begin
+  FKeys.Assign(Source.Keys);
+  FValues.Assign(Source.Values);
+end;
+
 procedure THashMap.Clear;
 begin
   FKeys.Clear;
@@ -3170,7 +3179,7 @@ end;
 procedure THashMap.PutAll(const AMap: IMap);
 var
   I: Integer;
-  K, V: IList;
+  K, V: IImmutableList;
 begin
   K := AMap.Keys;
   V := AMap.Values;
@@ -3193,7 +3202,7 @@ begin
   end;
 end;
 
-procedure THashMap.PutAll(const AList: IList);
+procedure THashMap.PutAll(const AList: IImmutableList);
 var
   I: Integer;
 begin
@@ -3233,12 +3242,12 @@ begin
       and (FKeys[I] <= MaxListSize) then Result.Put(FKeys[I], FValues[I]);
 end;
 
-function THashMap.GetKeys: IList;
+function THashMap.GetKeys: IImmutableList;
 begin
   Result := FKeys;
 end;
 
-function THashMap.GetValues: IList;
+function THashMap.GetValues: IImmutableList;
 begin
   Result := FValues;
 end;
@@ -4218,6 +4227,7 @@ initialization
 {$ENDIF}
 
 {$IFDEF Supports_Generics}
+  THproseClassManager.Register<TArrayList, IImmutableList>('!IImmutableList');
   THproseClassManager.Register<TArrayList, IList>('!List');
   THproseClassManager.Register<TArrayList, IArrayList>('!ArrayList');
   THproseClassManager.Register<THashedList, IHashedList>('!HashedList');
@@ -4228,6 +4238,7 @@ initialization
   THproseClassManager.Register<TCaseInsensitiveHashMap, ICaseInsensitiveHashMap>('!CaseInsensitiveHashMap');
   THproseClassManager.Register<TCaseInsensitiveHashedMap, ICaseInsensitiveHashedMap>('!CaseInsensitiveHashedMap');
 {$ELSE}
+  RegisterClass(TArrayList, IImmutableList, '!IImmutableList');
   RegisterClass(TArrayList, IList, '!List');
   RegisterClass(TArrayList, IArrayList, '!ArrayList');
   RegisterClass(THashedList, IHashedList, '!HashedList');

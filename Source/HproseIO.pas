@@ -4507,7 +4507,7 @@ end;
 procedure FreePropertiesCache;
 var
   I: Integer;
-  CacheValues: IList;
+  CacheValues: IImmutableList;
   CachePointer: PSerializeCache;
 begin
   PropertiesCache.Lock;
