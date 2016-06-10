@@ -116,10 +116,13 @@ type
     function ToArray(VarType: TVarType): Variant; overload;
     function First: Variant;
     function Last: Variant;
+    procedure Pack;
     property Item[Index: Integer]: Variant read Get write Put; default;
     property Capacity: Integer read GetCapacity write SetCapacity;
     property Count: Integer read GetCount write SetCount;
   end;
+
+  { TAbstractList }
 
   TAbstractList = class(TInterfacedObject, IList)
   private
@@ -194,6 +197,7 @@ type
     function ToArray(VarType: TVarType): Variant; overload; virtual; abstract;
     function First: Variant;
     function Last: Variant;
+    procedure Pack;
     property Item[Index: Integer]: Variant read Get write Put; default;
     property Capacity: Integer read GetCapacity write SetCapacity;
     property Count: Integer read GetCount write SetCount;
@@ -2072,7 +2076,8 @@ begin
   Result := TListEnumerator.Create(Self);
 end;
 
-function TAbstractList.Join(const Glue, LeftPad, RightPad: string): string;
+function TAbstractList.Join(const Glue: string; const LeftPad: string;
+  const RightPad: string): string;
 var
   Buffer: TStringBuffer;
   E: IListEnumerator;
@@ -2131,6 +2136,13 @@ end;
 function TAbstractList.Last: Variant;
 begin
   Result := Get(Count - 1);
+end;
+
+procedure TAbstractList.Pack;
+var
+  I: Integer;
+begin
+  for I := Count - 1 downto 0 do if VarIsClear(Get(I)) then Delete(I);
 end;
 
 { TArrayList }
