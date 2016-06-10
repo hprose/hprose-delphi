@@ -98,6 +98,7 @@ type
     procedure Exchange(Index1, Index2: Integer);
     function GetEnumerator: IListEnumerator;
     function IndexOf(const Value: Variant): Integer;
+    function LastIndexOf(const Value: Variant): Integer;
     procedure Insert(Index: Integer; const Value: Variant);
     procedure InsertRange(Index: Integer; const AList: IList); overload;
     procedure InsertRange(Index: Integer; const Container: Variant); overload;
@@ -113,6 +114,8 @@ type
     function Remove(const Value: Variant): Integer;
     function ToArray: TVariants; overload;
     function ToArray(VarType: TVarType): Variant; overload;
+    function First: Variant;
+    function Last: Variant;
     property Item[Index: Integer]: Variant read Get write Put; default;
     property Capacity: Integer read GetCapacity write SetCapacity;
     property Count: Integer read GetCount write SetCount;
@@ -165,6 +168,7 @@ type
     procedure Exchange(Index1, Index2: Integer); virtual; abstract;
     function GetEnumerator: IListEnumerator; virtual;
     function IndexOf(const Value: Variant): Integer; virtual; abstract;
+    function LastIndexOf(const Value: Variant): Integer; virtual; abstract;
     procedure Insert(Index: Integer; const Value: Variant); virtual; abstract;
     procedure InsertRange(Index: Integer; const AList: IList); overload; virtual; abstract;
     procedure InsertRange(Index: Integer; const Container: Variant); overload; virtual; abstract;
@@ -188,6 +192,8 @@ type
     function Remove(const Value: Variant): Integer; virtual; abstract;
     function ToArray: TVariants; overload; virtual; abstract;
     function ToArray(VarType: TVarType): Variant; overload; virtual; abstract;
+    function First: Variant;
+    function Last: Variant;
     property Item[Index: Integer]: Variant read Get write Put; default;
     property Capacity: Integer read GetCapacity write SetCapacity;
     property Count: Integer read GetCount write SetCount;
@@ -198,6 +204,8 @@ type
   IArrayList = interface(IList)
   ['{0D12803C-6B0B-476B-A9E3-C219BF651BD1}']
   end;
+
+  { TArrayList }
 
   TArrayList = class(TAbstractList, IArrayList)
   private
@@ -228,6 +236,7 @@ type
     procedure DeleteRange(Index, Count: Integer); override;
     procedure Exchange(Index1, Index2: Integer); override;
     function IndexOf(const Value: Variant): Integer; override;
+    function LastIndexOf(const Value: Variant): Integer; override;
     procedure Insert(Index: Integer; const Value: Variant); override;
     procedure InsertRange(Index: Integer; const AList: IList); overload; override;
     procedure InsertRange(Index: Integer; const Container: Variant); overload; override;
@@ -244,6 +253,7 @@ type
   PHashItem = ^THashItem;
 
   THashItem = record
+    Prev: PHashItem;
     Next: PHashItem;
     Index: Integer;
     HashCode: Integer;
@@ -254,6 +264,8 @@ type
   TIndexCompareMethod = function (Index: Integer;
     const Value: Variant): Boolean of object;
 
+  { THashBucket }
+
   THashBucket = class(TObject)
   private
     FCount: Integer;
@@ -262,6 +274,9 @@ type
     FIndices: THashItemDynArray;
     procedure Grow;
     procedure SetCapacity(NewCapacity: Integer);
+    function GetHashIndex(HashCode: Integer): Integer;
+    procedure Insert(Item: PHashItem);
+    function Remove(HashCode, Index: Integer): PHashItem;
   public
     constructor Create(Capacity: Integer = 16; Factor: Single = 0.75);
     destructor Destroy; override;
@@ -269,6 +284,8 @@ type
     procedure Clear;
     procedure Delete(HashCode, Index: Integer);
     function IndexOf(HashCode: Integer; const Value: Variant;
+      CompareProc: TIndexCompareMethod): Integer;
+    function LastIndexOf(HashCode: Integer; const Value: Variant;
       CompareProc: TIndexCompareMethod): Integer;
     function Modify(OldHashCode, NewHashCode, Index: Integer): PHashItem;
     property Count: Integer read FCount;
@@ -307,6 +324,7 @@ type
     procedure DeleteRange(Index, Count: Integer); override;
     procedure Exchange(Index1, Index2: Integer); override;
     function IndexOf(const Value: Variant): Integer; override;
+    function LastIndexOf(const Value: Variant): Integer; override;
     procedure Insert(Index: Integer; const Value: Variant); override;
     procedure InsertRange(Index: Integer; const AList: IList); overload; override;
     procedure InsertRange(Index: Integer; const Container: Variant); overload; override;
@@ -2105,6 +2123,16 @@ begin
   if not SkipEmptyItem or (Str <> '') then Result.Add(Str);
 end;
 
+function TAbstractList.First: Variant;
+begin
+  Result := Get(0);
+end;
+
+function TAbstractList.Last: Variant;
+begin
+  Result := Get(Count - 1);
+end;
+
 { TArrayList }
 
 function TArrayList.Add(const Value: Variant): Integer;
@@ -2161,7 +2189,8 @@ begin
 end;
 
 
-constructor TArrayList.Create(Capacity: Integer; Sync, ReadWriteSync: Boolean);
+constructor TArrayList.Create(Capacity: Integer; Sync: Boolean;
+  ReadWriteSync: Boolean);
 begin
   if Sync then InitLock;
   if ReadWriteSync then InitReadWriteLock;
@@ -2270,6 +2299,18 @@ var
   I: Integer;
 begin
   for I := 0 to FCount - 1 do
+    if VarEquals(FList[I], Value) then begin
+      Result := I;
+      Exit;
+    end;
+  Result := -1;
+end;
+
+function TArrayList.LastIndexOf(const Value: Variant): Integer;
+var
+  I: Integer;
+begin
+  for I := FCount - 1 downto 0 do
     if VarEquals(FList[I], Value) then begin
       Result := I;
       Exit;
@@ -2408,35 +2449,6 @@ end;
 
 { THashBucket }
 
-function THashBucket.Add(HashCode, Index: Integer): PHashItem;
-var
-  HashIndex: Integer;
-begin
-  if FCount * FFactor >= FCapacity then Grow;
-  HashIndex := (HashCode and $7FFFFFFF) mod FCapacity;
-  System.New(Result);
-  Result.HashCode := HashCode;
-  Result.Index := Index;
-  Result.Next := FIndices[HashIndex];
-  FIndices[HashIndex] := Result;
-  Inc(FCount);
-end;
-
-procedure THashBucket.Clear;
-var
-  I: Integer;
-  HashItem: PHashItem;
-begin
-  for I := 0 to FCapacity - 1 do begin
-    while FIndices[I] <> nil do begin
-      HashItem := FIndices[I].Next;
-      Dispose(FIndices[I]);
-      FIndices[I] := HashItem;
-    end;
-  end;
-  FCount := 0;
-end;
-
 constructor THashBucket.Create(Capacity: Integer; Factor: Single);
 begin
   FCount := 0;
@@ -2445,26 +2457,105 @@ begin
   SetLength(FIndices, FCapacity);
 end;
 
-procedure THashBucket.Delete(HashCode, Index: Integer);
+function THashBucket.GetHashIndex(HashCode: Integer): Integer;
+begin
+  Result := (HashCode and $7FFFFFFF) mod FCapacity;
+end;
+
+procedure THashBucket.Insert(Item: PHashItem);
 var
   HashIndex: Integer;
-  HashItem, Prev: PHashItem;
+  TempItem: PHashItem;
 begin
-  HashIndex := (HashCode and $7FFFFFFF) mod FCapacity;
-  HashItem := FIndices[HashIndex];
-  Prev := nil;
-  while HashItem <> nil do begin
-    if HashItem.Index = Index then begin
-      if Prev <> nil then
-        Prev.Next := HashItem.Next
-      else
-        FIndices[HashIndex] := HashItem.Next;
-      Dispose(HashItem);
-      Dec(FCount);
+  HashIndex := GetHashIndex(Item.HashCode);
+  if FIndices[HashIndex] = nil then begin
+    Item.Prev := Item;
+    Item.Next := nil;
+    FIndices[HashIndex] := Item;
+  end
+  else begin
+    TempItem := FIndices[HashIndex].Prev;
+    repeat
+      if Item.Index >= TempItem.Index then begin
+        Item.Prev := TempItem;
+        Item.Next := TempItem.Next;
+        TempItem.Next := Item;
+        if Item.Next = nil then
+          FIndices[HashIndex].Prev := Item
+        else
+          Item.Next.Prev := Item;
+        Exit;
+      end;
+      TempItem := TempItem.Prev;
+    until TempItem.Next = nil;
+    Item.Prev := Findices[HashIndex].Prev;
+    Item.Next := Findices[HashIndex];
+    Item.Next.Prev := Item;
+    FIndices[HashIndex] := Item;
+  end;
+end;
+
+function THashBucket.Add(HashCode, Index: Integer): PHashItem;
+begin
+  if FCount * FFactor >= FCapacity then Grow;
+  System.New(Result);
+  Result.HashCode := HashCode;
+  Result.Index := Index;
+  Insert(Result);
+  Inc(FCount);
+end;
+
+procedure THashBucket.Clear;
+var
+  I: Integer;
+  Item: PHashItem;
+begin
+  for I := 0 to FCapacity - 1 do begin
+    while FIndices[I] <> nil do begin
+      Item := FIndices[I].Next;
+      Dispose(FIndices[I]);
+      FIndices[I] := Item;
+    end;
+  end;
+  FCount := 0;
+end;
+
+function THashBucket.Remove(HashCode, Index: Integer): PHashItem;
+var
+  HashIndex: Integer;
+begin
+  HashIndex := GetHashIndex(HashCode);
+  Result := FIndices[HashIndex];
+  while Result <> nil do begin
+    if Result.Index = Index then begin
+      if Result.Prev = Result then
+        FIndices[HashIndex] := nil
+      else if Result.Prev.Next = nil then begin
+        Findices[HashIndex] := Result.Next;
+        Result.Next.Prev := Result.Prev;
+      end
+      else if Result.Next = nil then begin
+        Result.Prev.Next := Result.Next;
+        Findices[HashIndex].Prev := Result.Prev;
+      end
+      else begin
+        Result.Prev.Next := Result.Next;
+        Result.Next.Prev := Result.Prev;
+      end;
       Exit;
     end;
-    Prev := HashItem;
-    HashItem := HashItem.Next;
+    Result := Result.Next;
+  end;
+end;
+
+procedure THashBucket.Delete(HashCode, Index: Integer);
+var
+  Item: PHashItem;
+begin
+  Item := Remove(HashCode, Index);
+  if Item <> nil then begin
+    Dispose(Item);
+    Dec(FCount);
   end;
 end;
 
@@ -2492,56 +2583,57 @@ function THashBucket.IndexOf(HashCode: Integer; const Value: Variant;
   CompareProc: TIndexCompareMethod): Integer;
 var
   HashIndex: Integer;
-  HashItem: PHashItem;
+  Item: PHashItem;
 begin
   Result := -1;
-  HashIndex := (HashCode and $7FFFFFFF) mod FCapacity;
-  HashItem := FIndices[HashIndex];
-  while HashItem <> nil do
-    if (HashItem.HashCode = HashCode) and
-       CompareProc(HashItem.Index, Value) then begin
-      Result := HashItem.Index;
+  HashIndex := GetHashIndex(HashCode);
+  Item := FIndices[HashIndex];
+  while Item <> nil do begin
+    if (Item.HashCode = HashCode) and CompareProc(Item.Index, Value) then begin
+      Result := Item.Index;
       Exit;
-    end
-    else
-      HashItem := HashItem.Next;
+    end;
+    Item := Item.Next;
+  end;
+end;
+
+function THashBucket.LastIndexOf(HashCode: Integer; const Value: Variant;
+  CompareProc: TIndexCompareMethod): Integer;
+var
+  HashIndex: Integer;
+  Item: PHashItem;
+begin
+  Result := -1;
+  HashIndex := GetHashIndex(HashCode);
+  Item := FIndices[HashIndex];
+  if Item = nil then Exit;
+  Item := Item.Prev;
+  repeat
+    if (Item.HashCode = HashCode) and CompareProc(Item.Index, Value) then begin
+      Result := Item.Index;
+      Exit;
+    end;
+    Item := Item.Prev;
+  until Item.Next = nil;
 end;
 
 function THashBucket.Modify(OldHashCode, NewHashCode,
   Index: Integer): PHashItem;
-var
-  HashIndex: Integer;
-  Prev: PHashItem;
 begin
   if OldHashCode = NewHashCode then
     Result := nil
   else begin
-    HashIndex := (OldHashCode and $7FFFFFFF) mod FCapacity;
-    Result := FIndices[HashIndex];
-    Prev := nil;
-    while Result <> nil do begin
-      if Result.Index = Index then begin
-        if Prev <> nil then
-          Prev.Next := Result.Next
-       else
-          FIndices[HashIndex] := Result.Next;
-        Result.HashCode := NewHashCode;
-        HashIndex := (NewHashCode and $7FFFFFFF) mod FCapacity;
-        Result.Next := FIndices[HashIndex];
-        FIndices[HashIndex] := Result;
-        Exit;
-      end;
-      Prev := Result;
-      Result := Result.Next;
-    end;
+    Result := Remove(OldHashCode, Index);
+    Result.HashCode := NewHashCode;
+    Insert(Result);
   end;
 end;
 
 procedure THashBucket.SetCapacity(NewCapacity: Integer);
 var
-  HashIndex, I: Integer;
-  NewIndices: THashItemDynArray;
-  HashItem, NewHashItem: PHashItem;
+  OldCapacity, I: Integer;
+  OldIndices, NewIndices: THashItemDynArray;
+  Item, Next: PHashItem;
 begin
   if (NewCapacity < 0) or (NewCapacity > MaxListSize) then
     raise EHashBucketError.CreateResFmt(@SListCapacityError, [NewCapacity]);
@@ -2553,18 +2645,18 @@ begin
   end
   else begin
     SetLength(NewIndices, NewCapacity);
-    for I := 0 to FCapacity - 1 do begin
-      HashItem := FIndices[I];
-      while HashItem <> nil do begin
-        NewHashItem := HashItem;
-        HashItem := HashItem.Next;
-        HashIndex := (NewHashItem.HashCode and $7FFFFFFF) mod NewCapacity;
-        NewHashItem.Next := NewIndices[HashIndex];
-        NewIndices[HashIndex] := NewHashItem;
-      end;
-    end;
+    OldIndices := FIndices;
+    OldCapacity := FCapacity;
     FIndices := NewIndices;
     FCapacity := NewCapacity;
+    for I := 0 to OldCapacity - 1 do begin
+      Item := OldIndices[I];
+      while Item <> nil do begin
+        Next := Item.Next;
+        Insert(Item);
+        Item := Next;
+      end;
+    end;
   end;
 end;
 
@@ -2614,9 +2706,8 @@ begin
       FHashBucket.Modify(HashCode, NewHashCode, I);
     end;
   end;
-  for I := Count to FCount - 1 do begin
+  for I := Count to FCount - 1 do
     FHashBucket.Delete(HashOf(FList[I]), I);
-  end;
 end;
 
 function THashedList.Delete(Index: Integer): Variant;
@@ -2668,20 +2759,8 @@ end;
 
 function THashedList.IndexCompare(Index: Integer;
   const Value: Variant): Boolean;
-var
-  Item: Variant;
 begin
-  Item := FList[Index];
-(*
-  if VarIsStr(Item) and VarIsStr(Value) then
-{$IFNDEF NEXTGEN}
-    Result := WideCompareStr(Item, Value) = 0
-{$ELSE}
-    Result := CompareStr(Item, Value) = 0
-{$ENDIF}
-  else
-*)
-    Result := VarEquals(Item, Value);
+  Result := VarEquals(FList[Index], Value);
 end;
 
 function THashedList.IndexOf(const Value: Variant): Integer;
@@ -2689,20 +2768,23 @@ begin
   Result := FHashBucket.IndexOf(HashOf(Value), Value, IndexCompare);
 end;
 
+function THashedList.LastIndexOf(const Value: Variant): Integer;
+begin
+  Result := FHashBucket.LastIndexOf(HashOf(Value), Value, IndexCompare);
+end;
+
 procedure THashedList.InsertHash(Index, N: Integer);
 var
   HashCode, NewHashCode, I: Integer;
 begin
   if Index < FCount then begin
-    for I := Index to FCount + N - 1 do begin
+    for I := Index to FCount - N - 1 do begin
       NewHashCode := HashOf(FList[I]);
       HashCode := HashOf(FList[I + N]);
       FHashBucket.Modify(HashCode, NewHashCode, I);
     end;
-    for I := FCount - N to FCount - 1 do begin
-      HashCode := HashOf(FList[I]);
-      FHashBucket.Add(HashCode, I);
-    end;
+    for I := FCount - N to FCount - 1 do
+      FHashBucket.Add(HashOf(FList[I]), I);
   end;
 end;
 
