@@ -177,7 +177,8 @@
 
 {$ifdef FPC}
   {$define Supports_UInt64}
-  {$mode DELPHI}
+  {$mode objfpc}
+  {$inline on}
 {$endif}
 
 {$if defined(FPC) and (FPC_FULLVERSION > 20400)}

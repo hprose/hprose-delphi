@@ -14,7 +14,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: Jun 8, 2016                              *
+ * LastModified: Jun 11, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -1305,18 +1305,18 @@ end;
 
 procedure THproseReader.ReadClass;
 var
-  ClassName: string;
+  Name: string;
   I, Count: Integer;
   AttrNames: IList;
   AClass: TClass;
   Key: Variant;
 begin
-  ClassName := ReadStringAsWideString;
+  Name := ReadStringAsWideString;
   Count := ReadInt(HproseTagOpenbrace);
   AttrNames := TArrayList.Create(Count, False) as IList;
   for I := 0 to Count - 1 do AttrNames[I] := ReadString;
   CheckTag(HproseTagClosebrace);
-  AClass := GetClassByAlias(ClassName);
+  AClass := GetClassByAlias(Name);
   if AClass = nil then begin
     Key := IInterface(TInterfacedObject.Create);
     FClassRefList.Add(Key);
@@ -2518,15 +2518,15 @@ end;
 
 function THproseReader.ReadRaw: TBytes;
 var
-  Stream: TBytesStream;
+  OStream: TBytesStream;
 begin
-  Stream := TBytesStream.Create;
+  OStream := TBytesStream.Create;
   try
-    ReadRaw(Stream);
-    Result := Stream.Bytes;
-    SetLength(Result, Stream.Size);
+    ReadRaw(OStream);
+    Result := OStream.Bytes;
+    SetLength(Result, OStream.Size);
   finally
-    Stream.Free;
+    OStream.Free;
   end
 end;
 
@@ -2964,7 +2964,7 @@ begin
     if Count > 0 then WriteRawBytes(BytesOf(IntToStr(Count)));
     FStream.WriteBuffer(HproseTagOpenbrace, 1);
     P := VarArrayLock(Value);
-    case PVar.VType and varTypeMask of
+    case PVar^.VType and varTypeMask of
       varInteger: WriteIntegerArray(P, Count);
       varShortInt: WriteShortIntArray(P, Count);
       varWord: WriteWordArray(P, Count);
@@ -3422,35 +3422,35 @@ var
   Value: Variant;
   PropList: PPropList;
   PropCount, I: Integer;
-  ClassName: string;
+  Name: string;
 begin
-  ClassName := AObject.ClassName;
+  Name := AObject.ClassName;
   if AObject is TAbstractList then WriteList(TAbstractList(AObject))
   else if AObject is TAbstractMap then WriteMap(TAbstractMap(AObject))
   else if AObject is TStrings then WriteStrings(TStrings(AObject))
   else
 {$IFDEF Supports_Generics}
-  if AnsiStartsText('TList<', ClassName) then
+  if AnsiStartsText('TList<', Name) then
     WriteList(AObject)
-  else if AnsiStartsText('TQueue<', ClassName) then
+  else if AnsiStartsText('TQueue<', Name) then
     WriteQueue(AObject)
-  else if AnsiStartsText('TStack<', ClassName) then
+  else if AnsiStartsText('TStack<', Name) then
     WriteStack(AObject)
-  else if AnsiStartsText('TDictionary<', ClassName) then
+  else if AnsiStartsText('TDictionary<', Name) then
     WriteDictionary(AObject)
-  else if AnsiStartsText('TObjectList<', ClassName) then
+  else if AnsiStartsText('TObjectList<', Name) then
     WriteObjectList(AObject)
-  else if AnsiStartsText('TObjectQueue<', ClassName) then
+  else if AnsiStartsText('TObjectQueue<', Name) then
     WriteObjectQueue(AObject)
-  else if AnsiStartsText('TObjectStack<', ClassName) then
+  else if AnsiStartsText('TObjectStack<', Name) then
     WriteObjectStack(AObject)
-  else if AnsiStartsText('TObjectDictionary<', ClassName) then
+  else if AnsiStartsText('TObjectDictionary<', Name) then
     WriteObjectDictionary(AObject)
   else
 {$ENDIF}
   begin
     Value := ObjToVar(AObject);
-    ClassRef := FClassRefList.IndexOf(ClassName);
+    ClassRef := FClassRefList.IndexOf(Name);
     if ClassRef < 0 then ClassRef := WriteClass(AObject);
     FRefer.SetRef(Value);
     FStream.WriteBuffer(HproseTagObject, 1);

@@ -113,12 +113,12 @@ type
     procedure Assign(const Source: IImmutableList);
     procedure Clear;
     function Delete(Index: Integer): Variant;
-    procedure DeleteRange(Index, Count: Integer);
+    procedure DeleteRange(Index, ACount: Integer);
     procedure Exchange(Index1, Index2: Integer);
     procedure Insert(Index: Integer; const Value: Variant);
     procedure InsertRange(Index: Integer; const AList: IImmutableList); overload;
     procedure InsertRange(Index: Integer; const Container: Variant); overload;
-    procedure InsertRange(Index: Integer; const ConstArray: array of const);
+    procedure InsertRange(Index: Integer; const ConstArray: array of const); overload;
     procedure InitLock;
     procedure InitReadWriteLock;
     procedure Move(CurIndex, NewIndex: Integer);
@@ -237,7 +237,7 @@ type
     procedure SetCapacity(NewCapacity: Integer); override;
     procedure SetCount(NewCount: Integer); override;
   public
-    constructor Create(Capacity: Integer = 4; Sync: Boolean = True;
+    constructor Create(ACapacity: Integer = 4; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); overload; override;
     function Add(const Value: Variant): Integer; override;
     procedure AddAll(const AList: IImmutableList); overload; override;
@@ -246,7 +246,7 @@ type
     procedure Clear; override;
     function Contains(const Value: Variant): Boolean; override;
     function Delete(Index: Integer): Variant; override;
-    procedure DeleteRange(Index, Count: Integer); override;
+    procedure DeleteRange(Index, ACount: Integer); override;
     procedure Exchange(Index1, Index2: Integer); override;
     function IndexOf(const Value: Variant): Integer; override;
     function LastIndexOf(const Value: Variant): Integer; override;
@@ -322,9 +322,9 @@ type
       Boolean; virtual;
     procedure Put(Index: Integer; const Value: Variant); override;
   public
-    constructor Create(Capacity: Integer = 4; Sync: Boolean = True;
+    constructor Create(ACapacity: Integer = 4; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); overload; override;
-    constructor Create(Capacity: Integer; Factor: Single; Sync: Boolean = True;
+    constructor Create(ACapacity: Integer; Factor: Single; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); reintroduce; overload; virtual;
 {$IFDEF BCB}
     constructor Create3(Capacity: Integer; Factor: Single;
@@ -334,7 +334,7 @@ type
     function Add(const Value: Variant): Integer; override;
     procedure Clear; override;
     function Delete(Index: Integer): Variant; override;
-    procedure DeleteRange(Index, Count: Integer); override;
+    procedure DeleteRange(Index, ACount: Integer); override;
     procedure Exchange(Index1, Index2: Integer); override;
     function IndexOf(const Value: Variant): Integer; override;
     function LastIndexOf(const Value: Variant): Integer; override;
@@ -401,8 +401,8 @@ type
     function ToList(ListClass: TListClass; Sync: Boolean = True;
       ReadWriteSync: Boolean = False): IList;
     property Count: Integer read GetCount;
-    property Key[const Value: Variant]: Variant read GetKey;
-    property Value[const Key: Variant]: Variant read Get write Put; default;
+    property Key[const AValue: Variant]: Variant read GetKey;
+    property Value[const AKey: Variant]: Variant read Get write Put; default;
     property Keys: IImmutableList read GetKeys;
     property Values: IImmutableList read GetValues;
   end;
@@ -460,8 +460,8 @@ type
     function ToList(ListClass: TListClass; Sync: Boolean = True;
       ReadWriteSync: Boolean = False): IList; virtual; abstract;
     property Count: Integer read GetCount;
-    property Key[const Value: Variant]: Variant read GetKey;
-    property Value[const Key: Variant]: Variant read Get write Put; default;
+    property Key[const AValue: Variant]: Variant read GetKey;
+    property Value[const AKey: Variant]: Variant read Get write Put; default;
     property Keys: IImmutableList read GetKeys;
     property Values: IImmutableList read GetValues;
   end;
@@ -485,18 +485,18 @@ type
     function GetCount: Integer; override;
     function GetKeys: IImmutableList; override;
     function GetValues: IImmutableList; override;
-    function GetKey(const Value: Variant): Variant; override;
-    function Get(const Key: Variant): Variant; override;
-    procedure Put(const Key, Value: Variant); override;
-    procedure InitData(Keys, Values: IList);
+    function GetKey(const AValue: Variant): Variant; override;
+    function Get(const AKey: Variant): Variant; override;
+    procedure Put(const AKey, AValue: Variant); override;
+    procedure InitData(AKeys, AValues: IList);
   public
-    constructor Create(Capacity: Integer = 16; Factor: Single = 0.75;
+    constructor Create(ACapacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); overload; override;
     procedure Assign(const Source: IMap); override;
     procedure Clear; override;
-    function ContainsKey(const Key: Variant): Boolean; override;
-    function ContainsValue(const Value: Variant): Boolean; override;
-    function Delete(const Key: Variant): Variant; override;
+    function ContainsKey(const AKey: Variant): Boolean; override;
+    function ContainsValue(const AValue: Variant): Boolean; override;
+    function Delete(const AKey: Variant): Variant; override;
     procedure PutAll(const AList: IImmutableList); overload; override;
     procedure PutAll(const AMap: IMap); overload; override;
     procedure PutAll(const Container: Variant); overload; override;
@@ -504,8 +504,8 @@ type
       ReadWriteSync: Boolean = False): IList; override;
     function ToArrayList(Sync: Boolean = True;
       ReadWriteSync: Boolean = False): TArrayList; virtual;
-    property Key[const Value: Variant]: Variant read GetKey;
-    property Value[const Key: Variant]: Variant read Get write Put; default;
+    property Key[const AValue: Variant]: Variant read GetKey;
+    property Value[const AKey: Variant]: Variant read Get write Put; default;
     property Count: Integer read GetCount;
     property Keys: IImmutableList read GetKeys;
     property Values: IImmutableList read GetValues;
@@ -665,6 +665,11 @@ function VarIsIntf(const Value: Variant; const IID: TGUID): Boolean; overload;
 function VarToIntf(const Value: Variant; const IID: TGUID; out AIntf): Boolean;
 function IntfToObj(const Intf: IInterface): TInterfacedObject;
 
+{$IFDEF FPC}
+operator :=(const Source : Variant) Dest : TObject; inline;
+operator :=(const Source : TObject) Dest : Variant; inline;
+{$ENDIF}
+
 function VarEquals(const Left, Right: Variant): Boolean;
 
 function GetPropValue(Instance: TObject; PropInfo: PPropInfo): Variant; overload;
@@ -822,7 +827,7 @@ begin
           ;
       end;
     tkFloat:
-      case TypeData.FloatType of
+      case TypeData^.FloatType of
         ftSingle:
           Result := SizeOf(Single);
         ftDouble:
@@ -1107,13 +1112,25 @@ begin
 {$ELSE}
     with PObjectFromInterfaceStub(PPointer(PPointer(Intf)^)^)^ do
     case Stub of
-      $04244483: result := Pointer(NativeInt(Intf) + ShortJmp);
-      $04244481: result := Pointer(NativeInt(Intf) + LongJmp);
+      $04244483: result := TInterfacedObject(Pointer(NativeInt(Intf) + ShortJmp));
+      $04244481: result := TInterfacedObject(Pointer(NativeInt(Intf) + LongJmp));
       else       result := nil;
     end;
 {$ENDIF}
   end;
 end;
+
+{$IFDEF FPC}
+operator :=(const Source : Variant) Dest : TObject; inline;
+begin
+  Dest := VarToObj(Source);
+end;
+
+operator :=(const Source : TObject) Dest : Variant; inline;
+begin
+  Dest := ObjToVar(Source);
+end;
+{$ENDIF}
 
 { GetPropValue/SetPropValue }
 
@@ -1233,9 +1250,9 @@ begin
         AMethod.Code := PPointer(Pointer(Instance.ClassType) + PtrUInt(PropInfo^.GetProc))^;
       AMethod.Data := Instance;
       if ((PropInfo^.PropProcs shr 6) and 1) <> 0 then
-        Result := TDynArrayIndexedGetProc(AMethod)(PropInfo^.Index)
+        Result := Pointer(TDynArrayIndexedGetProc(AMethod)(PropInfo^.Index))
       else
-        Result := TDynArrayGetProc(AMethod)();
+        Result := Pointer(TDynArrayGetProc(AMethod)());
     end;
   end;
 end;
@@ -1346,7 +1363,7 @@ end;
 
 function GetPropValue(Instance: TObject; const Name: string): Variant;
 begin
-  Result := GetPropValue(Instance, GetPropInfo(Instance, Name));
+  Result := HproseCommon.GetPropValue(Instance, GetPropInfo(Instance, Name));
 end;
 
 procedure SetPropValue(Instance: TObject; PropInfo: PPropInfo;
@@ -1430,7 +1447,7 @@ end;
 procedure SetPropValue(Instance: TObject; const Name: string;
   const Value: Variant);
 begin
-  SetPropValue(Instance, GetPropInfo(Instance, Name), Value);
+  HproseCommon.SetPropValue(Instance, GetPropInfo(Instance, Name), Value);
 end;
 
 function GetStoredPropList(Instance: TObject; out PropList: PPropList): Integer;
@@ -1470,7 +1487,7 @@ begin
     try
       for I := 0 to Count - 1 do begin
         PropInfo := TempList^[I];
-        Result[PropInfo^.Name] := GetPropValue(Instance, PropInfo);
+        Result[PropInfo^.Name] := HproseCommon.GetPropValue(Instance, PropInfo);
       end;
     finally
       FreeMem(TempList);
@@ -1490,7 +1507,7 @@ begin
       for I := 0 to Count - 1 do begin
         PropInfo := TempList^[I];
         if IsStoredProp(Instance, PropInfo) then begin
-          Result[PropInfo^.Name] := GetPropValue(Instance, PropInfo);
+          Result[PropInfo^.Name] := HproseCommon.GetPropValue(Instance, PropInfo);
         end;
       end;
     finally
@@ -1505,7 +1522,7 @@ begin
   Count := Properties.Count;
   if (Count > 0) then
     for I := 0 to Count - 1 do
-      SetPropValue(Instance, VarToStr(Properties.Keys[I]), Properties.Values[I]);
+      HproseCommon.SetPropValue(Instance, VarToStr(Properties.Keys[I]), Properties.Values[I]);
 end;
 
 const
@@ -2158,11 +2175,11 @@ end;
 
 procedure TAbstractList.Reverse;
 var
-  I, Last: Integer;
+  I, J: Integer;
 begin
   if Count < 2 then Exit;
-  Last := Count - 1;
-  for I := 0 to Last shr 1 do Exchange(I, Last - I);
+  J := Count - 1;
+  for I := 0 to J shr 1 do Exchange(I, J - I);
 end;
 
 { TArrayList }
@@ -2221,12 +2238,12 @@ begin
 end;
 
 
-constructor TArrayList.Create(Capacity: Integer; Sync: Boolean;
+constructor TArrayList.Create(ACapacity: Integer; Sync: Boolean;
   ReadWriteSync: Boolean);
 begin
   if Sync then InitLock;
   if ReadWriteSync then InitReadWriteLock;
-  FCapacity := Capacity;
+  FCapacity := ACapacity;
   FCount := 0;
   SetLength(FList, FCapacity);
 end;
@@ -2252,26 +2269,26 @@ begin
   end;
 end;
 
-procedure TArrayList.DeleteRange(Index, Count: Integer);
+procedure TArrayList.DeleteRange(Index, ACount: Integer);
 begin
   if (Index >= 0) and (Index < FCount) then begin
-    if Count > FCount - Index then Count := Fcount - Index;
-    UnShift(Index, Count);
+    if ACount > FCount - Index then ACount := Fcount - Index;
+    UnShift(Index, ACount);
   end;
 end;
 
 procedure TArrayList.Exchange(Index1, Index2: Integer);
 var
-  Item: Variant;
+  Elem: Variant;
 begin
   if (Index1 < 0) or (Index1 >= FCount) then
     raise EArrayListError.CreateResFmt(@SListIndexError, [Index1]);
   if (Index2 < 0) or (Index2 >= FCount) then
     raise EArrayListError.CreateResFmt(@SListIndexError, [Index2]);
 
-  Item := FList[Index1];
+  Elem := FList[Index1];
   FList[Index1] := FList[Index2];
-  FList[Index2] := Item;
+  FList[Index2] := Elem;
 end;
 
 function TArrayList.Get(Index: Integer): Variant;
@@ -2499,30 +2516,30 @@ var
   HashIndex: Integer;
   TempItem: PHashItem;
 begin
-  HashIndex := GetHashIndex(Item.HashCode);
+  HashIndex := GetHashIndex(Item^.HashCode);
   if FIndices[HashIndex] = nil then begin
-    Item.Prev := Item;
-    Item.Next := nil;
+    Item^.Prev := Item;
+    Item^.Next := nil;
     FIndices[HashIndex] := Item;
   end
   else begin
-    TempItem := FIndices[HashIndex].Prev;
+    TempItem := FIndices[HashIndex]^.Prev;
     repeat
-      if Item.Index >= TempItem.Index then begin
-        Item.Prev := TempItem;
-        Item.Next := TempItem.Next;
-        TempItem.Next := Item;
-        if Item.Next = nil then
-          FIndices[HashIndex].Prev := Item
+      if Item^.Index >= TempItem^.Index then begin
+        Item^.Prev := TempItem;
+        Item^.Next := TempItem^.Next;
+        TempItem^.Next := Item;
+        if Item^.Next = nil then
+          FIndices[HashIndex]^.Prev := Item
         else
-          Item.Next.Prev := Item;
+          Item^.Next^.Prev := Item;
         Exit;
       end;
-      TempItem := TempItem.Prev;
-    until TempItem.Next = nil;
-    Item.Prev := Findices[HashIndex].Prev;
-    Item.Next := Findices[HashIndex];
-    Item.Next.Prev := Item;
+      TempItem := TempItem^.Prev;
+    until TempItem^.Next = nil;
+    Item^.Prev := Findices[HashIndex]^.Prev;
+    Item^.Next := Findices[HashIndex];
+    Item^.Next^.Prev := Item;
     FIndices[HashIndex] := Item;
   end;
 end;
@@ -2531,8 +2548,8 @@ function THashBucket.Add(HashCode, Index: Integer): PHashItem;
 begin
   if FCount * FFactor >= FCapacity then Grow;
   System.New(Result);
-  Result.HashCode := HashCode;
-  Result.Index := Index;
+  Result^.HashCode := HashCode;
+  Result^.Index := Index;
   Insert(Result);
   Inc(FCount);
 end;
@@ -2544,7 +2561,7 @@ var
 begin
   for I := 0 to FCapacity - 1 do begin
     while FIndices[I] <> nil do begin
-      Item := FIndices[I].Next;
+      Item := FIndices[I]^.Next;
       Dispose(FIndices[I]);
       FIndices[I] := Item;
     end;
@@ -2559,24 +2576,24 @@ begin
   HashIndex := GetHashIndex(HashCode);
   Result := FIndices[HashIndex];
   while Result <> nil do begin
-    if Result.Index = Index then begin
-      if Result.Prev = Result then
+    if Result^.Index = Index then begin
+      if Result^.Prev = Result then
         FIndices[HashIndex] := nil
-      else if Result.Prev.Next = nil then begin
-        Findices[HashIndex] := Result.Next;
-        Result.Next.Prev := Result.Prev;
+      else if Result^.Prev^.Next = nil then begin
+        Findices[HashIndex] := Result^.Next;
+        Result^.Next^.Prev := Result^.Prev;
       end
-      else if Result.Next = nil then begin
-        Result.Prev.Next := Result.Next;
-        Findices[HashIndex].Prev := Result.Prev;
+      else if Result^.Next = nil then begin
+        Result^.Prev^.Next := Result^.Next;
+        Findices[HashIndex]^.Prev := Result^.Prev;
       end
       else begin
-        Result.Prev.Next := Result.Next;
-        Result.Next.Prev := Result.Prev;
+        Result^.Prev^.Next := Result^.Next;
+        Result^.Next^.Prev := Result^.Prev;
       end;
       Exit;
     end;
-    Result := Result.Next;
+    Result := Result^.Next;
   end;
 end;
 
@@ -2621,11 +2638,11 @@ begin
   HashIndex := GetHashIndex(HashCode);
   Item := FIndices[HashIndex];
   while Item <> nil do begin
-    if (Item.HashCode = HashCode) and CompareProc(Item.Index, Value) then begin
-      Result := Item.Index;
+    if (Item^.HashCode = HashCode) and CompareProc(Item^.Index, Value) then begin
+      Result := Item^.Index;
       Exit;
     end;
-    Item := Item.Next;
+    Item := Item^.Next;
   end;
 end;
 
@@ -2639,14 +2656,14 @@ begin
   HashIndex := GetHashIndex(HashCode);
   Item := FIndices[HashIndex];
   if Item = nil then Exit;
-  Item := Item.Prev;
+  Item := Item^.Prev;
   repeat
-    if (Item.HashCode = HashCode) and CompareProc(Item.Index, Value) then begin
-      Result := Item.Index;
+    if (Item^.HashCode = HashCode) and CompareProc(Item^.Index, Value) then begin
+      Result := Item^.Index;
       Exit;
     end;
-    Item := Item.Prev;
-  until Item.Next = nil;
+    Item := Item^.Prev;
+  until Item^.Next = nil;
 end;
 
 function THashBucket.Modify(OldHashCode, NewHashCode,
@@ -2656,7 +2673,7 @@ begin
     Result := nil
   else begin
     Result := Remove(OldHashCode, Index);
-    Result.HashCode := NewHashCode;
+    Result^.HashCode := NewHashCode;
     Insert(Result);
   end;
 end;
@@ -2684,7 +2701,7 @@ begin
     for I := 0 to OldCapacity - 1 do begin
       Item := OldIndices[I];
       while Item <> nil do begin
-        Next := Item.Next;
+        Next := Item^.Next;
         Insert(Item);
         Item := Next;
       end;
@@ -2706,16 +2723,16 @@ begin
   if FHashBucket <> nil then FHashBucket.Clear;
 end;
 
-constructor THashedList.Create(Capacity: Integer; Sync, ReadWriteSync: Boolean);
+constructor THashedList.Create(ACapacity: Integer; Sync, ReadWriteSync: Boolean);
 begin
-  Create(Capacity, 0.75, Sync, ReadWriteSync);
+  Create(ACapacity, 0.75, Sync, ReadWriteSync);
 end;
 
-constructor THashedList.Create(Capacity: Integer; Factor: Single; Sync,
+constructor THashedList.Create(ACapacity: Integer; Factor: Single; Sync,
   ReadWriteSync: Boolean);
 begin
-  inherited Create(Capacity, Sync, ReadWriteSync);
-  FHashBucket := THashBucket.Create(Capacity, Factor);
+  inherited Create(ACapacity, Sync, ReadWriteSync);
+  FHashBucket := THashBucket.Create(ACapacity, Factor);
 end;
 
 {$IFDEF BCB}
@@ -2728,17 +2745,17 @@ end;
 
 procedure THashedList.DeleteHash(Index, N: Integer);
 var
-  I, HashCode, NewHashCode, Count: Integer;
+  I, HashCode, NewHashCode, NewCount: Integer;
 begin
-  Count := FCount - N;
-  if Index < Count then begin
-    for I := Index to Count - 1 do begin
+  NewCount := FCount - N;
+  if Index < NewCount then begin
+    for I := Index to NewCount - 1 do begin
       HashCode := HashOf(FList[I]);
       NewHashCode := HashOf(FList[I + N]);
       FHashBucket.Modify(HashCode, NewHashCode, I);
     end;
   end;
-  for I := Count to FCount - 1 do
+  for I := NewCount to FCount - 1 do
     FHashBucket.Delete(HashOf(FList[I]), I);
 end;
 
@@ -2751,12 +2768,12 @@ begin
   end;
 end;
 
-procedure THashedList.DeleteRange(Index, Count: Integer);
+procedure THashedList.DeleteRange(Index, ACount: Integer);
 begin
   if (Index >= 0) and (Index < FCount) then begin
-    if Count > FCount - Index then Count := FCount - Index;
-    DeleteHash(Index, Count);
-    UnShift(Index, Count);
+    if ACount > FCount - Index then ACount := FCount - Index;
+    DeleteHash(Index, ACount);
+    UnShift(Index, ACount);
   end;
 end;
 
@@ -2797,12 +2814,12 @@ end;
 
 function THashedList.IndexOf(const Value: Variant): Integer;
 begin
-  Result := FHashBucket.IndexOf(HashOf(Value), Value, IndexCompare);
+  Result := FHashBucket.IndexOf(HashOf(Value), Value, {$IFDEF FPC}@{$ENDIF}IndexCompare);
 end;
 
 function THashedList.LastIndexOf(const Value: Variant): Integer;
 begin
-  Result := FHashBucket.LastIndexOf(HashOf(Value), Value, IndexCompare);
+  Result := FHashBucket.LastIndexOf(HashOf(Value), Value, {$IFDEF FPC}@{$ENDIF}IndexCompare);
 end;
 
 procedure THashedList.InsertHash(Index, N: Integer);
@@ -2891,17 +2908,17 @@ end;
 function TCaseInsensitiveHashedList.IndexCompare(Index: Integer;
   const Value: Variant): Boolean;
 var
-  Item: Variant;
+  Elem: Variant;
 begin
-  Item := Get(Index);
-  if VarIsStr(Item) and VarIsStr(Value) then
+  Elem := Get(Index);
+  if VarIsStr(Elem) and VarIsStr(Value) then
 {$IFNDEF NEXTGEN}
-    Result := WideCompareText(Item, Value) = 0
+    Result := WideCompareText(Elem, Value) = 0
 {$ELSE}
-    Result := CompareText(Item, Value) = 0
+    Result := CompareText(Elem, Value) = 0
 {$ENDIF}
   else
-    Result := VarEquals(Item, Value)
+    Result := VarEquals(Elem, Value)
 end;
 
 type
@@ -3131,28 +3148,28 @@ begin
   FValues.Clear;
 end;
 
-function THashMap.ContainsKey(const Key: Variant): Boolean;
+function THashMap.ContainsKey(const AKey: Variant): Boolean;
 begin
-  Result := FKeys.Contains(Key);
+  Result := FKeys.Contains(AKey);
 end;
 
-function THashMap.ContainsValue(const Value: Variant): Boolean;
+function THashMap.ContainsValue(const AValue: Variant): Boolean;
 begin
-  Result := FValues.Contains(Value);
+  Result := FValues.Contains(AValue);
 end;
 
-constructor THashMap.Create(Capacity: Integer; Factor: Single; Sync,
+constructor THashMap.Create(ACapacity: Integer; Factor: Single; Sync,
   ReadWriteSync: Boolean);
 begin
   if Sync then InitLock;
   if ReadWriteSync then InitReadWriteLock;
-  InitData(THashedList.Create(Capacity, Factor, False),
-           TArrayList.Create(Capacity, False));
+  InitData(THashedList.Create(ACapacity, Factor, False),
+           TArrayList.Create(ACapacity, False));
 end;
 
-function THashMap.Delete(const Key: Variant): Variant;
+function THashMap.Delete(const AKey: Variant): Variant;
 begin
-  Result := FValues.Delete(FKeys.Remove(Key));
+  Result := FValues.Delete(FKeys.Remove(AKey));
 end;
 
 function THashMap.GetCount: Integer;
@@ -3160,20 +3177,20 @@ begin
   Result := FKeys.Count;
 end;
 
-function THashMap.Get(const Key: Variant): Variant;
+function THashMap.Get(const AKey: Variant): Variant;
 begin
-  Result := FValues[FKeys.IndexOf(Key)];
+  Result := FValues[FKeys.IndexOf(AKey)];
 end;
 
-function THashMap.GetKey(const Value: Variant): Variant;
+function THashMap.GetKey(const AValue: Variant): Variant;
 begin
-  Result := FKeys[FValues.IndexOf(Value)];
+  Result := FKeys[FValues.IndexOf(AValue)];
 end;
 
-procedure THashMap.InitData(Keys, Values: IList);
+procedure THashMap.InitData(AKeys, AValues: IList);
 begin
-  FKeys := Keys;
-  FValues := Values;
+  FKeys := AKeys;
+  FValues := AValues;
 end;
 
 procedure THashMap.PutAll(const AMap: IMap);
@@ -3210,15 +3227,15 @@ begin
     Put(I, AList[I]);
 end;
 
-procedure THashMap.Put(const Key, Value: Variant);
+procedure THashMap.Put(const AKey, AValue: Variant);
 var
   Index: Integer;
 begin
-  Index := FKeys.IndexOf(Key);
+  Index := FKeys.IndexOf(AKey);
   if Index > -1 then
-    FValues[Index] := Value
+    FValues[Index] := AValue
   else
-    FValues[FKeys.Add(Key)] := Value;
+    FValues[FKeys.Add(AKey)] := AValue;
 end;
 
 function THashMap.ToList(ListClass: TListClass; Sync,
@@ -3700,7 +3717,7 @@ begin
   Obj := GetInstance(V);
   Info := GetPropInfo(PTypeInfo(Obj.ClassInfo), Name);
   Result := Info <> nil;
-  if Result then Variant(Dest) := GetPropValue(Obj, Info);
+  if Result then Variant(Dest) := HproseCommon.GetPropValue(Obj, Info);
 end;
 
 function TVarObjectType.SetProperty({$IF DEFINED(FPC) AND (FPC_VERSION >= 3)}var{$ELSE}const{$IFEND} V: TVarData;
@@ -3712,7 +3729,7 @@ begin
   Obj := GetInstance(V);
   Info := GetPropInfo(PTypeInfo(Obj.ClassInfo), Name);
   Result := Info <> nil;
-  if Result then SetPropValue(Obj, Info, Variant(Value));
+  if Result then HproseCommon.SetPropValue(Obj, Info, Variant(Value));
 end;
 
 procedure TVarObjectType.CastTo(var Dest: TVarData; const Source: TVarData;
@@ -3721,20 +3738,20 @@ begin
   if (AVarType = varNull) and IsClear(Source) then
     Variant(Dest) := Null
   else if AVarType = varInteger then
-    Variant(Dest) := FindVarData(Variant(Source)).VInteger
+    Variant(Dest) := FindVarData(Variant(Source))^.VInteger
   else if AVarType = varInt64 then
-    Variant(Dest) := FindVarData(Variant(Source)).VInt64
+    Variant(Dest) := FindVarData(Variant(Source))^.VInt64
   else if AVarType = varString then
-    Variant(Dest) := string(TObject(FindVarData(Variant(Source)).VPointer).ClassName)
+    Variant(Dest) := string(TObject(FindVarData(Variant(Source))^.VPointer).ClassName)
 {$IFDEF DELPHI2009_UP}
   else if AVarType = varUString then
-    Variant(Dest) := UnicodeString(TObject(FindVarData(Variant(Source)).VPointer).ClassName)
+    Variant(Dest) := UnicodeString(TObject(FindVarData(Variant(Source))^.VPointer).ClassName)
 {$ENDIF}
   else if AVarType = varOleStr then
 {$IFNDEF NEXTGEN}
-    Variant(Dest) := WideString(TObject(FindVarData(Variant(Source)).VPointer).ClassName)
+    Variant(Dest) := WideString(TObject(FindVarData(Variant(Source))^.VPointer).ClassName)
 {$ELSE}
-    Variant(Dest) := TObject(FindVarData(Variant(Source)).VPointer).ClassName
+    Variant(Dest) := TObject(FindVarData(Variant(Source))^.VPointer).ClassName
 {$ENDIF}
   else
     RaiseCastError;
