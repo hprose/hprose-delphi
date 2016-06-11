@@ -179,6 +179,7 @@
   {$define Supports_UInt64}
   {$mode objfpc}
   {$inline on}
+  {$H+}
 {$endif}
 
 {$if defined(FPC) and (FPC_FULLVERSION > 20400)}

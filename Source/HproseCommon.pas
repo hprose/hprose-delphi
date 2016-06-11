@@ -101,6 +101,12 @@ type
     property Count: Integer read GetCount;
   end;
 
+{$IFDEF Supports_Anonymous_Method}
+  TCompareMethod = reference to function (const Value1, Value2: Variant): Integer;
+{$ELSE}
+  TCompareMethod = function (const Value1, Value2: Variant): Integer of object;
+{$ENDIF}
+
   IList = interface(IImmutableList)
   ['{DE925411-42B8-4DB3-A00C-B585C087EC4C}']
     procedure Put(Index: Integer; const Value: Variant);
@@ -125,6 +131,8 @@ type
     function Remove(const Value: Variant): Integer;
     procedure Pack;
     procedure Reverse;
+    procedure Sort;
+    procedure Sort(CompareProc: TCompareMethod);
     property Item[Index: Integer]: Variant read Get write Put; default;
     property Capacity: Integer read GetCapacity write SetCapacity;
     property Count: Integer read GetCount write SetCount;
@@ -136,6 +144,8 @@ type
   private
     FLock: TCriticalSection;
     FReadWriteLock: TMultiReadExclusiveWriteSynchronizer;
+    function Partition(Low, High: Integer; CompareProc: TCompareMethod): Integer;
+    procedure QuickSort(Low, High: Integer; CompareProc: TCompareMethod);
   protected
     function Get(Index: Integer): Variant; virtual; abstract;
     procedure Put(Index: Integer; const Value: Variant); virtual; abstract;
@@ -143,6 +153,7 @@ type
     function GetCount: Integer; virtual; abstract;
     procedure SetCapacity(NewCapacity: Integer); virtual; abstract;
     procedure SetCount(NewCount: Integer); virtual; abstract;
+    function Compare(const Value1, Value2: Variant): Integer; virtual;
   public
     constructor Create(Capacity: Integer = 4; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); overload; virtual; abstract;
@@ -207,6 +218,8 @@ type
     function Last: Variant;
     procedure Pack;
     procedure Reverse;
+    procedure Sort; overload;
+    procedure Sort(CompareProc: TCompareMethod); overload;
     property Item[Index: Integer]: Variant read Get write Put; default;
     property Capacity: Integer read GetCapacity write SetCapacity;
     property Count: Integer read GetCount write SetCount;
@@ -342,14 +355,18 @@ type
     procedure InsertRange(Index: Integer; const AList: IImmutableList); overload; override;
     procedure InsertRange(Index: Integer; const Container: Variant); overload; override;
     procedure InsertRange(Index: Integer; const ConstArray: array of const); overload; override;
+    procedure Move(CurIndex, NewIndex: Integer); override;
   end;
 
   ICaseInsensitiveHashedList = interface(IHashedList)
   ['{9ECA15EC-9486-4BF6-AADD-BBD88890FAF8}']
   end;
 
+  { TCaseInsensitiveHashedList }
+
   TCaseInsensitiveHashedList = class(THashedList, ICaseInsensitiveHashedList)
   protected
+    function Compare(const Value1, Value2: Variant): Integer; override;
     function HashOf(const Value: Variant): Integer; override;
     function IndexCompare(Index: Integer; const Value: Variant):
       Boolean; override;
@@ -1958,18 +1975,20 @@ end;
 
 { TAbstractList }
 
-constructor TAbstractList.Create(Sync, ReadWriteSync: Boolean);
+constructor TAbstractList.Create(Sync: Boolean; ReadWriteSync: Boolean);
 begin
   Create(4, Sync, ReadWriteSync);
 end;
 
-constructor TAbstractList.Create(const AList: IList; Sync, ReadWriteSync: Boolean);
+constructor TAbstractList.Create(const AList: IList; Sync: Boolean;
+  ReadWriteSync: Boolean);
 begin
   Create(AList.Count, Sync, ReadWriteSync);
   AddAll(AList);
 end;
 
-constructor TAbstractList.Create(const Container: Variant; Sync, ReadWriteSync: Boolean);
+constructor TAbstractList.Create(const Container: Variant; Sync: Boolean;
+  ReadWriteSync: Boolean);
 var
   AList: IList;
 begin
@@ -1983,7 +2002,8 @@ begin
   end;
 end;
 
-constructor TAbstractList.Create(const ConstArray: array of const; Sync, ReadWriteSync: Boolean);
+constructor TAbstractList.Create(const ConstArray: array of const;
+  Sync: Boolean; ReadWriteSync: Boolean);
 begin
   Create(Length(ConstArray), Sync, ReadWriteSync);
   AddAll(ConstArray);
@@ -2180,6 +2200,66 @@ begin
   if Count < 2 then Exit;
   J := Count - 1;
   for I := 0 to J shr 1 do Exchange(I, J - I);
+end;
+
+function TAbstractList.Partition(Low, High: Integer; CompareProc: TCompareMethod
+  ): Integer;
+var
+  Elem: Variant;
+begin
+  Elem := Get(Low);
+  while Low < High do begin
+    while (Low < High) and (CompareProc(Elem, Get(High)) <= 0) do Dec(High);
+    Exchange(Low, High);
+    while (Low < High) and (CompareProc(Elem, Get(Low)) >= 0) do Inc(Low);
+    Exchange(Low, High);
+  end;
+  Result := Low;
+end;
+
+procedure TAbstractList.QuickSort(Low, High: Integer;
+  CompareProc: TCompareMethod);
+var
+  P: Integer;
+begin
+  if High - Low > 8 then begin
+    P := Partition(Low, High, CompareProc);
+    QuickSort(Low, P - 1, CompareProc);
+    QuickSort(P + 1, High, CompareProc);
+  end;
+end;
+
+function TAbstractList.Compare(const Value1, Value2: Variant): Integer;
+begin
+  case VarCompareValue(Value1, Value2) of
+    vrEqual: Result := 0;
+    vrLessThan: Result := -1;
+    vrGreaterThan: Result := 1;
+    vrNotEqual: Result := 0;
+  end;
+end;
+
+procedure TAbstractList.Sort;
+begin
+  Sort({$IFDEF FPC}@{$ENDIF}Compare);
+end;
+
+procedure TAbstractList.Sort(CompareProc: TCompareMethod);
+var
+  I, J, N: Integer;
+  Elem: Variant;
+begin
+  N := Count - 1;
+  QuickSort(0, N, CompareProc);
+  for I := 1 to N do begin
+    Elem := Get(I);
+    J := I - 1;
+    while (J >= 0) and (CompareProc(Elem, Get(J)) < 0) do begin
+      Put(J + 1, Get(J));
+      Dec(J);
+    end;
+    Put(J + 1, Elem);
+  end;
 end;
 
 { TArrayList }
@@ -2424,14 +2504,19 @@ end;
 
 procedure TArrayList.Move(CurIndex, NewIndex: Integer);
 var
-  Value: Variant;
+  Elem: Variant;
 begin
   if CurIndex <> NewIndex then begin
     if (NewIndex < 0) or (NewIndex >= FCount) then
       raise EArrayListError.CreateResFmt(@SListIndexError, [NewIndex]);
-    Value := Get(CurIndex);
-    Delete(CurIndex);
-    Insert(NewIndex, Value);
+    Elem := FList[CurIndex];
+    if CurIndex < NewIndex then
+      System.Move(FList[CurIndex + 1], FList[CurIndex],
+      (NewIndex - CurIndex) * SizeOf(Variant))
+    else
+      System.Move(FList[NewIndex], FList[NewIndex + 1],
+      (CurIndex - NewIndex) * SizeOf(Variant));
+    FList[NewIndex] := Elem;
   end;
 end;
 
@@ -2884,6 +2969,28 @@ begin
   inherited Put(Index, Value);
 end;
 
+procedure THashedList.Move(CurIndex, NewIndex: Integer);
+var
+  I, HashCode, NewHashCode: Integer;
+begin
+  if CurIndex = NewIndex then Exit;
+  inherited Move(CurIndex, NewIndex);
+  HashCode := HashOf(FList[NewIndex]);
+  if CurIndex < NewIndex then
+    for I := CurIndex to NewIndex - 1 do begin
+      NewHashCode := HashOf(FList[I]);
+      FHashBucket.Modify(HashCode, NewHashCode, I);
+      HashCode := NewHashCode;
+    end
+  else
+    for I := CurIndex downto NewIndex + 1 do begin
+      NewHashCode := HashOf(FList[I]);
+      FHashBucket.Modify(HashCode, NewHashCode, I);
+      HashCode := NewHashCode;
+    end;
+  FHashBucket.Modify(HashCode, HashOf(FList[NewIndex]), NewIndex);
+end;
+
 { TCaseInsensitiveHashedList }
 {$IFDEF BCB}
 constructor TCaseInsensitiveHashedList.Create4(Capacity: Integer;
@@ -2892,6 +2999,19 @@ begin
   Create(Capacity, Factor, Sync, ReadWriteSync);
 end;
 {$ENDIF}
+
+function TCaseInsensitiveHashedList.Compare(const Value1, Value2: Variant
+  ): Integer;
+begin
+  if VarIsStr(Value1) and VarIsStr(Value2) then
+{$IFNDEF NEXTGEN}
+    Result := WideCompareText(Value1, Value2)
+{$ELSE}
+    Result := CompareText(Value1, Value2)
+{$ENDIF}
+  else
+    Result := inherited Compare(Value1, Value2);
+end;
 
 function TCaseInsensitiveHashedList.HashOf(const Value: Variant): Integer;
 begin
