@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Jun 11, 2016                             *
+ * LastModified: Jun 12, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -131,8 +131,8 @@ type
     function Remove(const Value: Variant): Integer;
     procedure Pack;
     procedure Reverse;
-    procedure Sort;
-    procedure Sort(CompareProc: TCompareMethod);
+    procedure Sort; overload;
+    procedure Sort(CompareProc: TCompareMethod); overload;
     property Item[Index: Integer]: Variant read Get write Put; default;
     property Capacity: Integer read GetCapacity write SetCapacity;
     property Count: Integer read GetCount write SetCount;
@@ -1902,11 +1902,12 @@ begin
     vtAnsiString:    Result := AnsiString(V.VAnsiString);
     vtPWideChar:     Result := WideString(V.VPWideChar);
     vtWideString:    Result := WideString(V.VWideString);
+    vtWideChar:      Result := WideString(V.VWideChar);
 {$ELSE}
     vtPWideChar:     Result := string(V.VPWideChar);
     vtWideString:    Result := string(V.VWideString);
+    vtWideChar:      Result := string(V.VWideChar);
 {$ENDIF}
-    vtWideChar:      Result := WideString(V.VWideChar);
     vtCurrency:      Result := V.VCurrency^;
     vtVariant:       Result := V.VVariant^;
     vtInt64:         Result := V.VInt64^;
@@ -2232,10 +2233,10 @@ end;
 function TAbstractList.Compare(const Value1, Value2: Variant): Integer;
 begin
   case VarCompareValue(Value1, Value2) of
-    vrEqual: Result := 0;
     vrLessThan: Result := -1;
     vrGreaterThan: Result := 1;
-    vrNotEqual: Result := 0;
+  else
+    Result := 0
   end;
 end;
 

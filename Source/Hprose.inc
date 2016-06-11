@@ -81,11 +81,29 @@
 {$endif}
 
 {$ifdef VER300}
-  {$define DELPHIXE9}
-  {$define DELPHIXE9_UP}
+  {$define DELPHI10}
+  {$define DELPHI10_UP}
 {$endif}
 
-{$ifdef DELPHIXE9_UP}
+{$ifdef VER310}
+  {$define DELPHI11}
+  {$define DELPHI11_UP}
+{$endif}
+
+{$ifdef VER320}
+  {$define DELPHI12}
+  {$define DELPHI12_UP}
+{$endif}
+
+{$ifdef DELPHI12_UP}
+  {$define DELPHI11_UP}
+{$endif}
+
+{$ifdef DELPHI11_UP}
+  {$define DELPHI10_UP}
+{$endif}
+
+{$ifdef DELPHI10_UP}
   {$define DELPHIXE8_UP}
 {$endif}
 
@@ -171,6 +189,10 @@
 
 {$ifdef DELPHI2010_UP}
   {$define Supports_Rtti}
+{$endif}
+
+{$ifdef DELPHIXE3_UP}
+  {$legacyifend on}
 {$endif}
 
 // Free Pascal
