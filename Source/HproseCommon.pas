@@ -59,6 +59,8 @@ type
   EHashBucketError = class(Exception);
   EArrayListError = class(Exception);
 
+  TDirection = (FromBeginning, FromEnd);
+
   IHproseFilter = interface
   ['{4AD7CCF2-1121-4CA4-92A7-5704C5956BA4}']
     function InputFilter(const Data: TBytes; const Context: TObject): TBytes;
@@ -128,7 +130,8 @@ type
     procedure InitLock;
     procedure InitReadWriteLock;
     procedure Move(CurIndex, NewIndex: Integer);
-    function Remove(const Value: Variant): Integer;
+    function Remove(const Value: Variant): Integer; overload;
+    function Remove(const Value: Variant; Direction: TDirection): Integer; overload;
     procedure Pack;
     procedure Reverse;
     procedure Sort; overload;
@@ -211,7 +214,8 @@ type
     function BeginWrite: Boolean;
     procedure EndWrite;
     procedure Move(CurIndex, NewIndex: Integer); virtual; abstract;
-    function Remove(const Value: Variant): Integer; virtual; abstract;
+    function Remove(const Value: Variant): Integer; overload;
+    function Remove(const Value: Variant; Direction: TDirection): Integer; overload;
     function ToArray: TVariants; overload; virtual; abstract;
     function ToArray(VarType: TVarType): Variant; overload; virtual; abstract;
     function First: Variant;
@@ -268,7 +272,6 @@ type
     procedure InsertRange(Index: Integer; const Container: Variant); overload; override;
     procedure InsertRange(Index: Integer; const ConstArray: array of const); overload; override;
     procedure Move(CurIndex, NewIndex: Integer); override;
-    function Remove(const Value: Variant): Integer; override;
     function ToArray: TVariants; overload; override;
     function ToArray(VarType: TVarType): Variant; overload; override;
     property Item[Index: Integer]: Variant read Get write Put; default;
@@ -2177,6 +2180,23 @@ begin
   if not SkipEmptyItem or (Str <> '') then Result.Add(Str);
 end;
 
+
+function TAbstractList.Remove(const Value: Variant): Integer;
+begin
+  Result := IndexOf(Value);
+  if Result >= 0 then Delete(Result);
+end;
+
+function TAbstractList.Remove(const Value: Variant; Direction: TDirection
+  ): Integer;
+begin
+  if Direction = TDirection.FromBeginning then
+    Result := IndexOf(Value)
+  else
+    Result := LastIndexOf(Value);
+  if Result >= 0 then Delete(Result);
+end;
+
 function TAbstractList.First: Variant;
 begin
   Result := Get(0);
@@ -2533,12 +2553,6 @@ begin
   if Index >= FCount then FCount := Index + 1;
 
   FList[Index] := Value;
-end;
-
-function TArrayList.Remove(const Value: Variant): Integer;
-begin
-  Result := IndexOf(Value);
-  if Result >= 0 then Delete(Result);
 end;
 
 function TArrayList.ToArray: TVariants;
