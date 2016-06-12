@@ -136,6 +136,7 @@ type
     procedure Reverse;
     procedure Sort; overload;
     procedure Sort(CompareProc: TCompareMethod); overload;
+    procedure TrimExcess;
     property Item[Index: Integer]: Variant read Get write Put; default;
     property Capacity: Integer read GetCapacity write SetCapacity;
     property Count: Integer read GetCount write SetCount;
@@ -224,6 +225,7 @@ type
     procedure Reverse;
     procedure Sort; overload;
     procedure Sort(CompareProc: TCompareMethod); overload;
+    procedure TrimExcess;
     property Item[Index: Integer]: Variant read Get write Put; default;
     property Capacity: Integer read GetCapacity write SetCapacity;
     property Count: Integer read GetCount write SetCount;
@@ -2281,6 +2283,11 @@ begin
     end;
     Put(J + 1, Elem);
   end;
+end;
+
+procedure TAbstractList.TrimExcess;
+begin
+  SetCapacity(Count);
 end;
 
 { TArrayList }
