@@ -248,8 +248,8 @@ type
     function Get(Index: Integer): Variant; override;
     procedure Grow; overload; virtual;
     procedure Grow(N: Integer); overload; virtual;
-    procedure Shift(Index, N: Integer); virtual;
-    procedure UnShift(Index, N: Integer); virtual;
+    procedure ShiftRight(Index, N: Integer);
+    procedure ShiftLeft(Index, N: Integer);
     procedure Put(Index: Integer; const Value: Variant); override;
     function GetCapacity: Integer; override;
     function GetCount: Integer; override;
@@ -2356,7 +2356,7 @@ begin
   SetLength(FList, FCapacity);
 end;
 
-procedure TArrayList.UnShift(Index, N: Integer);
+procedure TArrayList.ShiftLeft(Index, N: Integer);
 var
   I: Integer;
 begin
@@ -2373,7 +2373,7 @@ function TArrayList.Delete(Index: Integer): Variant;
 begin
   if (Index >= 0) and (Index < FCount) then begin
     Result := FList[Index];
-    UnShift(Index, 1);
+    ShiftLeft(Index, 1);
   end;
 end;
 
@@ -2381,7 +2381,7 @@ procedure TArrayList.DeleteRange(Index, ACount: Integer);
 begin
   if (Index >= 0) and (Index < FCount) then begin
     if ACount > FCount - Index then ACount := Fcount - Index;
-    UnShift(Index, ACount);
+    ShiftLeft(Index, ACount);
   end;
 end;
 
@@ -2442,7 +2442,7 @@ begin
   end;
 end;
 
-procedure TArrayList.Shift(Index, N: Integer);
+procedure TArrayList.ShiftRight(Index, N: Integer);
 begin
   if Index < FCount then begin
     System.Move(FList[Index], FList[Index + N],
@@ -2480,7 +2480,7 @@ begin
   if (Index < 0) or (Index > FCount) then
     raise EArrayListError.CreateResFmt(@SListIndexError, [Index]);
   if FCount = FCapacity then Grow;
-  Shift(Index, 1);
+  ShiftRight(Index, 1);
   FList[Index] := Value;
   Inc(FCount);
 end;
@@ -2493,7 +2493,7 @@ begin
     raise EArrayListError.CreateResFmt(@SListIndexError, [Index]);
   N := AList.Count;
   Grow(N);
-  Shift(Index, N);
+  ShiftRight(Index, N);
   for I := 0 to N - 1 do FList[Index + I] := AList[I];
   Inc(FCount, N);
 end;
@@ -2510,7 +2510,7 @@ begin
       raise EArrayListError.CreateResFmt(@SListIndexError, [Index]);
     N := Length(Container);
     Grow(N);
-    Shift(Index, N);
+    ShiftRight(Index, N);
     Low := VarArrayLowBound(Container, 1);
     High := Low + N - 1;
     for I := Low to High do FList[Index + I] := Container[I];
@@ -2525,7 +2525,7 @@ begin
     raise EArrayListError.CreateResFmt(@SListIndexError, [Index]);
   N := Length(ConstArray);
   Grow(N);
-  Shift(Index, N);
+  ShiftRight(Index, N);
   for I := 0 to N - 1 do FList[Index + I] := VarRecToVar(ConstArray[I]);
   Inc(FCount, N);
 end;
@@ -2871,7 +2871,7 @@ begin
   if (Index >= 0) and (Index < FCount) then begin
     Result := FList[Index];
     DeleteHash(Index, 1);
-    UnShift(Index, 1);
+    ShiftLeft(Index, 1);
   end;
 end;
 
@@ -2880,7 +2880,7 @@ begin
   if (Index >= 0) and (Index < FCount) then begin
     if ACount > FCount - Index then ACount := FCount - Index;
     DeleteHash(Index, ACount);
-    UnShift(Index, ACount);
+    ShiftLeft(Index, ACount);
   end;
 end;
 
