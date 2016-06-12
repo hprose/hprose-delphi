@@ -86,20 +86,20 @@
 {$endif}
 
 {$ifdef VER310}
-  {$define DELPHI11}
-  {$define DELPHI11_UP}
+  {$define DELPHI10_1}
+  {$define DELPHI10_1_UP}
 {$endif}
 
 {$ifdef VER320}
-  {$define DELPHI12}
-  {$define DELPHI12_UP}
+  {$define DELPHI10_2}
+  {$define DELPHI10_2_UP}
 {$endif}
 
-{$ifdef DELPHI12_UP}
-  {$define DELPHI11_UP}
+{$ifdef DELPHI10_2_UP}
+  {$define DELPHI10_1_UP}
 {$endif}
 
-{$ifdef DELPHI11_UP}
+{$ifdef DELPHI10_1_UP}
   {$define DELPHI10_UP}
 {$endif}
 
