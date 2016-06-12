@@ -14,7 +14,7 @@
  *                                                        *
  * hprose indy http client unit for delphi.               *
  *                                                        *
- * LastModified: Mar 8, 2015                              *
+ * LastModified: Jun 12, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -146,6 +146,7 @@ begin
   finally
     FHttpPool.Unlock;
   end;
+  IdHttp.ConnectTimeout := FTimeout;
   IdHttp.ReadTimeout := FTimeout;
   IdHttp.Request.UserAgent := FUserAgent;
   if FProxyHost <> '' then begin
