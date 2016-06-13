@@ -163,7 +163,7 @@ type
       ReadWriteSync: Boolean = False); overload; virtual; abstract;
     constructor Create(Sync: Boolean;
       ReadWriteSync: Boolean = False); overload; virtual;
-    constructor Create(const AList: IList; Sync: Boolean = True;
+    constructor Create(const AList: IImmutableList; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); overload; virtual;
     constructor Create(const Container: Variant; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); overload; virtual;
@@ -174,10 +174,10 @@ type
         constructor Create1(ACapacity: Integer); virtual; // for C++ Builder
         constructor Create2(ACapacity: Integer; Sync: Boolean); virtual; // for C++ Builder
         constructor CreateS(Sync: Boolean); virtual; // for C++ Builder
-        constructor CreateL1(const AList: IList); virtual; // for C++ Builder
+        constructor CreateL1(const AList: IImmutableList); virtual; // for C++ Builder
         constructor CreateA1(const Container: Variant); virtual; // for C++ Builder
         constructor CreateCA1(const ConstArray: array of const); virtual; // for C++ Builder
-        constructor CreateL2(const AList: IList; Sync: Boolean); virtual; // for C++ Builder
+        constructor CreateL2(const AList: IImmutableList; Sync: Boolean); virtual; // for C++ Builder
         constructor CreateA2(const Container: Variant; Sync: Boolean); virtual; // for C++ Builder
         constructor CreateCA2(const ConstArray: array of const; Sync: Boolean); virtual; // for C++ Builder
     {$ENDIF}
@@ -402,6 +402,8 @@ type
     function GetKeys: IImmutableList;
     function GetValues: IImmutableList;
     function GetKey(const AValue: Variant): Variant;
+    function GetValue(const AKey: Variant): Variant;
+    procedure PutValue(const AKey: Variant; AValue: Variant);
     function Get(const AKey: Variant): Variant; overload;
     function Get(const AKey: Variant; out AValue: Variant): Boolean; overload;
     procedure Put(const AKey, AValue: Variant); overload;
@@ -431,27 +433,39 @@ type
       ReadWriteSync: Boolean = False): IList;
     property Count: Integer read GetCount;
     property Key[const AValue: Variant]: Variant read GetKey;
-    property Value[const AKey: Variant]: Variant read Get write Put; default;
+    property Value[const AKey: Variant]: Variant read GetValue write PutValue; default;
     property Keys: IImmutableList read GetKeys;
     property Values: IImmutableList read GetValues;
   end;
+
+  { TAbstractMap }
 
   TAbstractMap = class(TInterfacedObject, IMap)
   private
     FLock: TCriticalSection;
     FReadWriteLock: TMultiReadExclusiveWriteSynchronizer;
+    function GetValue(const AKey: Variant): Variant;
+    procedure PutValue(const AKey: Variant; AValue: Variant);
   protected
     procedure Assign(const Source: IMap); virtual; abstract;
     function GetCount: Integer; virtual; abstract;
     function GetKeys: IImmutableList; virtual; abstract;
     function GetValues: IImmutableList; virtual; abstract;
     function GetKey(const AValue: Variant): Variant; virtual; abstract;
-    function Get(const AKey: Variant): Variant; overload; virtual; abstract;
-    procedure Put(const AKey, AValue: Variant); virtual; abstract;
   public
     constructor Create(ACapacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); overload; virtual; abstract;
+    constructor Create(ACapacity: Integer; Sync: Boolean;
+      ReadWriteSync: Boolean = False); overload; virtual;
     constructor Create(Sync: Boolean;
+      ReadWriteSync: Boolean = False); overload; virtual;
+    constructor Create(const AList: IImmutableList; Sync: Boolean = True;
+      ReadWriteSync: Boolean = False); overload; virtual;
+    constructor Create(const AMap: IMap; Sync: Boolean = True;
+      ReadWriteSync: Boolean = False); overload; virtual;
+    constructor Create(const Container: Variant; Sync: Boolean = True;
+      ReadWriteSync: Boolean = False); overload; virtual;
+    constructor Create(const ConstArray: array of const; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); overload; virtual;
 {$IFDEF BCB}
     constructor Create0; virtual;
@@ -459,9 +473,18 @@ type
     constructor Create2(ACapacity: Integer; Factor: Single); virtual;
     constructor Create3(ACapacity: Integer; Factor: Single; Sync: Boolean); virtual;
     constructor CreateS(Sync: Boolean); virtual;
+    constructor CreateL1(const AList: IImmutableList); virtual; // for C++ Builder
+    constructor CreateM1(const AMap: IMap); virtual; // for C++ Builder
+    constructor CreateA1(const Container: Variant); virtual; // for C++ Builder
+    constructor CreateCA1(const ConstArray: array of const); virtual; // for C++ Builder
+    constructor CreateL2(const AList: IImmutableList; Sync: Boolean); virtual; // for C++ Builder
+    constructor CreateA2(const Container: Variant; Sync: Boolean); virtual; // for C++ Builder
+    constructor CreateCA2(const ConstArray: array of const; Sync: Boolean); virtual; // for C++ Builder
 {$ENDIF}
     destructor Destroy; override;
+    function Get(const AKey: Variant): Variant; overload; virtual; abstract;
     function Get(const AKey: Variant; out AValue: Variant): Boolean; overload; virtual; abstract;
+    procedure Put(const AKey, AValue: Variant); overload; virtual; abstract;
     procedure Put(const AList: IImmutableList); overload; virtual; abstract;
     procedure Put(const AMap: IMap); overload; virtual; abstract;
     procedure Put(const Container: Variant); overload; virtual; abstract;
@@ -497,7 +520,7 @@ type
       ReadWriteSync: Boolean = False): IList; virtual; abstract;
     property Count: Integer read GetCount;
     property Key[const AValue: Variant]: Variant read GetKey;
-    property Value[const AKey: Variant]: Variant read Get write Put; default;
+    property Value[const AKey: Variant]: Variant read GetValue write PutValue; default;
     property Keys: IImmutableList read GetKeys;
     property Values: IImmutableList read GetValues;
   end;
@@ -524,14 +547,14 @@ type
     function GetKeys: IImmutableList; override;
     function GetValues: IImmutableList; override;
     function GetKey(const AValue: Variant): Variant; override;
-    function Get(const AKey: Variant): Variant; overload; override;
-    procedure Put(const AKey, AValue: Variant); override;
     procedure InitData(AKeys, AValues: IList);
   public
     constructor Create(ACapacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); overload; override;
     procedure Assign(const Source: IMap); override;
+    function Get(const AKey: Variant): Variant; overload; override;
     function Get(const AKey: Variant; out AValue: Variant): Boolean; overload; override;
+    procedure Put(const AKey, AValue: Variant); overload; override;
     procedure Put(const AList: IImmutableList); overload; override;
     procedure Put(const AMap: IMap); overload; override;
     procedure Put(const Container: Variant); overload; override;
@@ -549,11 +572,6 @@ type
       ReadWriteSync: Boolean = False): IList; override;
     function ToArrayList(Sync: Boolean = True;
       ReadWriteSync: Boolean = False): TArrayList; virtual;
-    property Key[const AValue: Variant]: Variant read GetKey;
-    property Value[const AKey: Variant]: Variant read Get write Put; default;
-    property Count: Integer read GetCount;
-    property Keys: IImmutableList read GetKeys;
-    property Values: IImmutableList read GetValues;
   end;
 
   { function ContainsValue is an O(1) operation in THashedMap,
@@ -633,9 +651,8 @@ type
   TSmartObject = class(TInterfacedObject, ISmartObject)
   protected
     FObject: TObject;
-    constructor Create(const AClass: TClass); overload;
   public
-    constructor Create(AObject: TObject); overload; virtual;
+    constructor Create(AObject: TObject); virtual;
     class function New(const AClass: TClass): ISmartObject;
     function Value: TObject;
     destructor Destroy; override;
@@ -2009,7 +2026,7 @@ begin
   Create(4, Sync, ReadWriteSync);
 end;
 
-constructor TAbstractList.Create(const AList: IList; Sync: Boolean;
+constructor TAbstractList.Create(const AList: IImmutableList; Sync: Boolean;
   ReadWriteSync: Boolean);
 begin
   Create(AList.Count, Sync, ReadWriteSync);
@@ -2057,12 +2074,12 @@ begin
   Create(Sync);
 end;
 
-constructor TAbstractList.CreateL1(const AList: IList); virtual;
+constructor TAbstractList.CreateL1(const AList: IImmutableList);
 begin
   Create(AList);
 end;
 
-constructor TAbstractList.CreateA1(const Container: Variant); virtual;
+constructor TAbstractList.CreateA1(const Container: Variant);
 begin
   Create(Container);
 end;
@@ -2072,7 +2089,7 @@ begin
   Create(ConstArray);
 end;
 
-constructor TAbstractList.CreateL2(const AList: IList; Sync: Boolean);
+constructor TAbstractList.CreateL2(const AList: IImmutableList; Sync: Boolean);
 begin
   Create(AList, Sync);
 end;
@@ -2215,7 +2232,7 @@ end;
 function TAbstractList.Remove(const Value: Variant; Direction: TDirection
   ): Integer;
 begin
-  if Direction = TDirection.FromBeginning then
+  if Direction = FromBeginning then
     Result := IndexOf(Value)
   else
     Result := LastIndexOf(Value);
@@ -3131,9 +3148,51 @@ end;
 
 { TAbstractMap }
 
-constructor TAbstractMap.Create(Sync, ReadWriteSync: Boolean);
+constructor TAbstractMap.Create(ACapacity: Integer; Sync: Boolean;
+  ReadWriteSync: Boolean = False);
+begin
+  Create(ACapacity, 0.75, Sync, ReadWriteSync);
+end;
+
+constructor TAbstractMap.Create(Sync: Boolean; ReadWriteSync: Boolean);
 begin
   Create(16, 0.75, Sync, ReadWriteSync);
+end;
+
+constructor TAbstractMap.Create(const AList: IImmutableList;
+  Sync: Boolean = True; ReadWriteSync: Boolean = False);
+begin
+  Create(AList.Count shr 1, Sync, ReadWriteSync);
+  Put(AList);
+end;
+
+constructor TAbstractMap.Create(const AMap: IMap; Sync: Boolean = True;
+  ReadWriteSync: Boolean = False);
+begin
+  Create(AMap.Count, Sync, ReadWriteSync);
+  Put(AMap);
+end;
+
+constructor TAbstractMap.Create(const Container: Variant; Sync: Boolean = True;
+  ReadWriteSync: Boolean = False);
+begin
+  if VarIsList(Container) then begin
+    Create(VarToList(Container), Sync, ReadWriteSync);
+  end
+  else if VarIsMap(Container) then begin
+    Create(VarToMap(Container), Sync, ReadWriteSync);
+  end
+  else if VarIsArray(Container) then begin
+    Create(Length(Container) shr 1, Sync, ReadWriteSync);
+    Put(Container);
+  end;
+end;
+
+constructor TAbstractMap.Create(const ConstArray: array of const;
+  Sync: Boolean = True; ReadWriteSync: Boolean = False);
+begin
+  Create(Length(ConstArray) shr 1, Sync, ReadWriteSync);
+  Put(ConstArray);
 end;
 
 {$IFDEF BCB}
@@ -3161,6 +3220,47 @@ constructor TAbstractMap.CreateS(Sync: Boolean);
 begin
   Create(Sync);
 end;
+
+constructor TAbstractMap.CreateL1(const AList: IImmutableList);
+begin
+  Create(AList);
+end;
+
+constructor TAbstractMap.CreateM1(const AMap: IMap);
+begin
+  Create(AMap);
+end;
+
+constructor TAbstractMap.CreateA1(const Container: Variant);
+begin
+  Create(Container);
+end;
+
+constructor TAbstractMap.CreateCA1(const ConstArray: array of const);
+begin
+  Create(ConstArray);
+end;
+
+constructor TAbstractMap.CreateL2(const AList: IImmutableList; Sync: Boolean);
+begin
+  Create(AList, Sync);
+end;
+
+constructor TAbstractMap.CreateM2(const AMap: IMap; Sync: Boolean);
+begin
+  Create(AMap, Sync);
+end;
+
+constructor TAbstractMap.CreateA2(const Container: Variant; Sync: Boolean);
+begin
+  Create(Container, Sync);
+end;
+
+constructor TAbstractMap.CreateCA2(const ConstArray: array of const; Sync: Boolean);
+begin
+  Create(ConstArray, Sync);
+end;
+
 {$ENDIF}
 
 destructor TAbstractMap.Destroy;
@@ -3168,6 +3268,16 @@ begin
   FreeAndNil(FLock);
   FreeAndNil(FReadWriteLock);
   inherited Destroy;
+end;
+
+function TAbstractMap.GetValue(const AKey: Variant): Variant;
+begin
+  Result := Get(AKey);
+end;
+
+procedure TAbstractMap.PutValue(const AKey: Variant; AValue: Variant);
+begin
+  Put(AKey, AValue);
 end;
 
 function TAbstractMap.GetEnumerator: IMapEnumerator;
@@ -3217,8 +3327,8 @@ begin
   FReadWriteLock.EndWrite;
 end;
 
-function TAbstractMap.Join(const ItemGlue, KeyValueGlue, LeftPad,
-  RightPad: string): string;
+function TAbstractMap.Join(const ItemGlue: string; const KeyValueGlue: string; 
+  const LeftPad: string; const RightPad: string): string;
 var
   Buffer: TStringBuffer;
   E: IMapEnumerator;
@@ -3244,9 +3354,10 @@ begin
   Buffer.Free;
 end;
 
-class function TAbstractMap.Split(Str: string; const ItemSeparator,
-  KeyValueSeparator: string; Limit: Integer; TrimKey, TrimValue,
-  SkipEmptyKey, SkipEmptyValue: Boolean; Sync, ReadWriteSync: Boolean): IMap;
+class function TAbstractMap.Split(Str: string; const ItemSeparator: string; 
+  const KeyValueSeparator: string; Limit: Integer; TrimKey: Boolean; 
+  TrimValue: Boolean; SkipEmptyKey: Boolean; SkipEmptyValue: Boolean; 
+  Sync: Boolean; ReadWriteSync: Boolean): IMap;
 
 var
   I, L, L2, N: Integer;
@@ -4098,14 +4209,6 @@ var
 
 { TSmartObject }
 
-constructor TSmartObject.Create(const AClass: TClass);
-begin
-  SmartObjectsRef.Lock;
-  FObject := AClass.Create;
-  SmartObjectsRef[NativeInt(Pointer(FObject))] := 1;
-  SmartObjectsRef.UnLock;
-end;
-
 constructor TSmartObject.Create(AObject: TObject);
 var
   V: NativeInt;
@@ -4141,7 +4244,7 @@ end;
 
 class function TSmartObject.New(const AClass: TClass): ISmartObject;
 begin
-  Result := TSmartObject.Create(AClass) as ISmartObject;
+  Result := TSmartObject.Create(AClass.Create) as ISmartObject;
 end;
 
 function TSmartObject.Value: TObject;
