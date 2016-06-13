@@ -14,7 +14,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: Jun 11, 2016                             *
+ * LastModified: Jun 13, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -612,6 +612,7 @@ procedure THproseReader.CheckTag(ExpectTag: Byte);
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   if Tag <> expectTag then raise UnexpectedTag(Tag, String(Char(ExpectTag)));
 end;
@@ -620,6 +621,7 @@ function THproseReader.CheckTags(const ExpectTags: TBytes): Byte;
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   if Pos(Char(Tag), StringOf(ExpectTags)) = 0 then raise UnexpectedTag(Tag, StringOf(ExpectTags));
   Result := Tag;
@@ -637,6 +639,7 @@ var
   C: Byte;
 begin
   BS := TBytesStream.Create;
+  C := 0;
   try
     while (FStream.Read(C, 1) = 1) and (C <> Tag) do BS.Write(C, 1);
     Bytes := BS.Bytes;
@@ -655,6 +658,7 @@ var
 begin
   Result := 0;
   S := 1;
+  C := 0;
   I := FStream.Read(C, 1);
   if I = 1 then
     if C = Byte('+') then
@@ -677,6 +681,7 @@ var
 begin
   Result := 0;
   S := 1;
+  C := 0;
   I := FStream.Read(C, 1);
   if I = 1 then
     if C = Byte('+') then
@@ -698,6 +703,7 @@ var
   C: Byte;
 begin
   Result := 0;
+  C := 0;
   I := FStream.Read(C, 1);
   if (I = 1) and (C = Byte('+')) then I := FStream.Read(C, 1);
   while (I = 1) and (C <> Tag) do begin
@@ -1480,6 +1486,7 @@ function THproseReader.ReadInteger: Integer;
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     Byte('0'): Result := 0;
@@ -1510,6 +1517,7 @@ function THproseReader.ReadInt64: Int64;
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     Byte('0'): Result := 0;
@@ -1541,6 +1549,7 @@ function THproseReader.ReadUInt64: UInt64;
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     Byte('0'): Result := 0;
@@ -1577,6 +1586,7 @@ function THproseReader.ReadExtended: Extended;
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     Byte('0'): Result := 0;
@@ -1609,6 +1619,7 @@ function THproseReader.ReadCurrency: Currency;
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     Byte('0'): Result := 0;
@@ -1639,6 +1650,7 @@ function THproseReader.ReadBoolean: Boolean;
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     Byte('0'): Result := False;
@@ -1661,6 +1673,7 @@ function THproseReader.ReadDateTime: TDateTime;
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     Byte('0')..Byte('9'): Result := TimeStampToDateTime(MSecsToTimeStamp(Tag - Byte('0')));
@@ -1680,6 +1693,7 @@ function THproseReader.ReadUTF8Char: WideChar;
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     Byte('0')..Byte('9'): Result := WideChar(Tag);
@@ -1702,6 +1716,7 @@ function THproseReader.ReadString: string;
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     Byte('0')..Byte('9'): Result := string(Char(Tag));
@@ -1729,6 +1744,7 @@ function THproseReader.ReadBytes: Variant;
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     htNull,
@@ -1745,6 +1761,7 @@ function THproseReader.ReadGuid: string;
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     htNull,
@@ -1761,6 +1778,7 @@ function THproseReader.ReadDynArray(varType: Integer): Variant;
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     htNull,
@@ -1777,6 +1795,7 @@ var
   Tag: Byte;
   I, Count: Integer;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     htNull,
@@ -1797,6 +1816,7 @@ function THproseReader.ReadInterface(AClass: TClass; const IID: TGUID): IInterfa
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     htNull,
@@ -1841,6 +1861,7 @@ begin
   ClassName := AClass.ClassName;
   Info := PTypeInfo(AClass.ClassInfo);
 {$ENDIF}
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     htNull,
@@ -2389,6 +2410,7 @@ function THproseReader.Unserialize: Variant;
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
     Byte('0')..Byte('9'): Result := Tag - Byte('0');
@@ -2534,6 +2556,7 @@ procedure THproseReader.ReadRaw(const OStream: TStream);
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   ReadRaw(OStream, Tag);
 end;
@@ -2579,6 +2602,7 @@ procedure THproseReader.ReadInfinityRaw(const OStream: TStream);
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   OStream.WriteBuffer(Tag, 1);
 end;
@@ -2587,6 +2611,7 @@ procedure THproseReader.ReadNumberRaw(const OStream: TStream);
 var
   Tag: Byte;
 begin
+  Tag := 0;
   repeat
     FStream.ReadBuffer(Tag, 1);
     OStream.WriteBuffer(Tag, 1);
@@ -2597,6 +2622,7 @@ procedure THproseReader.ReadDateTimeRaw(const OStream: TStream);
 var
   Tag: Byte;
 begin
+  Tag := 0;
   repeat
     FStream.ReadBuffer(Tag, 1);
     OStream.WriteBuffer(Tag, 1);
@@ -2608,6 +2634,7 @@ procedure THproseReader.ReadUTF8CharRaw(const OStream: TStream);
 var
   Tag: Byte;
 begin
+  Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag shr 4 of
     0..7: OStream.WriteBuffer(Tag, 1);
@@ -2703,6 +2730,7 @@ procedure THproseReader.ReadComplexRaw(const OStream: TStream);
 var
   Tag: Byte;
 begin
+  Tag := 0;
   repeat
     FStream.ReadBuffer(Tag, 1);
     OStream.WriteBuffer(Tag, 1);
