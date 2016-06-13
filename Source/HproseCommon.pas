@@ -431,6 +431,9 @@ type
     procedure PutAll(const ConstArray: array of const); overload;
     function ToList(ListClass: TListClass; Sync: Boolean = True;
       ReadWriteSync: Boolean = False): IList;
+    function ToArrayList(Sync: Boolean = True;
+      ReadWriteSync: Boolean = False): IArrayList;
+    procedure TrimExcess;
     property Count: Integer read GetCount;
     property Key[const AValue: Variant]: Variant read GetKey;
     property Value[const AKey: Variant]: Variant read GetValue write PutValue; default;
@@ -518,6 +521,9 @@ type
     procedure PutAll(const ConstArray: array of const); overload; virtual; abstract;
     function ToList(ListClass: TListClass; Sync: Boolean = True;
       ReadWriteSync: Boolean = False): IList; virtual; abstract;
+    function ToArrayList(Sync: Boolean = True;
+      ReadWriteSync: Boolean = False): IArrayList; virtual; abstract;
+    procedure TrimExcess; virtual; abstract;
     property Count: Integer read GetCount;
     property Key[const AValue: Variant]: Variant read GetKey;
     property Value[const AKey: Variant]: Variant read GetValue write PutValue; default;
@@ -571,7 +577,8 @@ type
     function ToList(ListClass: TListClass; Sync: Boolean = True;
       ReadWriteSync: Boolean = False): IList; override;
     function ToArrayList(Sync: Boolean = True;
-      ReadWriteSync: Boolean = False): TArrayList; virtual;
+      ReadWriteSync: Boolean = False): IArrayList; override;
+    procedure TrimExcess; override;
   end;
 
   { function ContainsValue is an O(1) operation in THashedMap,
@@ -3602,7 +3609,7 @@ begin
 end;
 
 function THashMap.ToArrayList(Sync: Boolean; ReadWriteSync: Boolean
-  ): TArrayList;
+  ): IArrayList;
 var
   I: Integer;
 begin
@@ -3610,6 +3617,12 @@ begin
   for I := 0 to Count - 1 do
     if (VarIsOrdinal(FKeys[I])) and (FKeys[I] >= 0)
       and (FKeys[I] <= MaxListSize) then Result.Put(FKeys[I], FValues[I]);
+end;
+
+procedure THashMap.TrimExcess;
+begin
+  FKeys.TrimExcess;
+  FValues.TrimExcess;
 end;
 
 function THashMap.GetKeys: IImmutableList;
