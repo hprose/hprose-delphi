@@ -159,7 +159,7 @@ type
     procedure SetCount(NewCount: Integer); virtual; abstract;
     function Compare(const Value1, Value2: Variant): Integer; virtual;
   public
-    constructor Create(Capacity: Integer = 4; Sync: Boolean = True;
+    constructor Create(ACapacity: Integer = 4; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); overload; virtual; abstract;
     constructor Create(Sync: Boolean;
       ReadWriteSync: Boolean = False); overload; virtual;
@@ -171,8 +171,8 @@ type
       ReadWriteSync: Boolean = False); overload; virtual;
     {$IFDEF BCB}
         constructor Create0; virtual; // for C++ Builder
-        constructor Create1(Capacity: Integer); virtual; // for C++ Builder
-        constructor Create2(Capacity: Integer; Sync: Boolean); virtual; // for C++ Builder
+        constructor Create1(ACapacity: Integer); virtual; // for C++ Builder
+        constructor Create2(ACapacity: Integer; Sync: Boolean); virtual; // for C++ Builder
         constructor CreateS(Sync: Boolean); virtual; // for C++ Builder
         constructor CreateL1(const AList: IList); virtual; // for C++ Builder
         constructor CreateA1(const Container: Variant); virtual; // for C++ Builder
@@ -309,7 +309,7 @@ type
     procedure Insert(Item: PHashItem);
     function Remove(HashCode, Index: Integer): PHashItem;
   public
-    constructor Create(Capacity: Integer = 16; Factor: Single = 0.75);
+    constructor Create(ACapacity: Integer = 16; Factor: Single = 0.75);
     destructor Destroy; override;
     function Add(HashCode, Index: Integer): PHashItem;
     procedure Clear;
@@ -345,7 +345,7 @@ type
     constructor Create(ACapacity: Integer; Factor: Single; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); reintroduce; overload; virtual;
 {$IFDEF BCB}
-    constructor Create3(Capacity: Integer; Factor: Single;
+    constructor Create3(ACapacity: Integer; Factor: Single;
       Sync: Boolean); virtual; // for C++ Builder
 {$ENDIF}
     destructor Destroy; override;
@@ -377,7 +377,7 @@ type
       Boolean; override;
 {$IFDEF BCB}
   public
-    constructor Create4(Capacity: Integer; Factor: Single; Sync,
+    constructor Create4(ACapacity: Integer; Factor: Single; Sync,
       ReadWriteSync: Boolean); virtual; // for C++ Builder
 {$ENDIF}
   end;
@@ -401,13 +401,15 @@ type
     function GetCount: Integer;
     function GetKeys: IImmutableList;
     function GetValues: IImmutableList;
-    function GetKey(const Value: Variant): Variant;
-    function Get(const Key: Variant): Variant;
-    procedure Put(const Key, Value: Variant);
+    function GetKey(const AValue: Variant): Variant;
+    function Get(const AKey: Variant): Variant; overload;
+    procedure Put(const AKey, AValue: Variant);
+    function Get(const AKey: Variant; var AValue: Variant): Boolean; overload;
+    function Add(const AKey, AValue: Variant): Boolean;
     procedure Clear;
-    function ContainsKey(const Key: Variant): Boolean;
-    function ContainsValue(const Value: Variant): Boolean;
-    function Delete(const Key: Variant): Variant;
+    function ContainsKey(const AKey: Variant): Boolean;
+    function ContainsValue(const AValue: Variant): Boolean;
+    function Delete(const AKey: Variant): Variant;
     function GetEnumerator: IMapEnumerator;
     function Join(const ItemGlue: string = ';';
                   const KeyValueGlue: string = '=';
@@ -438,26 +440,28 @@ type
     function GetCount: Integer; virtual; abstract;
     function GetKeys: IImmutableList; virtual; abstract;
     function GetValues: IImmutableList; virtual; abstract;
-    function GetKey(const Value: Variant): Variant; virtual; abstract;
-    function Get(const Key: Variant): Variant; virtual; abstract;
-    procedure Put(const Key, Value: Variant); virtual; abstract;
+    function GetKey(const AValue: Variant): Variant; virtual; abstract;
+    function Get(const AKey: Variant): Variant; overload; virtual; abstract;
+    procedure Put(const AKey, AValue: Variant); virtual; abstract;
   public
-    constructor Create(Capacity: Integer = 16; Factor: Single = 0.75;
+    constructor Create(ACapacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); overload; virtual; abstract;
     constructor Create(Sync: Boolean;
       ReadWriteSync: Boolean = False); overload; virtual;
 {$IFDEF BCB}
     constructor Create0; virtual;
-    constructor Create1(Capacity: Integer); virtual;
-    constructor Create2(Capacity: Integer; Factor: Single); virtual;
-    constructor Create3(Capacity: Integer; Factor: Single; Sync: Boolean); virtual;
+    constructor Create1(ACapacity: Integer); virtual;
+    constructor Create2(ACapacity: Integer; Factor: Single); virtual;
+    constructor Create3(ACapacity: Integer; Factor: Single; Sync: Boolean); virtual;
     constructor CreateS(Sync: Boolean); virtual;
 {$ENDIF}
     destructor Destroy; override;
+    function Get(const AKey: Variant; var AValue: Variant): Boolean; overload; virtual; abstract;
+    function Add(const AKey, AValue: Variant): Boolean; virtual; abstract;
     procedure Clear; virtual; abstract;
-    function ContainsKey(const Key: Variant): Boolean; virtual; abstract;
-    function ContainsValue(const Value: Variant): Boolean; virtual; abstract;
-    function Delete(const Key: Variant): Variant; virtual; abstract;
+    function ContainsKey(const AKey: Variant): Boolean; virtual; abstract;
+    function ContainsValue(const AValue: Variant): Boolean; virtual; abstract;
+    function Delete(const AKey: Variant): Variant; virtual; abstract;
     function GetEnumerator: IMapEnumerator; virtual;
     function Join(const ItemGlue: string = ';';
                   const KeyValueGlue: string = '=';
@@ -499,6 +503,8 @@ type
   ['{B66C3C4F-3FBB-41FF-B0FA-5E73D87CBE56}']
   end;
 
+  { THashMap }
+
   THashMap = class(TAbstractMap, IHashMap)
   private
     FKeys: IList;
@@ -508,13 +514,15 @@ type
     function GetKeys: IImmutableList; override;
     function GetValues: IImmutableList; override;
     function GetKey(const AValue: Variant): Variant; override;
-    function Get(const AKey: Variant): Variant; override;
+    function Get(const AKey: Variant): Variant; overload; override;
     procedure Put(const AKey, AValue: Variant); override;
     procedure InitData(AKeys, AValues: IList);
   public
     constructor Create(ACapacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); overload; override;
     procedure Assign(const Source: IMap); override;
+    function Get(const AKey: Variant; var AValue: Variant): Boolean; overload; override;
+    function Add(const AKey, AValue: Variant): Boolean; override;
     procedure Clear; override;
     function ContainsKey(const AKey: Variant): Boolean; override;
     function ContainsValue(const AValue: Variant): Boolean; override;
@@ -542,7 +550,7 @@ type
 
   THashedMap = class(THashMap, IHashedMap)
   public
-    constructor Create(Capacity: Integer = 16; Factor: Single = 0.75;
+    constructor Create(ACapacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); override;
   end;
 
@@ -552,7 +560,7 @@ type
 
   TCaseInsensitiveHashMap = class(THashMap, ICaseInsensitiveHashMap)
   public
-    constructor Create(Capacity: Integer = 16; Factor: Single = 0.75;
+    constructor Create(ACapacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); override;
   end;
 
@@ -562,7 +570,7 @@ type
 
   TCaseInsensitiveHashedMap = class(THashMap, ICaseInsensitiveHashedMap)
   public
-    constructor Create(Capacity: Integer = 16; Factor: Single = 0.75;
+    constructor Create(ACapacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); override;
   end;
 
@@ -590,7 +598,7 @@ type
     procedure SetPosition(NewPosition: Integer);
     procedure SetCapacity(NewCapacity: Integer);
   public
-    constructor Create(Capacity: Integer = 255); overload;
+    constructor Create(ACapacity: Integer = 255); overload;
     constructor Create(const AString: string); overload;
     function ReadString(Count: Longint): string;
     procedure WriteString(const AString: string);
@@ -2020,13 +2028,13 @@ constructor TAbstractList.Create0;
 begin
   Create;
 end;
-constructor TAbstractList.Create1(Capacity: Integer);
+constructor TAbstractList.Create1(ACapacity: Integer);
 begin
-  Create(Capacity);
+  Create(ACapacity);
 end;
-constructor TAbstractList.Create2(Capacity: Integer; Sync: Boolean);
+constructor TAbstractList.Create2(ACapacity: Integer; Sync: Boolean);
 begin
-  Create(Capacity, Sync);
+  Create(ACapacity, Sync);
 end;
 
 constructor TAbstractList.CreateS(Sync: Boolean);
@@ -2605,11 +2613,11 @@ end;
 
 { THashBucket }
 
-constructor THashBucket.Create(Capacity: Integer; Factor: Single);
+constructor THashBucket.Create(ACapacity: Integer; Factor: Single);
 begin
   FCount := 0;
   FFactor := Factor;
-  FCapacity := Capacity;
+  FCapacity := ACapacity;
   SetLength(FIndices, FCapacity);
 end;
 
@@ -2843,10 +2851,10 @@ begin
 end;
 
 {$IFDEF BCB}
-constructor THashedList.Create3(Capacity: Integer; Factor: Single;
+constructor THashedList.Create3(ACapacity: Integer; Factor: Single;
   Sync: Boolean);
 begin
-  Create(Capacity, Factor, Sync);
+  Create(ACapacity, Factor, Sync);
 end;
 {$ENDIF}
 
@@ -3015,10 +3023,10 @@ end;
 
 { TCaseInsensitiveHashedList }
 {$IFDEF BCB}
-constructor TCaseInsensitiveHashedList.Create4(Capacity: Integer;
+constructor TCaseInsensitiveHashedList.Create4(ACapacity: Integer;
   Factor: Single; Sync, ReadWriteSync: Boolean);
 begin
-  Create(Capacity, Factor, Sync, ReadWriteSync);
+  Create(ACapacity, Factor, Sync, ReadWriteSync);
 end;
 {$ENDIF}
 
@@ -3119,19 +3127,19 @@ begin
   Create;
 end;
 
-constructor TAbstractMap.Create1(Capacity: Integer);
+constructor TAbstractMap.Create1(ACapacity: Integer);
 begin
-  Create(Capacity);
+  Create(ACapacity);
 end;
 
-constructor TAbstractMap.Create2(Capacity: Integer; Factor: Single);
+constructor TAbstractMap.Create2(ACapacity: Integer; Factor: Single);
 begin
-  Create(Capacity, Factor);
+  Create(ACapacity, Factor);
 end;
 
-constructor TAbstractMap.Create3(Capacity: Integer; Factor: Single; Sync: Boolean);
+constructor TAbstractMap.Create3(ACapacity: Integer; Factor: Single; Sync: Boolean);
 begin
-  Create(Capacity, Factor, Sync);
+  Create(ACapacity, Factor, Sync);
 end;
 
 constructor TAbstractMap.CreateS(Sync: Boolean);
@@ -3284,6 +3292,24 @@ begin
   FValues.Assign(Source.Values);
 end;
 
+function THashMap.Get(const AKey: Variant; var AValue: Variant): Boolean;
+var
+  Index: Integer;
+begin
+  Index := FKeys.IndexOf(AKey);
+  AValue := FValues[Index];
+  Result := Index > -1;
+end;
+
+function THashMap.Add(const AKey, AValue: Variant): Boolean;
+var
+  Index: Integer;
+begin
+  Index := FKeys.IndexOf(AKey);
+  if Index < 0 then FValues[FKeys.Add(AKey)] := AValue;
+  Result := Index < 0;
+end;
+
 procedure THashMap.Clear;
 begin
   FKeys.Clear;
@@ -3300,7 +3326,7 @@ begin
   Result := FValues.Contains(AValue);
 end;
 
-constructor THashMap.Create(ACapacity: Integer; Factor: Single; Sync,
+constructor THashMap.Create(ACapacity: Integer; Factor: Single; Sync: Boolean;
   ReadWriteSync: Boolean);
 begin
   if Sync then InitLock;
@@ -3380,7 +3406,7 @@ begin
     FValues[FKeys.Add(AKey)] := AValue;
 end;
 
-function THashMap.ToList(ListClass: TListClass; Sync,
+function THashMap.ToList(ListClass: TListClass; Sync: Boolean;
   ReadWriteSync: Boolean): IList;
 var
   I: Integer;
@@ -3391,7 +3417,8 @@ begin
       and (FKeys[I] <= MaxListSize) then Result.Put(FKeys[I], FValues[I]);
 end;
 
-function THashMap.ToArrayList(Sync, ReadWriteSync: Boolean): TArrayList;
+function THashMap.ToArrayList(Sync: Boolean; ReadWriteSync: Boolean
+  ): TArrayList;
 var
   I: Integer;
 begin
@@ -3413,35 +3440,35 @@ end;
 
 { THashedMap }
 
-constructor THashedMap.Create(Capacity: Integer; Factor: Single;
+constructor THashedMap.Create(ACapacity: Integer; Factor: Single;
       Sync, ReadWriteSync: Boolean);
 begin
   if Sync then InitLock;
   if ReadWriteSync then InitReadWriteLock;
-  InitData(THashedList.Create(Capacity, Factor, False),
-           THashedList.Create(Capacity, Factor, False));
+  InitData(THashedList.Create(ACapacity, Factor, False),
+           THashedList.Create(ACapacity, Factor, False));
 end;
 
 { TCaseInsensitiveHashMap }
 
-constructor TCaseInsensitiveHashMap.Create(Capacity: Integer; Factor: Single;
+constructor TCaseInsensitiveHashMap.Create(ACapacity: Integer; Factor: Single;
       Sync, ReadWriteSync: Boolean);
 begin
   if Sync then InitLock;
   if ReadWriteSync then InitReadWriteLock;
-  InitData(TCaseInsensitiveHashedList.Create(Capacity, Factor, False),
-           TArrayList.Create(Capacity, False));
+  InitData(TCaseInsensitiveHashedList.Create(ACapacity, Factor, False),
+           TArrayList.Create(ACapacity, False));
 end;
 
 { TCaseInsensitiveHashedMap }
 
-constructor TCaseInsensitiveHashedMap.Create(Capacity: Integer; Factor: Single;
+constructor TCaseInsensitiveHashedMap.Create(ACapacity: Integer; Factor: Single;
       Sync, ReadWriteSync: Boolean);
 begin
   if Sync then InitLock;
   if ReadWriteSync then InitReadWriteLock;
-  InitData(TCaseInsensitiveHashedList.Create(Capacity, Factor, False),
-           THashedList.Create(Capacity, Factor, False));
+  InitData(TCaseInsensitiveHashedList.Create(ACapacity, Factor, False),
+           THashedList.Create(ACapacity, Factor, False));
 end;
 
 {$IFNDEF DELPHI2009_UP}
@@ -3559,12 +3586,12 @@ begin
   Move(PChar(AString)^, FData[0], FLength * SizeOf(Char));
 end;
 
-constructor TStringBuffer.Create(Capacity: Integer);
+constructor TStringBuffer.Create(ACapacity: Integer);
 begin
   FLength := 0;
   FPosition := 0;
-  FCapacity := Capacity;
-  SetLength(FData, Capacity);
+  FCapacity := ACapacity;
+  SetLength(FData, ACapacity);
 end;
 
 procedure TStringBuffer.Grow;
