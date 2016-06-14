@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Jun 12, 2016                             *
+ * LastModified: Jun 14, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -148,8 +148,6 @@ type
   private
     FLock: TCriticalSection;
     FReadWriteLock: TMultiReadExclusiveWriteSynchronizer;
-    function Partition(Low, High: Integer; CompareProc: TCompareMethod): Integer;
-    procedure QuickSort(Low, High: Integer; CompareProc: TCompareMethod);
   protected
     function Get(Index: Integer): Variant; virtual; abstract;
     procedure Put(Index: Integer; const Value: Variant); virtual; abstract;
@@ -2272,33 +2270,6 @@ begin
   for I := 0 to J shr 1 do Exchange(I, J - I);
 end;
 
-function TAbstractList.Partition(Low, High: Integer; CompareProc: TCompareMethod
-  ): Integer;
-var
-  Elem: Variant;
-begin
-  Elem := Get(Low);
-  while Low < High do begin
-    while (Low < High) and (CompareProc(Elem, Get(High)) <= 0) do Dec(High);
-    Exchange(Low, High);
-    while (Low < High) and (CompareProc(Elem, Get(Low)) >= 0) do Inc(Low);
-    Exchange(Low, High);
-  end;
-  Result := Low;
-end;
-
-procedure TAbstractList.QuickSort(Low, High: Integer;
-  CompareProc: TCompareMethod);
-var
-  P: Integer;
-begin
-  if High - Low > 8 then begin
-    P := Partition(Low, High, CompareProc);
-    QuickSort(Low, P - 1, CompareProc);
-    QuickSort(P + 1, High, CompareProc);
-  end;
-end;
-
 function TAbstractList.Compare(const Value1, Value2: Variant): Integer;
 begin
   case VarCompareValue(Value1, Value2) of
@@ -2315,12 +2286,35 @@ begin
 end;
 
 procedure TAbstractList.Sort(CompareProc: TCompareMethod);
+  function Partition(L, H: Integer): Integer;
+  var
+    Elem: Variant;
+  begin
+    Elem := Get(L);
+    while L < H do begin
+      while (L < H) and (CompareProc(Elem, Get(H)) <= 0) do Dec(H);
+      Exchange(L, H);
+      while (L < H) and (CompareProc(Elem, Get(L)) >= 0) do Inc(L);
+      Exchange(L, H);
+    end;
+    Result := L;
+  end;
+  procedure QuickSort(Low, High: Integer);
+  var
+    P: Integer;
+  begin
+    if High - Low > 8 then begin
+      P := Partition(Low, High);
+      QuickSort(Low, P - 1);
+      QuickSort(P + 1, High);
+    end;
+  end;
 var
   I, J, N: Integer;
   Elem: Variant;
 begin
   N := Count - 1;
-  QuickSort(0, N, CompareProc);
+  QuickSort(0, N);
   for I := 1 to N do begin
     Elem := Get(I);
     J := I - 1;
