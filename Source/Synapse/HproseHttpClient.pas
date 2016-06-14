@@ -14,7 +14,7 @@
  *                                                        *
  * hprose synapse http client unit for delphi.            *
  *                                                        *
- * LastModified: Jun 12, 2016                             *
+ * LastModified: Jun 25, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -155,7 +155,7 @@ begin
   while Pos <= LineLen do
   begin
     CurChar := Line[Pos];
-    if CharInSet(CurChar, LeadBytes) then
+    if CurChar in LeadBytes then
     begin
       Inc(Pos);
       Inc(Col);
@@ -174,13 +174,13 @@ begin
       end
     end
     else
-      if CharInSet(CurChar, BreakChars) then
+      if CurChar in BreakChars then
     begin
       if QuoteChar = ' ' then
         BreakPos := Pos
     end
     else
-      if CharInSet(CurChar, QuoteChars) then
+      if CurChar in QuoteChars then
       if CurChar = QuoteChar then
         QuoteChar := ' '
       else
@@ -188,13 +188,13 @@ begin
         QuoteChar := CurChar;
     Inc(Pos);
     Inc(Col);
-    if not CharInSet(QuoteChar, QuoteChars) and (ExistingBreak or
+    if not (QuoteChar in QuoteChars) and (ExistingBreak or
       ((Col > MaxCol) and (BreakPos > LinePos))) then
     begin
       Col := Pos - BreakPos;
       Result := Result + Copy(Line, LinePos, BreakPos - LinePos + 1);
-      if not CharInSet(CurChar, QuoteChars) then
-        while (Pos <= LineLen) and CharInSet(Line[Pos], BreakChars + [#13, #10]) do
+      if not (CurChar in QuoteChars) then
+        while (Pos <= LineLen) and (Line[Pos] in BreakChars + [#13, #10]) do
           Inc(Pos);
       if not ExistingBreak and (Pos < LineLen) then
         Result := Result + BreakStr;
@@ -325,9 +325,9 @@ begin
     begin
       Inc(ALine);
       while (ALine < Count) and ((Length(Get(ALine)) > 0) and
-        CharInSet(Get(ALine)[1], LWS)) do
+        (Get(ALine)[1] in LWS)) do
       begin
-        if CharInSet(Result[Length(Result)], LWS) then
+        if (Result[Length(Result)] in LWS) then
         begin
           Result := Result + TrimLeft(Get(ALine))
         end
