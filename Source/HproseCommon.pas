@@ -104,9 +104,9 @@ type
   end;
 
 {$IFDEF Supports_Anonymous_Method}
-  TCompareMethod = reference to function (const Value1, Value2: Variant): Integer;
+  TListCompareMethod = reference to function (const Value1, Value2: Variant): Integer;
 {$ELSE}
-  TCompareMethod = function (const Value1, Value2: Variant): Integer of object;
+  TListCompareMethod = function (const Value1, Value2: Variant): Integer of object;
 {$ENDIF}
 
   IList = interface(IImmutableList)
@@ -135,7 +135,7 @@ type
     procedure Pack;
     procedure Reverse;
     procedure Sort; overload;
-    procedure Sort(CompareProc: TCompareMethod); overload;
+    procedure Sort(CompareProc: TListCompareMethod); overload;
     procedure TrimExcess;
     property Item[Index: Integer]: Variant read Get write Put; default;
     property Capacity: Integer read GetCapacity write SetCapacity;
@@ -222,7 +222,7 @@ type
     procedure Pack;
     procedure Reverse;
     procedure Sort; overload;
-    procedure Sort(CompareProc: TCompareMethod); overload;
+    procedure Sort(CompareProc: TListCompareMethod); overload;
     procedure TrimExcess;
     property Item[Index: Integer]: Variant read Get write Put; default;
     property Capacity: Integer read GetCapacity write SetCapacity;
@@ -2285,7 +2285,7 @@ begin
   Sort({$IFDEF FPC}@{$ENDIF}Compare);
 end;
 
-procedure TAbstractList.Sort(CompareProc: TCompareMethod);
+procedure TAbstractList.Sort(CompareProc: TListCompareMethod);
   function Partition(L, H: Integer): Integer;
   var
     Elem: Variant;
