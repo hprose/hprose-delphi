@@ -120,6 +120,7 @@ type
     procedure AddAll(const ConstArray: array of const); overload;
     procedure Assign(const Source: IImmutableList);
     procedure Clear;
+    function Compare(const Value1, Value2: Variant): Integer;
     function Delete(Index: Integer): Variant;
     procedure DeleteRange(Index, ACount: Integer);
     procedure Exchange(Index1, Index2: Integer);
@@ -253,6 +254,8 @@ type
     function GetCount: Integer; override;
     procedure SetCapacity(NewCapacity: Integer); override;
     procedure SetCount(NewCount: Integer); override;
+    function IndexCompare(Index: Integer; const Value: Variant):
+      Boolean; virtual;
   public
     constructor Create(ACapacity: Integer = 4; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); overload; override;
@@ -334,8 +337,6 @@ type
     procedure DeleteHash(Index, N: Integer);
     procedure InsertHash(Index, N: Integer);
     function HashOf(const Value: Variant): Integer; virtual;
-    function IndexCompare(Index: Integer; const Value: Variant):
-      Boolean; virtual;
     procedure Put(Index: Integer; const Value: Variant); override;
   public
     constructor Create(ACapacity: Integer = 4; Sync: Boolean = True;
@@ -359,6 +360,19 @@ type
     procedure InsertRange(Index: Integer; const Container: Variant); overload; override;
     procedure InsertRange(Index: Integer; const ConstArray: array of const); overload; override;
     procedure Move(CurIndex, NewIndex: Integer); override;
+  end;
+
+  ICaseInsensitiveArrayList = interface(IArrayList)
+    ['{DAF8EA96-E2CC-F49C-8617-D999CA8A2EB3}']
+  end;
+
+  { TCaseInsensitiveArrayList }
+
+  TCaseInsensitiveArrayList = class(TArrayList, ICaseInsensitiveArrayList)
+  protected
+    function Compare(const Value1, Value2: Variant): Integer; override;
+    function IndexCompare(Index: Integer; const Value: Variant):
+      Boolean; override;
   end;
 
   ICaseInsensitiveHashedList = interface(IHashedList)
@@ -393,6 +407,12 @@ type
     property Current: TMapEntry read GetCurrent;
   end;
 
+{$IFDEF Supports_Anonymous_Method}
+  TMapCompareMethod = reference to function (const Entry1, Entry2: TMapEntry): Integer;
+{$ELSE}
+  TMapCompareMethod = function (const Entry1, Entry2: TMapEntry): Integer of object;
+{$ENDIF}
+
   IMap = interface(IReadWriteSync)
   ['{28B78387-CB07-4C28-B642-09716DAA2170}']
     procedure Assign(const Source: IMap);
@@ -411,6 +431,8 @@ type
     procedure Put(const ConstArray: array of const); overload;
     function Add(const AKey, AValue: Variant): Boolean;
     procedure Clear;
+    function CompareKey(const Entry1, Entry2: TMapEntry): Integer;
+    function CompareValue(const Entry1, Entry2: TMapEntry): Integer;
     function ContainsKey(const AKey: Variant): Boolean;
     function ContainsValue(const AValue: Variant): Boolean;
     function Delete(const AKey: Variant): Variant;
@@ -431,6 +453,9 @@ type
       ReadWriteSync: Boolean = False): IList;
     function ToArrayList(Sync: Boolean = True;
       ReadWriteSync: Boolean = False): IArrayList;
+    procedure Sort; overload;
+    procedure Sort(CompareProc: TMapCompareMethod); overload;
+    procedure SortByValue;
     procedure TrimExcess;
     property Count: Integer read GetCount;
     property Key[const AValue: Variant]: Variant read GetKey;
@@ -453,6 +478,8 @@ type
     function GetKeys: IImmutableList; virtual; abstract;
     function GetValues: IImmutableList; virtual; abstract;
     function GetKey(const AValue: Variant): Variant; virtual; abstract;
+    function CompareKey(const Entry1, Entry2: TMapEntry): Integer; virtual; abstract;
+    function CompareValue(const Entry1, Entry2: TMapEntry): Integer; virtual; abstract;
   public
     constructor Create(ACapacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); overload; virtual; abstract;
@@ -521,6 +548,9 @@ type
       ReadWriteSync: Boolean = False): IList; virtual; abstract;
     function ToArrayList(Sync: Boolean = True;
       ReadWriteSync: Boolean = False): IArrayList; virtual; abstract;
+    procedure Sort; overload; virtual; abstract;
+    procedure Sort(CompareProc: TMapCompareMethod); overload; virtual; abstract;
+    procedure SortByValue; virtual; abstract;
     procedure TrimExcess; virtual; abstract;
     property Count: Integer read GetCount;
     property Key[const AValue: Variant]: Variant read GetKey;
@@ -552,6 +582,8 @@ type
     function GetValues: IImmutableList; override;
     function GetKey(const AValue: Variant): Variant; override;
     procedure InitData(AKeys, AValues: IList);
+    function CompareKey(const Entry1, Entry2: TMapEntry): Integer; override;
+    function CompareValue(const Entry1, Entry2: TMapEntry): Integer; override;
   public
     constructor Create(ACapacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); overload; override;
@@ -576,6 +608,9 @@ type
       ReadWriteSync: Boolean = False): IList; override;
     function ToArrayList(Sync: Boolean = True;
       ReadWriteSync: Boolean = False): IArrayList; override;
+    procedure Sort; overload; override;
+    procedure Sort(CompareProc: TMapCompareMethod); overload; override;
+    procedure SortByValue; override;
     procedure TrimExcess; override;
   end;
 
@@ -2492,12 +2527,18 @@ begin
   end;
 end;
 
+function TArrayList.IndexCompare(Index: Integer;
+  const Value: Variant): Boolean;
+begin
+  Result := VarEquals(FList[Index], Value);
+end;
+
 function TArrayList.IndexOf(const Value: Variant): Integer;
 var
   I: Integer;
 begin
   for I := 0 to FCount - 1 do
-    if VarEquals(FList[I], Value) then begin
+    if IndexCompare(I, Value) then begin
       Result := I;
       Exit;
     end;
@@ -2509,7 +2550,7 @@ var
   I: Integer;
 begin
   for I := FCount - 1 downto 0 do
-    if VarEquals(FList[I], Value) then begin
+    if IndexCompare(I, Value) then begin
       Result := I;
       Exit;
     end;
@@ -2954,12 +2995,6 @@ begin
     Result := HashOfVariant(Value);
 end;
 
-function THashedList.IndexCompare(Index: Integer;
-  const Value: Variant): Boolean;
-begin
-  Result := VarEquals(FList[Index], Value);
-end;
-
 function THashedList.IndexOf(const Value: Variant): Integer;
 begin
   Result := FHashBucket.IndexOf(HashOf(Value), Value, {$IFDEF FPC}@{$ENDIF}IndexCompare);
@@ -3052,6 +3087,37 @@ begin
       HashCode := NewHashCode;
     end;
   FHashBucket.Modify(HashCode, HashOf(FList[NewIndex]), NewIndex);
+end;
+
+{ TCaseInsensitiveArrayList }
+
+function TCaseInsensitiveArrayList.Compare(const Value1, Value2: Variant
+  ): Integer;
+begin
+  if VarIsStr(Value1) and VarIsStr(Value2) then
+{$IFNDEF NEXTGEN}
+    Result := WideCompareText(Value1, Value2)
+{$ELSE}
+    Result := CompareText(Value1, Value2)
+{$ENDIF}
+  else
+    Result:=inherited Compare(Value1, Value2);
+end;
+
+function TCaseInsensitiveArrayList.IndexCompare(Index: Integer;
+  const Value: Variant): Boolean;
+var
+  Elem: Variant;
+begin
+  Elem := Get(Index);
+  if VarIsStr(Elem) and VarIsStr(Value) then
+{$IFNDEF NEXTGEN}
+    Result := WideCompareText(Elem, Value) = 0
+{$ELSE}
+    Result := CompareText(Elem, Value) = 0
+{$ENDIF}
+  else
+    Result := VarEquals(Elem, Value)
 end;
 
 { TCaseInsensitiveHashedList }
@@ -3328,7 +3394,7 @@ begin
   FReadWriteLock.EndWrite;
 end;
 
-function TAbstractMap.Join(const ItemGlue: string; const KeyValueGlue: string; 
+function TAbstractMap.Join(const ItemGlue: string; const KeyValueGlue: string;
   const LeftPad: string; const RightPad: string): string;
 var
   Buffer: TStringBuffer;
@@ -3611,6 +3677,82 @@ begin
   for I := 0 to Count - 1 do
     if (VarIsOrdinal(FKeys[I])) and (FKeys[I] >= 0)
       and (FKeys[I] <= MaxListSize) then Result.Put(FKeys[I], FValues[I]);
+end;
+
+function THashMap.CompareKey(const Entry1, Entry2: TMapEntry): Integer;
+begin
+  Result := FKeys.Compare(Entry1.Key, Entry2.Key);
+end;
+
+function THashMap.CompareValue(const Entry1, Entry2: TMapEntry): Integer;
+begin
+  Result := FValues.Compare(Entry1.Value, Entry2.Value);
+end;
+
+procedure THashMap.Sort;
+begin
+  Sort({$IFDEF FPC}@{$ENDIF}CompareKey);
+end;
+
+procedure THashMap.SortByValue;
+begin
+  Sort({$IFDEF FPC}@{$ENDIF}CompareValue);
+end;
+
+procedure THashMap.Sort(CompareProc: TMapCompareMethod);
+  function GetEntry(I: Integer): TMapEntry;
+  begin
+    Result.Key := FKeys.Get(I);
+    Result.Value := FValues.Get(I);
+  end;
+  procedure PutEntry(I: Integer; const Entry: TMapEntry);
+  begin
+    FKeys.Put(I, Entry.Key);
+    FValues.Put(I, Entry.Value);
+  end;
+  procedure ExchangeEntry(Index1, Index2: Integer);
+  begin
+    FKeys.Exchange(Index1, Index2);
+    FValues.Exchange(Index1, Index2);
+  end;
+  function Partition(L, H: Integer): Integer;
+  var
+    Entry: TMapEntry;
+  begin
+    Entry := GetEntry(L);
+    while L < H do begin
+      while (L < H) and (CompareProc(Entry, GetEntry(H)) <= 0) do Dec(H);
+      ExchangeEntry(L, H);
+      while (L < H) and (CompareProc(Entry, GetEntry(L)) >= 0) do Inc(L);
+      ExchangeEntry(L, H);
+    end;
+    Result := L;
+  end;
+  procedure QuickSort(Low, High: Integer);
+  var
+    P: Integer;
+  begin
+    if High - Low > 8 then begin
+      P := Partition(Low, High);
+      QuickSort(Low, P - 1);
+      QuickSort(P + 1, High);
+    end;
+  end;
+var
+  I, J, N: Integer;
+  Entry: TMapEntry;
+begin
+  N := Count - 1;
+  QuickSort(0, N);
+  for I := 1 to N do begin
+    Entry := GetEntry(I);
+    J := I - 1;
+    while (J >= 0) and (CompareProc(Entry, GetEntry(J)) < 0) do begin
+      PutEntry(J + 1, GetEntry(J));
+      Dec(J);
+    end;
+    PutEntry(J + 1, Entry);
+  end;
 end;
 
 procedure THashMap.TrimExcess;
@@ -4600,6 +4742,7 @@ initialization
   THproseClassManager.Register<TArrayList, IList>('!List');
   THproseClassManager.Register<TArrayList, IArrayList>('!ArrayList');
   THproseClassManager.Register<THashedList, IHashedList>('!HashedList');
+  THproseClassManager.Register<TCaseInsensitiveArrayList, ICaseInsensitiveArrayList>('!CaseInsensitiveArrayList');
   THproseClassManager.Register<TCaseInsensitiveHashedList, ICaseInsensitiveHashedList>('!CaseInsensitiveHashedList');
   THproseClassManager.Register<THashMap, IMap>('!Map');
   THproseClassManager.Register<THashMap, IHashMap>('!HashMap');
@@ -4611,6 +4754,7 @@ initialization
   RegisterClass(TArrayList, IList, '!List');
   RegisterClass(TArrayList, IArrayList, '!ArrayList');
   RegisterClass(THashedList, IHashedList, '!HashedList');
+RegisterClass(TCaseInsensitiveArrayList, ICaseInsensitiveArrayList, '!CaseInsensitiveArrayList');
   RegisterClass(TCaseInsensitiveHashedList, ICaseInsensitiveHashedList, '!CaseInsensitiveHashedList');
   RegisterClass(THashMap, IMap, '!Map');
   RegisterClass(THashMap, IHashMap, '!HashMap');
