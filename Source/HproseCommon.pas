@@ -4487,7 +4487,7 @@ begin
   TI := TypeInfo(T);
   if TI^.Kind <> tkClass then
     raise EHproseException.Create(GetTypeName(TI) + 'is not a Class');
-  inherited Create(GetTypeData(TI)^.ClassType)
+  inherited Create(GetTypeData(TI)^.ClassType.Create)
 end;
 
 constructor TSmartObject<T>.Create(AObject: TObject);
