@@ -865,7 +865,7 @@ type
 
   TVarObjectType = class(TInvokeableVariantType, IVarInstanceReference)
   protected
-{$IF DEFINED(FPC) AND (FPC_VERSION < 3)}
+{$IF DEFINED(FPC) AND (FPC_VERSION < 3.0)}
     procedure DispInvoke(Dest: PVarData; const Source: TVarData;
       CallDesc: PCallDesc; Params: Pointer); override;
 {$IFEND}
@@ -877,7 +877,7 @@ type
       const Name: string; const Arguments: TVarDataArray): Boolean; override;
     function GetProperty(var Dest: TVarData; const V: TVarData;
       const Name: string): Boolean; override;
-    function SetProperty({$IF DEFINED(FPC) AND (FPC_VERSION >= 3)}var{$ELSE}const{$IFEND} V: TVarData; const Name: string;
+    function SetProperty({$IF DEFINED(FPC) AND (FPC_VERSION >= 3.0)}var{$ELSE}const{$IFEND} V: TVarData; const Name: string;
       const Value: TVarData): Boolean; override;
 
     procedure CastTo(var Dest: TVarData; const Source: TVarData;
@@ -4022,7 +4022,7 @@ end;
 
 { TVarObjectType }
 
-{$IF DEFINED(FPC) AND (FPC_VERSION < 3)}
+{$IF DEFINED(FPC) AND (FPC_VERSION < 3.0)}
 const
   VAR_PARAMNOTFOUND = HRESULT($80020004);
 
@@ -4222,7 +4222,7 @@ begin
   if Result then Variant(Dest) := HproseCommon.GetPropValue(Obj, Info);
 end;
 
-function TVarObjectType.SetProperty({$IF DEFINED(FPC) AND (FPC_VERSION >= 3)}var{$ELSE}const{$IFEND} V: TVarData;
+function TVarObjectType.SetProperty({$IF DEFINED(FPC) AND (FPC_VERSION >= 3.0)}var{$ELSE}const{$IFEND} V: TVarData;
   const Name: string; const Value: TVarData): Boolean;
 var
   Obj: TObject;
