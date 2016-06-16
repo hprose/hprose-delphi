@@ -3,6 +3,7 @@
   <Package Version="4">
     <PathDelim Value="\"/>
     <Name Value="HproseSyna"/>
+    <Type Value="RunAndDesignTime"/>
     <Author Value="Ma Bingyao(mabingyao@gmail.com)"/>
     <CompilerOptions>
       <Version Value="11"/>
@@ -12,12 +13,6 @@
         <OtherUnitFiles Value="..\Source;..\Source\Synapse"/>
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
-      <Other>
-        <CompilerMessages>
-          <MsgFileName Value=""/>
-        </CompilerMessages>
-        <CompilerPath Value="$(CompPath)"/>
-      </Other>
     </CompilerOptions>
     <Description Value="Hprose with Synapse"/>
     <License Value="The MIT License (MIT)
@@ -42,7 +37,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 "/>
     <Version Major="1" Minor="4"/>
-    <Files Count="17">
+    <Files Count="19">
       <Item1>
         <Filename Value="..\Source\Synapse\jedi.inc"/>
         <Type Value="Include"/>
@@ -60,60 +55,67 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         <Type Value="Include"/>
       </Item4>
       <Item5>
-        <Filename Value="..\Source\Synapse\sswin32.inc"/>
+        <Filename Value="..\Source\Synapse\ssos2ws1.inc"/>
         <Type Value="Include"/>
       </Item5>
       <Item6>
-        <Filename Value="..\Source\Synapse\blcksock.pas"/>
-        <UnitName Value="blcksock"/>
+        <Filename Value="..\Source\Synapse\ssposix.inc"/>
+        <Type Value="Include"/>
       </Item6>
       <Item7>
-        <Filename Value="..\Source\Synapse\httpsend.pas"/>
-        <UnitName Value="httpsend"/>
+        <Filename Value="..\Source\Synapse\sswin32.inc"/>
+        <Type Value="Include"/>
       </Item7>
       <Item8>
-        <Filename Value="..\Source\Synapse\synaip.pas"/>
-        <UnitName Value="synaip"/>
+        <Filename Value="..\Source\Synapse\blcksock.pas"/>
+        <UnitName Value="blcksock"/>
       </Item8>
       <Item9>
-        <Filename Value="..\Source\Synapse\synafpc.pas"/>
-        <UnitName Value="synafpc"/>
+        <Filename Value="..\Source\Synapse\httpsend.pas"/>
+        <UnitName Value="httpsend"/>
       </Item9>
       <Item10>
-        <Filename Value="..\Source\Synapse\synautil.pas"/>
-        <UnitName Value="synautil"/>
+        <Filename Value="..\Source\Synapse\synaip.pas"/>
+        <UnitName Value="synaip"/>
       </Item10>
       <Item11>
-        <Filename Value="..\Source\Synapse\synsock.pas"/>
-        <UnitName Value="synsock"/>
+        <Filename Value="..\Source\Synapse\synafpc.pas"/>
+        <UnitName Value="synafpc"/>
       </Item11>
       <Item12>
-        <Filename Value="..\Source\Hprose.inc"/>
-        <Type Value="Include"/>
+        <Filename Value="..\Source\Synapse\synautil.pas"/>
+        <UnitName Value="synautil"/>
       </Item12>
       <Item13>
-        <Filename Value="..\Source\HproseCommon.pas"/>
-        <UnitName Value="HproseCommon"/>
+        <Filename Value="..\Source\Synapse\synsock.pas"/>
+        <UnitName Value="synsock"/>
       </Item13>
       <Item14>
-        <Filename Value="..\Source\HproseIO.pas"/>
-        <UnitName Value="HproseIO"/>
+        <Filename Value="..\Source\Hprose.inc"/>
+        <Type Value="Include"/>
       </Item14>
       <Item15>
-        <Filename Value="..\Source\HproseClient.pas"/>
-        <UnitName Value="HproseClient"/>
+        <Filename Value="..\Source\HproseCommon.pas"/>
+        <UnitName Value="HproseCommon"/>
       </Item15>
       <Item16>
+        <Filename Value="..\Source\HproseIO.pas"/>
+        <UnitName Value="HproseIO"/>
+      </Item16>
+      <Item17>
+        <Filename Value="..\Source\HproseClient.pas"/>
+        <UnitName Value="HproseClient"/>
+      </Item17>
+      <Item18>
         <Filename Value="..\Source\Synapse\HproseHttpClient.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="HproseHttpClient"/>
-      </Item16>
-      <Item17>
+      </Item18>
+      <Item19>
         <Filename Value="Hprose.lrs"/>
         <Type Value="LRS"/>
-      </Item17>
+      </Item19>
     </Files>
-    <Type Value="RunAndDesignTime"/>
     <RequiredPkgs Count="2">
       <Item1>
         <PackageName Value="LCL"/>
