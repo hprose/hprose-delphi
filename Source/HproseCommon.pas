@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Jun 14, 2016                             *
+ * LastModified: Jun 24, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -4198,8 +4198,10 @@ begin
   Result := True;
   if AnsiSameText(Name, 'Free') and (Length(Arguments) = 0) then
     Obj.Free
-  else if Supports(Obj, IInvokeableVarObject, Intf) then
-    Variant(Dest) := Intf.Invoke(Name, Arguments)
+  else if Supports(Obj.ClassType, IInvokeableVarObject) then begin
+    Supports(Obj, IInvokeableVarObject, Intf);
+    Variant(Dest) := Intf.Invoke(Name, Arguments);
+  end
   else begin
 {$IFNDEF FPC}
     Result := GetMethodInfo(Obj, Name) <> nil;
