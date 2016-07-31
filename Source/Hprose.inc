@@ -189,6 +189,7 @@
 
 {$ifdef DELPHI2010_UP}
   {$define Supports_Rtti}
+  {$define Supports_Rtti2}
 {$endif}
 
 {$ifdef DELPHIXE3_UP}
@@ -199,6 +200,7 @@
 
 {$ifdef FPC}
   {$define Supports_UInt64}
+  {$define Supports_Rtti2}
   {$mode objfpc}
   {$inline on}
   {$H+}

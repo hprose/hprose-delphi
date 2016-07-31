@@ -37,7 +37,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 "/>
     <Version Major="1" Minor="4"/>
-    <Files Count="19">
+    <Files Count="20">
       <Item1>
         <Filename Value="..\Source\Synapse\jedi.inc"/>
         <Type Value="Include"/>
@@ -95,26 +95,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         <Type Value="Include"/>
       </Item14>
       <Item15>
-        <Filename Value="..\Source\HproseCommon.pas"/>
-        <UnitName Value="HproseCommon"/>
+        <Filename Value="..\Source\ObjAutoX.pas"/>
+        <UnitName Value="ObjAutoX"/>
       </Item15>
       <Item16>
-        <Filename Value="..\Source\HproseIO.pas"/>
-        <UnitName Value="HproseIO"/>
+        <Filename Value="..\Source\HproseCommon.pas"/>
+        <UnitName Value="HproseCommon"/>
       </Item16>
       <Item17>
-        <Filename Value="..\Source\HproseClient.pas"/>
-        <UnitName Value="HproseClient"/>
+        <Filename Value="..\Source\HproseIO.pas"/>
+        <UnitName Value="HproseIO"/>
       </Item17>
       <Item18>
+        <Filename Value="..\Source\HproseClient.pas"/>
+        <UnitName Value="HproseClient"/>
+      </Item18>
+      <Item19>
         <Filename Value="..\Source\Synapse\HproseHttpClient.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="HproseHttpClient"/>
-      </Item18>
-      <Item19>
+      </Item19>
+      <Item20>
         <Filename Value="Hprose.lrs"/>
         <Type Value="LRS"/>
-      </Item19>
+      </Item20>
     </Files>
     <RequiredPkgs Count="2">
       <Item1>

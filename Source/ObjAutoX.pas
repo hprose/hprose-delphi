@@ -26,8 +26,6 @@ unit ObjAutoX;
 
 interface
 
-{$IFNDEF FPC}
-
 {$IFNDEF DELPHIXE2_UP}
 uses
   TypInfo;
@@ -41,28 +39,35 @@ const
 type
 
   TCallingConvention = (ccRegister, ccCdecl, ccPascal, ccStdCall, ccSafeCall);
+  PCallingConvention = ^TCallingConvention;
+
   TParamFlags = set of (pfVar, pfConst, pfArray, pfAddress, pfReference, pfOut,
-    pfResult);
+    {$IFDEF FPC}pfConstRef{$ELSE}pfResult{$ENDIF});
 
   PPointer = ^Pointer;
   PWord = ^Word;
 
   PMethodInfoHeader = ^TMethodInfoHeader;
   TMethodInfoHeader = packed record
+    {$IFDEF FPC}
+    Name: PShortString;
+    Addr: Pointer;
+    {$ELSE}
     Len:  Word;
     Addr: Pointer;
     Name: ShortString;
+    {$ENDIF}
   end;
 
   PReturnInfo = ^TReturnInfo;
   TReturnInfo = packed record
-    Version: Byte; // Must be 1 or 2
+    Version: Byte; // 1 for Delphi 7 - 2009, 2 up to Delphi 2010, 3 for Delphi XE and up
     CallingConvention: TCallingConvention;
     ReturnType: ^PTypeInfo;
     ParamSize: Word;
-  {$ifdef DELPHI2010_UP}
+  {$IFDEF Supports_Rtti2}
     ParamCount: Byte;
-  {$endif}
+  {$ENDIF}
   end;
 
   PParamInfo = ^TParamInfo;
@@ -75,10 +80,13 @@ type
 
   TMethodInfoArray = array of PMethodInfoHeader;
 
+  function GetMethods(ClassType: TClass): TMethodInfoArray;
+  function GetMethodInfo(Instance: TObject;
+  	const MethodName: ShortString): PMethodInfoHeader; overload;
+
+{$IFNDEF FPC}
 function ObjectInvoke(Instance: TObject; MethodHeader: PMethodInfoHeader;
 	const ParamIndexes: array of Integer; const Params: array of Variant): Variant; overload;
-function GetMethodInfo(Instance: TObject;
-	const MethodName: ShortString): PMethodInfoHeader; overload;
 
 type
 
@@ -99,8 +107,9 @@ type
 function CreateMethodPointer(const MethodHandler: IMethodHandler; TypeData: PTypeData): TMethod; overload;
 function CreateMethodPointer(const ADynamicInvokeEvent: TDynamicInvokeEvent; TypeData: PTypeData): TMethod; overload;
 procedure ReleaseMethodPointer(MethodPointer: TMethod);
-function GetMethods(ClassType: TClass): TMethodInfoArray;
 function GetInvokeInstance(MethodPointer: TMethod): TObject;
+{$ENDIF}
+
 
 {$ELSE}
 uses
@@ -110,8 +119,10 @@ uses
 type
   TParamInfoArray  = array of PParamInfo;
 
+{$IFNDEF FPC}
 function ObjectInvoke(Instance: TObject; const MethodName: string;
   const Params: array of Variant): Variant; overload;
+{$ENDIF}
 
 {$IFNDEF DELPHIXE3_UP}
 function GetMethodInfo(Instance: TObject; const MethodName: string): PMethodInfoHeader; overload;
@@ -121,9 +132,9 @@ function GetMethodName(MethodInfo: PMethodInfoHeader): string;
 function GetReturnInfo(MethodInfo: PMethodInfoHeader): PReturnInfo; overload;
 function GetReturnInfo(Instance: TObject; MethodName: string): PReturnInfo; overload;
 function GetParams(Instance: TObject; MethodName: string): TParamInfoArray;
-{$ENDIF}
+
 implementation
-{$IFNDEF FPC}
+
 uses SysUtils, Variants, VarUtils, RTLConsts, HproseCommon;
 
 {$IFNDEF DELPHIXE2_UP}
@@ -176,7 +187,7 @@ begin
           Result := -1;
       end;
     end;
-    tkString, tkLString,{$IFDEF DELPHI2009_UP}tkUString,{$ENDIF} tkWString, tkInterface, tkClass:
+    tkString, tkLString,{$IFDEF Supports_Unicode}tkUString,{$ENDIF} tkWString, tkInterface, tkClass:
       Result := 4;
     tkMethod, tkInt64:
       Result := 8;
@@ -200,30 +211,30 @@ const
   none = ckNone;
   cvt  = ckConvert;
   err  = ckError;
-  Codes: array[varEmpty..{$IFDEF DELPHI2009_UP}varUInt64{$ELSE}varInt64{$ENDIF}, varEmpty..{$IFDEF DELPHI2009_UP}varUInt64{$ELSE}varInt64{$ENDIF}] of TConvertKind =
+  Codes: array[varEmpty..{$IFDEF Supports_UInt64}varUInt64{$ELSE}varInt64{$ENDIF}, varEmpty..{$IFDEF Supports_UInt64}varUInt64{$ELSE}varInt64{$ENDIF}] of TConvertKind =
     ({v From} {To >}{vt_empty} {vt_null} {vt_i2} {vt_i4} {vt_r4} {vt_r8} {vt_cy} {vt_date} {vt_bstr} {vt_dispatch} {vt_error} {vt_bool} {vt_variant} {vt_unknown} {vt_decimal} {0x0f } {vt_i1} {vt_ui1} {vt_ui2} {vt_ui4} {vt_i8} {vt_ui8}
-    {vt_empty}      (none,      err,      err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        err,         err,         err,    err,    err,     err,     err,     err    {$IFDEF DELPHI2009_UP},err{$ENDIF}),
-    {vt_null}       (err,       none,     err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        err,         err,         err,    err,    err,     err,     err,     err    {$IFDEF DELPHI2009_UP},err{$ENDIF}),
-    {vt_i2}         (err,       err,      none,   cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF DELPHI2009_UP},cvt{$ENDIF}),
-    {vt_i4}         (err,       err,      none,   none,   cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF DELPHI2009_UP},cvt{$ENDIF}),
-    {vt_r4}         (err,       err,      cvt,    cvt,    none,   cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF DELPHI2009_UP},cvt{$ENDIF}),
-    {vt_r8}         (err,       err,      cvt,    cvt,    cvt,    none,   none,   none,     cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF DELPHI2009_UP},cvt{$ENDIF}),
-    {vt_cy}         (err,       err,      cvt,    cvt,    cvt,    none,   none,   none,     cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF DELPHI2009_UP},cvt{$ENDIF}),
-    {vt_date}       (err,       err,      cvt,    cvt,    cvt,    none,   none,   none,     cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF DELPHI2009_UP},cvt{$ENDIF}),
-    {vt_bstr}       (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      none,     err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF DELPHI2009_UP},cvt{$ENDIF}),
-    {vt_dispatch}   (err,       err,      err,    err,    err,    err,    err,    err,      err,      none,         err,       err,      none,        none,        err,         err,    err,    err,     err,     err,     err    {$IFDEF DELPHI2009_UP},err{$ENDIF}),
-    {vt_error}      (err,       err,      err,    err,    err,    err,    err,    err,      err,      err,          none,      err,      none,        err,         err,         err,    err,    err,     err,     err,     err    {$IFDEF DELPHI2009_UP},err{$ENDIF}),
-    {vt_bool}       (err,       err,      cvt,    cvt,    err,    err,    err,    err,      cvt,      err,          err,       none,     none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF DELPHI2009_UP},cvt{$ENDIF}),
-    {vt_variant}    (cvt,       cvt,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      cvt,          cvt,       cvt,      none,        cvt,         cvt,         cvt,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF DELPHI2009_UP},cvt{$ENDIF}),
-    {vt_unknown}    (err,       err,      err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        none,        err,         err,    err,    err,     err,     err,     err    {$IFDEF DELPHI2009_UP},err{$ENDIF}),
-    {vt_decimal}    (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         none,        err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF DELPHI2009_UP},cvt{$ENDIF}),
-    {0x0f }         (err,       err,      err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        err,         err,         none,   err,    err,     err,     err,     err    {$IFDEF DELPHI2009_UP},err{$ENDIF}),
-    {vt_i1}         (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    cvt,     cvt,     cvt    {$IFDEF DELPHI2009_UP},cvt{$ENDIF}),
-    {vt_ui1}        (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    cvt,     cvt,     cvt    {$IFDEF DELPHI2009_UP},cvt{$ENDIF}),
-    {vt_ui2}        (err,       err,      none,   cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    none,    cvt,     cvt    {$IFDEF DELPHI2009_UP},cvt{$ENDIF}),
-    {vt_ui4}        (err,       err,      none,   none,   cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    none,    none,    cvt    {$IFDEF DELPHI2009_UP},cvt{$ENDIF}),
-    {vt_i8}         (err,       err,      none,   none,   cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    none,    none,    none   {$IFDEF DELPHI2009_UP},none{$ENDIF})
-{$IFDEF DELPHI2009_UP}
+    {vt_empty}      (none,      err,      err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        err,         err,         err,    err,    err,     err,     err,     err    {$IFDEF Supports_UInt64},err{$ENDIF}),
+    {vt_null}       (err,       none,     err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        err,         err,         err,    err,    err,     err,     err,     err    {$IFDEF Supports_UInt64},err{$ENDIF}),
+    {vt_i2}         (err,       err,      none,   cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
+    {vt_i4}         (err,       err,      none,   none,   cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
+    {vt_r4}         (err,       err,      cvt,    cvt,    none,   cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
+    {vt_r8}         (err,       err,      cvt,    cvt,    cvt,    none,   none,   none,     cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
+    {vt_cy}         (err,       err,      cvt,    cvt,    cvt,    none,   none,   none,     cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
+    {vt_date}       (err,       err,      cvt,    cvt,    cvt,    none,   none,   none,     cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
+    {vt_bstr}       (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      none,     err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
+    {vt_dispatch}   (err,       err,      err,    err,    err,    err,    err,    err,      err,      none,         err,       err,      none,        none,        err,         err,    err,    err,     err,     err,     err    {$IFDEF Supports_UInt64},err{$ENDIF}),
+    {vt_error}      (err,       err,      err,    err,    err,    err,    err,    err,      err,      err,          none,      err,      none,        err,         err,         err,    err,    err,     err,     err,     err    {$IFDEF Supports_UInt64},err{$ENDIF}),
+    {vt_bool}       (err,       err,      cvt,    cvt,    err,    err,    err,    err,      cvt,      err,          err,       none,     none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
+    {vt_variant}    (cvt,       cvt,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      cvt,          cvt,       cvt,      none,        cvt,         cvt,         cvt,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
+    {vt_unknown}    (err,       err,      err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        none,        err,         err,    err,    err,     err,     err,     err    {$IFDEF Supports_UInt64},err{$ENDIF}),
+    {vt_decimal}    (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         none,        err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
+    {0x0f }         (err,       err,      err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        err,         err,         none,   err,    err,     err,     err,     err    {$IFDEF Supports_UInt64},err{$ENDIF}),
+    {vt_i1}         (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
+    {vt_ui1}        (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
+    {vt_ui2}        (err,       err,      none,   cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    none,    cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
+    {vt_ui4}        (err,       err,      none,   none,   cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    none,    none,    cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
+    {vt_i8}         (err,       err,      none,   none,   cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    none,    none,    none   {$IFDEF Supports_UInt64},none{$ENDIF})
+{$IFDEF Supports_UInt64}
     {vt_ui8}       ,(err,       err,      none,   none,   cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    none,    none,    none,   none)
 {$ENDIF}
   );
@@ -246,8 +257,13 @@ begin
   begin
     if IsEqualGUID(TypeData^.Guid, GUID) then
       Exit;
+{$IFDEF FPC}
+    if (TypeData^.IntfParent <> nil) then
+      TypeData := GetTypeData(TypeData^.IntfParent)
+{$ELSE}
     if (TypeData^.IntfParent <> nil) and (TypeData^.IntfParent^ <> nil) then
       TypeData := GetTypeData(TypeData^.IntfParent^)
+{$ENDIF}
     else
       Break;
   end;
@@ -302,7 +318,7 @@ begin
     end;
     tkString:  Result := varString;
     tkLString: Result := varString;
-	{$IFDEF DELPHI2009_UP}
+	{$IFDEF Supports_Unicode}
     tkUString: Result := varUString;
 	{$ENDIF}
     tkWString: Result := varOleStr;
@@ -316,7 +332,7 @@ begin
     end;
     tkVariant: Result := varVariant;
     tkInt64:
-	{$IFDEF DELPHI2009_UP}
+	{$IFDEF Supports_UInt64}
       begin
         TypeData := GetTypeData(TypeInfo);
         if TypeData^.MinInt64Value >= 0 then
@@ -335,6 +351,7 @@ begin
   end;
 end;
 
+{$IFNDEF FPC}
 procedure GetFloatReturn(var Ret; FloatType: TFloatType);
 asm
   CMP     EDX, ftSingle
@@ -364,11 +381,12 @@ asm
   FISTP     QWORD PTR [EAX]
   WAIT
 end;
+{$ENDIF}
 
 function GetMethods(ClassType: TClass): TMethodInfoArray;
 var
   VMT:        Pointer;
-  MethodInfo: Pointer;
+  MethodInfo: PMethodInfoHeader;
   Count:      Integer;
   I:          Integer;
 begin
@@ -377,13 +395,19 @@ begin
   repeat
     MethodInfo := PPointer(NativeInt(VMT) + vmtMethodTable)^;
     if MethodInfo <> nil then
+    {$IFDEF FPC}
+      Inc(Count, PCardinal(MethodInfo)^);
+    {$ELSE}
       Inc(Count, PWord(MethodInfo)^);
+    {$ENDIF}
+    {$IFDEF FPC}
+    VMT := Pointer(TClass(VMT).ClassParent);
+    {$ELSE}
     // Find the parent VMT
     VMT := PPointer(NativeInt(VMT) + vmtParent)^;
-    if VMT = nil then
-      Break;
-    VMT := PPointer(VMT)^;
-  until False;
+    if VMT <> nil then VMT := PPointer(VMT)^;
+    {$ENDIF}
+  until VMT = nil;
   SetLength(Result, Count);
   I   := 0;
   VMT := ClassType;
@@ -391,58 +415,78 @@ begin
     MethodInfo := PPointer(NativeInt(VMT) + vmtMethodTable)^;
     if MethodInfo <> nil then
     begin
+      {$IFDEF FPC}
+      Count := PCardinal(MethodInfo)^;
+      Inc(PCardinal(MethodInfo));
+      {$ELSE}
       Count := PWord(MethodInfo)^;
-      Inc(NativeUInt(MethodInfo), SizeOf(Word));
-      while Count > 0 do
-      begin
+      Inc(PWord(MethodInfo));
+      {$ENDIF}
+      while Count > 0 do begin
         Result[I] := MethodInfo;
         Inc(I);
-        Inc(NativeUInt(MethodInfo), PMethodInfoHeader(MethodInfo)^.Len);
+        {$IFDEF FPC}
+        Inc(MethodInfo);
+        {$ELSE}
+        Inc(PByte(MethodInfo), MethodInfo^.Len);
+        {$ENDIF}
         Dec(Count);
       end;
     end;
+    {$IFDEF FPC}
+    VMT := Pointer(TClass(VMT).ClassParent);
+    {$ELSE}
     // Find the parent VMT
     VMT := PPointer(NativeInt(VMT) + vmtParent)^;
-    if VMT = nil then
-      Exit;
-    VMT := PPointer(VMT)^;
-  until False;
+    if VMT <> nil then VMT := PPointer(VMT)^;
+    {$ENDIF}
+  until VMT = nil;
 end;
 
 function GetMethodInfo(Instance: TObject; const MethodName: ShortString): PMethodInfoHeader;
 var
   VMT:        Pointer;
-  MethodInfo: Pointer;
   Count:      Integer;
 begin
+  if Instance = nil then begin
+    Result := nil;
+    Exit;
+  end;
   // Find the method
-  VMT := PPointer(Instance)^;
+  VMT := Instance.ClassType;
   repeat
-    MethodInfo := PPointer(NativeInt(VMT) + vmtMethodTable)^;
-    if MethodInfo <> nil then
+    Result := PPointer(NativeInt(VMT) + vmtMethodTable)^;
+    if Result <> nil then
     begin
       // Scan method table for the method
-      Count := PWord(MethodInfo)^;
-      Inc(NativeUInt(MethodInfo), 2);
+      {$IFDEF FPC}
+      Count := PCardinal(Result)^;
+      Inc(PCardinal(Result));
+      {$ELSE}
+      Count := PWord(Result)^;
+      Inc(PWord(Result));
+      {$ENDIF}
       while Count > 0 do
       begin
-        Result := MethodInfo;
-        if SamePropTypeName(Result^.Name, MethodName) then
+        if SamePropTypeName(Result^.Name{$IFDEF FPC}^{$ENDIF}, MethodName) then
           Exit;
-        Inc(NativeUInt(MethodInfo), PMethodInfoHeader(MethodInfo)^.Len);
+        {$IFDEF FPC}
+        Inc(Result);
+        {$ELSE}
+        Inc(PByte(Result), Result^.Len);
+        {$ENDIF}
         Dec(Count);
       end;
     end;
+    {$IFDEF FPC}
+    VMT := Pointer(TClass(VMT).ClassParent);
+    {$ELSE}
     // Find the parent VMT
     VMT := PPointer(NativeInt(VMT) + vmtParent)^;
-    if VMT = nil then
-    begin
-      Result := nil;
-      Exit;
-    end;
-
-    VMT := PPointer(VMT)^;
-  until False;
+    if VMT <> nil then VMT := PPointer(VMT)^;
+    {$ENDIF}
+  until VMT = nil;
+  Result := nil;
 end;
 
 resourcestring
@@ -453,7 +497,9 @@ resourcestring
   sMethodOver     = 'Method definition for %s has over %d parameters';
   sTooManyParams  = 'Too many parameters for method %s';
 
- /// ObjectInvoke - function to dymically invoke a method of an object that
+{$IFNDEF FPC}
+
+/// ObjectInvoke - function to dymically invoke a method of an object that
  /// has sufficient type information.
  ///   Instance -      the object to invoke the method on
  ///   MethodHeader -  the type information for the method obtained through
@@ -775,7 +821,7 @@ type
     procedure Handler(Params: Pointer); virtual; abstract;
     procedure RegisterStub;
   public
-    constructor Create(TypeData: PTypeData);
+    constructor Create(ATypeData: PTypeData);
   end;
 
   TMethodHandlerInstance = class(TBaseMethodHandlerInstance)
@@ -783,7 +829,7 @@ type
     MethodHandler: IMethodHandler;
     procedure Handler(Params: Pointer); override;
   public
-    constructor Create(const MethodHandler: IMethodHandler; TypeData: PTypeData);
+    constructor Create(const AMethodHandler: IMethodHandler; ATypeData: PTypeData);
   end;
 
   TEventHandlerInstance = class(TBaseMethodHandlerInstance)
@@ -791,7 +837,7 @@ type
     FDynamicInvokeEvent: TDynamicInvokeEvent;
     procedure Handler(Params: Pointer); override;
   public
-    constructor Create(const ADynamicInvokeEvent: TDynamicInvokeEvent; TypeData: PTypeData);
+    constructor Create(const ADynamicInvokeEvent: TDynamicInvokeEvent; ATypeData: PTypeData);
   end;
 
 function AdditionalInfoOf(TypeData: PTypeData): Pointer;
@@ -839,7 +885,7 @@ end;
 
 { TBaseMethodHandlerInstance }
 
-constructor TBaseMethodHandlerInstance.Create(TypeData: PTypeData);
+constructor TBaseMethodHandlerInstance.Create(ATypeData: PTypeData);
 var
   P:      PByte;
   Offset: Integer;
@@ -847,16 +893,16 @@ var
   I:      Integer;
   Size:   Integer;
 begin
-  Self.TypeData := TypeData;
+  Self.TypeData := ATypeData;
 
-  P          := AdditionalInfoOf(TypeData);
+  P          := AdditionalInfoOf(ATypeData);
   ParamInfos := PParameterInfos(Cardinal(P) + 1);
 
   // Calculate stack size
   CurReg    := paEDX;
-  P         := @TypeData^.ParamList;
+  P         := @ATypeData^.ParamList;
   StackSize := 0;
-  for I := 0 to TypeData^.ParamCount - 1 do
+  for I := 0 to ATypeData^.ParamCount - 1 do
   begin
     if TParamFlags(P[0]) * [pfVar, pfConst, pfAddress, pfReference, pfOut] <> [] then
       Size := 4
@@ -871,11 +917,11 @@ begin
   end;
 
   // Calculate parameter offsets
-  SetLength(ParamOffsets, TypeData^.PropCount);
+  SetLength(ParamOffsets, ATypeData^.PropCount);
   CurReg := paEDX;
-  P      := @TypeData^.ParamList;
+  P      := @ATypeData^.ParamList;
   Offset := StackSize;
-  for I := 0 to TypeData^.ParamCount - 1 do
+  for I := 0 to ATypeData^.ParamCount - 1 do
   begin
     if TParamFlags(P[0]) * [pfVar, pfConst, pfAddress, pfReference, pfOut] <> [] then
       Size := 4
@@ -940,11 +986,11 @@ end;
 
 { TMethodHandlerInstance }
 
-constructor TMethodHandlerInstance.Create(const MethodHandler: IMethodHandler;
-  TypeData: PTypeData);
+constructor TMethodHandlerInstance.Create(const AMethodHandler: IMethodHandler;
+  ATypeData: PTypeData);
 begin
-  inherited Create(TypeData);
-  Self.MethodHandler := MethodHandler;
+  inherited Create(ATypeData);
+  Self.MethodHandler := AMethodHandler;
 end;
 
 procedure TMethodHandlerInstance.Handler(Params: Pointer);
@@ -1017,9 +1063,9 @@ end;
 
 { TEventHandlerInstance }
 
-constructor TEventHandlerInstance.Create(const ADynamicInvokeEvent: TDynamicInvokeEvent; TypeData: PTypeData);
+constructor TEventHandlerInstance.Create(const ADynamicInvokeEvent: TDynamicInvokeEvent; ATypeData: PTypeData);
 begin
-  inherited Create(TypeData);
+  inherited Create(ATypeData);
   Self.FDynamicInvokeEvent := ADynamicInvokeEvent;
 end;
 
@@ -1030,7 +1076,9 @@ begin
 end;
 
 {$ENDIF}
+{$ENDIF}
 
+{$IFNDEF FPC}
 function ObjectInvoke(Instance: TObject; const MethodName: string;
   const Params: array of Variant): Variant;
 var
@@ -1047,6 +1095,7 @@ begin
   Result := {$IFDEF DELPHIXE2_UP}ObjAuto.{$ENDIF}ObjectInvoke(Instance, MethodHeader, ParamIndexes, Params);
   if ReturnInfo.ReturnType^.Kind = tkClass then FindVarData(Result)^.VType := varObject;
 end;
+{$ENDIF}
 
 {$IFNDEF DELPHIXE3_UP}
 function GetMethodInfo(Instance: TObject; const MethodName: string): PMethodInfoHeader;
@@ -1059,7 +1108,11 @@ function GetMethodName(MethodInfo: PMethodInfoHeader): string;
 begin
 {$IFNDEF DELPHIXE3_UP}
   {$IFNDEF DELPHI2009_UP}
+    {$IFNDEF FPC}
   Result := string(MethodInfo^.Name);
+    {$ELSE}
+  Result := string(MethodInfo^.Name^);
+    {$ENDIF}
   {$ELSE}
   Result := UTF8ToString(MethodInfo^.Name);
   {$ENDIF}
@@ -1070,11 +1123,15 @@ end;
 
 function GetReturnInfo(MethodInfo: PMethodInfoHeader): PReturnInfo;
 begin
+{$IFDEF FPC}
+  Result := PReturnInfo(NativeUInt(MethodInfo) + SizeOf(TMethodInfoHeader));
+{$ELSE}
 {$IFNDEF DELPHIXE3_UP}
   Result := PReturnInfo(NativeUInt(MethodInfo) + SizeOf(TMethodInfoHeader) -
                         SizeOf(ShortString) + 1 + Length(MethodInfo^.Name));
 {$ELSE}
   Result := PReturnInfo(MethodInfo.NameFld.Tail);
+{$ENDIF}
 {$ENDIF}
 end;
 
@@ -1091,7 +1148,11 @@ var
   MethodInfo:   Pointer;
   ReturnInfo:   PReturnInfo;
 {$IFNDEF DELPHI2010_UP}
+  {$IFNDEF FPC}
   InfoEnd:      Pointer;
+  {$ELSE}
+  I:            Integer;
+  {$ENDIF}
 {$ELSE}
   I:            Integer;
 {$ENDIF}
@@ -1107,6 +1168,7 @@ begin
 {$ENDIF}
 
 {$IFNDEF DELPHI2010_UP}
+  {$IFNDEF FPC}
   InfoEnd := Pointer(NativeUInt(MethodHeader) + MethodHeader^.Len);
   Count := 0;
   SetLength(Result, MaxParams);
@@ -1120,6 +1182,18 @@ begin
       Length(PParamInfo(MethodInfo)^.Name));
   end;
   SetLength(Result, Count);
+  {$ELSE}
+  Count := ReturnInfo^.ParamCount;
+  if Count >= MaxParams then
+    raise Exception.CreateFmt(SMethodOver, [MethodName, MaxParams]);
+  SetLength(Result, Count);
+  for I := 0 to Count - 1 do
+  begin
+    Result[I] := MethodInfo;
+    Inc(NativeUInt(MethodInfo), SizeOf(TParamInfo) - SizeOf(ShortString) + 1 +
+      Length(PParamInfo(MethodInfo)^.Name));
+  end;
+  {$ENDIF}
 {$ELSE}
   Count := ReturnInfo^.ParamCount;
   if Count >= MaxParams then
@@ -1139,5 +1213,4 @@ begin
   end;
 {$ENDIF}
 end;
-{$ENDIF}
 end.

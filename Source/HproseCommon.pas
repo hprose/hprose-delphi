@@ -859,7 +859,7 @@ uses RTLConsts
 {$IFNDEF FPC}, StrUtils{$ENDIF}
 {$IFDEF DELPHIXE4_UP}{$IFNDEF NEXTGEN}, AnsiStrings{$ENDIF}{$ENDIF}
 {$IFDEF Supports_Rtti}, Rtti{$ENDIF}{$IFDEF DELPHIXE2_UP}, ObjAuto{$ENDIF}
-{$IFNDEF FPC}, ObjAutoX{$ENDIF};
+{$IFDEF DELPHI7_UP}, ObjAutoX{$ENDIF};
 
 type
 
@@ -4203,7 +4203,7 @@ begin
     Variant(Dest) := Intf.Invoke(Name, Arguments);
   end
   else begin
-{$IFNDEF FPC}
+{$IFDEF DELPHI7_UP}
     Result := GetMethodInfo(Obj, Name) <> nil;
     if Result then Variant(Dest) := ObjectInvoke(Obj, Name, TVariants(Arguments));
 {$ELSE}
