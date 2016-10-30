@@ -779,7 +779,6 @@ end;
 function THproseClient.Invoke<T>(const AName: string;
   const Args: array of const; Simple: Boolean): T;
 var
-  Context: TObject;
   InStream, OutStream: TStream;
   FullName: string;
 begin
@@ -794,7 +793,6 @@ end;
 function THproseClient.Invoke<T>(const AName: string; var Args: TVariants;
   ByRef: Boolean; Simple: Boolean): T;
 var
-  Context: TObject;
   InStream, OutStream: TStream;
   FullName: string;
 begin
