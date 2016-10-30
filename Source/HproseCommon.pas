@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Jun 24, 2016                             *
+ * LastModified: Oct 30, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -44,7 +44,7 @@ type
 {$ENDIF}
 {$ENDIF}
 
-  THproseResultMode = (Normal, Serialized, Raw, RawWithEndTag);
+  TResultMode = (Normal, Serialized, Raw, RawWithEndTag);
 
 {$IF NOT DEFINED(DELPHI2007_UP) AND NOT DEFINED(FPC)}
   TBytes = array of Byte;
@@ -55,17 +55,11 @@ type
 
   TConstArray = array of TVarRec;
 
-  EHproseException = class(Exception);
+  ETypeError = class(Exception);
   EHashBucketError = class(Exception);
   EArrayListError = class(Exception);
 
   TDirection = (FromBeginning, FromEnd);
-
-  IHproseFilter = interface
-  ['{4AD7CCF2-1121-4CA4-92A7-5704C5956BA4}']
-    function InputFilter(const Data: TBytes; const Context: TObject): TBytes;
-    function OutputFilter(const Data: TBytes; const Context: TObject): TBytes;
-  end;
 
   IInvokeableVarObject = interface
   ['{FDC126C2-EF9F-4898-BF97-87C01B050F88}']
@@ -718,6 +712,24 @@ type
 {$M-}
 {$ENDIF}
 
+  { TContext }
+
+  TContext = class
+  private
+    FUserData: ICaseInsensitiveHashMap;
+    function Get(Key: string): Variant;
+    procedure Put(Key: string; const Value: Variant);
+  public
+    constructor Create(AUserData: IMap = nil);
+    property UserData[Key: string]: Variant read Get write Put; default;
+  end;
+
+  IFilter = interface
+  ['{4AD7CCF2-1121-4CA4-92A7-5704C5956BA4}']
+    function InputFilter(const Data: TBytes; const Context: TContext): TBytes;
+    function OutputFilter(const Data: TBytes; const Context: TContext): TBytes;
+  end;
+
 {$IFDEF DELPHI2009}
   TArray<T> = array of T;
 {$ENDIF}
@@ -803,7 +815,7 @@ function HasRegisterWithInterface(const AClass: TInterfacedClass): Boolean;
 function GetInterfaceByClass(const AClass: TInterfacedClass): TGUID;
 
 type
-  THproseClassManager = class
+  TClassManager = class
 {$IFDEF Supports_Generics}
   private
     class procedure RegisterSmartObject<T, I>(const Alias: string);
@@ -4020,6 +4032,24 @@ begin
   if FPosition > FLength then FLength := FPosition;
 end;
 
+{ TContext }
+
+function TContext.Get(Key: string): Variant;
+begin
+  Result := FUserData[Key];
+end;
+
+procedure TContext.Put(Key: string; const Value: Variant);
+begin
+  FUserData[Key] := Value;
+end;
+
+constructor TContext.Create(AUserData: IMap);
+begin
+  FUserData := TCaseInsensitiveHashMap.Create(16, 0.75, False);
+  if AUserData <> nil then FUserData.PutAll(AUserData);
+end;
+
 { TVarObjectType }
 
 {$IF DEFINED(FPC) AND (FPC_VERSION < 3.0)}
@@ -4488,7 +4518,7 @@ var
 begin
   TI := TypeInfo(T);
   if TI^.Kind <> tkClass then
-    raise EHproseException.Create(GetTypeName(TI) + 'is not a Class');
+    raise ETypeError.Create(GetTypeName(TI) + 'is not a Class');
   inherited Create(GetTypeData(TI)^.ClassType.Create)
 end;
 
@@ -4498,9 +4528,9 @@ var
 begin
   TI := TypeInfo(T);
   if TI^.Kind <> tkClass then
-    raise EHproseException.Create(GetTypeName(TI) + 'is not a Class');
+    raise ETypeError.Create(GetTypeName(TI) + 'is not a Class');
   if not AObject.ClassType.InheritsFrom(GetTypeData(TI)^.ClassType) then
-    raise EHproseException.Create(AObject.ClassName + 'is not a ' + GetTypeName(TI));
+    raise ETypeError.Create(AObject.ClassName + 'is not a ' + GetTypeName(TI));
   inherited Create(AObject);
 end;
 
@@ -4527,9 +4557,9 @@ begin
   end;
 end;
 
-{ THproseClassManager }
+{ TClassManager }
 
-class procedure THproseClassManager.Register(const TypeInfo: PTypeInfo; TypeName: string);
+class procedure TClassManager.Register(const TypeInfo: PTypeInfo; TypeName: string);
 var
   UnitName: string;
   TypeData: PTypeData;
@@ -4553,18 +4583,18 @@ begin
   tkDynArray:    UnitName := TypeData^.DynUnitNameFld.ToString;
 {$ENDIF}
   else
-    raise EHproseException.Create('Can not register this type: ' + TypeName);
+    raise ETypeError.Create('Can not register this type: ' + TypeName);
   end;
   if UnitName <> '' then TypeName := UnitName + '.' + TypeName;
   RegisterType(TypeName, TypeInfo);
 end;
 
-class procedure THproseClassManager.Register(const TypeInfo: PTypeInfo);
+class procedure TClassManager.Register(const TypeInfo: PTypeInfo);
 begin
   Register(TypeInfo, GetTypeName(TypeInfo));
 end;
 
-class procedure THproseClassManager.RegisterSmartObject<T, I>(const Alias: string);
+class procedure TClassManager.RegisterSmartObject<T, I>(const Alias: string);
 var
   TTI, ITI: PTypeInfo;
 begin
@@ -4580,7 +4610,7 @@ begin
   Register(ITI);
 end;
 
-class procedure THproseClassManager.Register<T>;
+class procedure TClassManager.Register<T>;
 var
   TI: PTypeInfo;
   TypeName: string;
@@ -4593,7 +4623,7 @@ begin
     Self.RegisterSmartObject<TSmartObject<T>, ISmartObject<T>>(TypeName);
 end;
 
-class procedure THproseClassManager.Register<T>(const Alias: string);
+class procedure TClassManager.Register<T>(const Alias: string);
 var
   TI: PTypeInfo;
 begin
@@ -4603,20 +4633,20 @@ begin
   Self.Register<T>;
 end;
 
-class procedure THproseClassManager.Register<T, I>(const Alias: string);
+class procedure TClassManager.Register<T, I>(const Alias: string);
 var
   TTI, ITI: PTypeInfo;
 begin
   TTI := System.TypeInfo(T);
   ITI := System.TypeInfo(I);
   if ITI^.Kind <> tkInterface then
-    raise EHproseException.Create(GetTypeName(ITI) + ' must be a interface');
+    raise ETypeError.Create(GetTypeName(ITI) + ' must be a interface');
   RegisterClass(TInterfacedClass(GetTypeData(TTI)^.ClassType), GetTypeData(ITI)^.Guid, Alias);
   Self.Register<T>;
   Self.Register<I>;
 end;
 
-class function THproseClassManager.GetAlias<T>: string;
+class function TClassManager.GetAlias<T>: string;
 var
   TI: PTypeInfo;
 begin
@@ -4625,22 +4655,22 @@ begin
   if PTypeInfo(TI)^.Kind = tkClass then Result := GetClassAlias(GetTypeData(TI)^.ClassType);
 end;
 
-class function THproseClassManager.GetInterface<T>: TGUID;
+class function TClassManager.GetInterface<T>: TGUID;
 begin
   Result := GetInterfaceByClass(TInterfacedClass(GetTypeData(System.TypeInfo(T))^.ClassType));
 end;
 
-class function THproseClassManager.GetClass<I>: TInterfacedClass;
+class function TClassManager.GetClass<I>: TInterfacedClass;
 var
   ITI: PTypeInfo;
 begin
   ITI := System.TypeInfo(I);
   if ITI^.Kind <> tkInterface then
-    raise EHproseException.Create('I must be a interface');
+    raise ETypeError.Create('I must be a interface');
   Result := GetClassByInterface(GetTypeData(ITI)^.Guid);
 end;
 
-class function THproseClassManager.TypeInfo(const Name: string): PTypeInfo;
+class function TClassManager.TypeInfo(const Name: string): PTypeInfo;
 begin
   HproseTypeMap.BeginRead;
   try
@@ -4652,33 +4682,33 @@ end;
 
 {$ENDIF}
 
-class function THproseClassManager.GetClass(const IID: TGUID): TInterfacedClass;
+class function TClassManager.GetClass(const IID: TGUID): TInterfacedClass;
 begin
   Result := GetClassByInterface(IID);
 end;
 
-class function THproseClassManager.GetClass(const Alias: string): TClass;
+class function TClassManager.GetClass(const Alias: string): TClass;
 begin
   Result := GetClassByAlias(Alias);
 end;
 
-class function THproseClassManager.GetInterface(const AClass: TInterfacedClass): TGUID;
+class function TClassManager.GetInterface(const AClass: TInterfacedClass): TGUID;
 begin
   Result := GetInterfaceByClass(AClass);
 end;
 
-class function THproseClassManager.GetAlias(const AClass: TClass): string;
+class function TClassManager.GetAlias(const AClass: TClass): string;
 begin
   Result := GetClassAlias(AClass);
 end;
 
-class procedure THproseClassManager.Register(const AClass: TInterfacedClass;
+class procedure TClassManager.Register(const AClass: TInterfacedClass;
   const IID: TGUID; const Alias: string);
 begin
   RegisterClass(AClass, IID, Alias);
 end;
 
-class procedure THproseClassManager.Register(const AClass: TClass;
+class procedure TClassManager.Register(const AClass: TClass;
   const Alias: string);
 begin
   RegisterClass(AClass, Alias);
@@ -4736,21 +4766,21 @@ initialization
     HproseTypeMap.EndWrite;
   end;
 
-  THproseClassManager.Register<ISmartObject>;
+  TClassManager.Register<ISmartObject>;
 {$ENDIF}
 
 {$IFDEF Supports_Generics}
-  THproseClassManager.Register<TArrayList, IImmutableList>('!IImmutableList');
-  THproseClassManager.Register<TArrayList, IList>('!List');
-  THproseClassManager.Register<TArrayList, IArrayList>('!ArrayList');
-  THproseClassManager.Register<THashedList, IHashedList>('!HashedList');
-  THproseClassManager.Register<TCaseInsensitiveArrayList, ICaseInsensitiveArrayList>('!CaseInsensitiveArrayList');
-  THproseClassManager.Register<TCaseInsensitiveHashedList, ICaseInsensitiveHashedList>('!CaseInsensitiveHashedList');
-  THproseClassManager.Register<THashMap, IMap>('!Map');
-  THproseClassManager.Register<THashMap, IHashMap>('!HashMap');
-  THproseClassManager.Register<THashedMap, IHashedMap>('!HashedMap');
-  THproseClassManager.Register<TCaseInsensitiveHashMap, ICaseInsensitiveHashMap>('!CaseInsensitiveHashMap');
-  THproseClassManager.Register<TCaseInsensitiveHashedMap, ICaseInsensitiveHashedMap>('!CaseInsensitiveHashedMap');
+  TClassManager.Register<TArrayList, IImmutableList>('!IImmutableList');
+  TClassManager.Register<TArrayList, IList>('!List');
+  TClassManager.Register<TArrayList, IArrayList>('!ArrayList');
+  TClassManager.Register<THashedList, IHashedList>('!HashedList');
+  TClassManager.Register<TCaseInsensitiveArrayList, ICaseInsensitiveArrayList>('!CaseInsensitiveArrayList');
+  TClassManager.Register<TCaseInsensitiveHashedList, ICaseInsensitiveHashedList>('!CaseInsensitiveHashedList');
+  TClassManager.Register<THashMap, IMap>('!Map');
+  TClassManager.Register<THashMap, IHashMap>('!HashMap');
+  TClassManager.Register<THashedMap, IHashedMap>('!HashedMap');
+  TClassManager.Register<TCaseInsensitiveHashMap, ICaseInsensitiveHashMap>('!CaseInsensitiveHashMap');
+  TClassManager.Register<TCaseInsensitiveHashedMap, ICaseInsensitiveHashedMap>('!CaseInsensitiveHashedMap');
 {$ELSE}
   RegisterClass(TArrayList, IImmutableList, '!IImmutableList');
   RegisterClass(TArrayList, IList, '!List');

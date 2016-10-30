@@ -14,7 +14,7 @@
  *                                                        *
  * hprose synapse http client unit for delphi.            *
  *                                                        *
- * LastModified: Jun 25, 2014                             *
+ * LastModified: Oct 30, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -552,7 +552,7 @@ begin
   else begin
     Error := IntToStr(HttpSend.Sock.LastError) + ':' + HttpSend.Sock.LastErrorDesc;
     FreeAndNil(HttpSend);
-    raise EHproseException.Create(Error);
+    raise Exception.Create(Error);
   end;
 end;
 
@@ -604,4 +604,4 @@ initialization
 {$IFDEF FPC}
   {$I Hprose.lrs}
 {$ENDIF}
-end.
+end.

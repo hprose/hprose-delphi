@@ -14,7 +14,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: Jun 11, 2016                             *
+ * LastModified: Oct 30, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -29,40 +29,36 @@ uses HproseCommon, Classes, SysUtils, TypInfo, Variants;
 
 type
 {$IFDEF Supports_Anonymous_Method}
-  THproseCallback1 = reference to procedure(Result: Variant);
-  THproseCallback2 = reference to procedure(Result: Variant;
+  TCallback1 = reference to procedure(Result: Variant);
+  TCallback2 = reference to procedure(Result: Variant;
     const Args: TVariants);
-  THproseErrorEvent = reference to procedure(const Name:string;
+  TCallbackE = reference to procedure(const Name:string;
                                 const Error: Exception);
 {$ELSE}
-  THproseCallback1 = procedure(Result: Variant) of object;
-  THproseCallback2 = procedure(Result: Variant;
+  TCallback1 = procedure(Result: Variant) of object;
+  TCallback2 = procedure(Result: Variant;
     const Args: TVariants) of object;
 
-  THproseErrorEvent = procedure(const Name:string;
+  TCallbackE = procedure(const Name:string;
                                 const Error: Exception) of object;
 {$ENDIF}
 
 {$IFDEF Supports_Generics}
-  THproseCallback1<T> = reference to procedure(Result: T);
-  THproseCallback2<T> = reference to procedure(Result: T;
+  TCallback1<T> = reference to procedure(Result: T);
+  TCallback2<T> = reference to procedure(Result: T;
     const Args: TVariants);
 {$ENDIF}
-
-  IHproseReceiver = interface
-    procedure Callback(Data: TBytes);
-  end;
 
   THproseClient = class(TComponent, IInvokeableVarObject)
   private
     FNameSpace: string;
-    FErrorEvent: THproseErrorEvent;
+    FCallbackE: TCallbackE;
     FFilters: IList;
-    function GetFilter: IHproseFilter;
-    procedure SetFilter(const Filter: IHproseFilter);
+    function GetFilter: IFilter;
+    procedure SetFilter(const Filter: IFilter);
     function DoInput(var Args: TVariants; ResultType: PTypeInfo;
-      ResultMode: THproseResultMode; Data: TBytes): Variant; overload;
-    function DoInput(ResultType: PTypeInfo; ResultMode: THproseResultMode;
+      ResultMode: TResultMode; Data: TBytes): Variant; overload;
+    function DoInput(ResultType: PTypeInfo; ResultMode: TResultMode;
       Data: TBytes): Variant; overload;
     function DoOutput(const AName: string;
       const Args: array of const; Simple: Boolean): TBytes; overload;
@@ -76,46 +72,44 @@ type
 {$ENDIF}
     // Synchronous invoke
     function Invoke(const AName: string; const Args: array of const;
-      ResultType: PTypeInfo; ResultMode: THproseResultMode; Simple: Boolean): Variant;
+      ResultType: PTypeInfo; ResultMode: TResultMode; Simple: Boolean): Variant;
       overload;
     function Invoke(const AName: string; var Args: TVariants;
       ResultType: PTypeInfo; ByRef: Boolean;
-      ResultMode: THproseResultMode; Simple: Boolean): Variant;
+      ResultMode: TResultMode; Simple: Boolean): Variant;
       overload;
     // Asynchronous invoke
     procedure Invoke(const AName: string; const Args: array of const;
-      Callback: THproseCallback1;
-      ErrorEvent: THproseErrorEvent;
-      ResultType: PTypeInfo; ResultMode: THproseResultMode; Simple: Boolean); overload;
+      Callback: TCallback1;
+      CallbackE: TCallbackE;
+      ResultType: PTypeInfo; ResultMode: TResultMode; Simple: Boolean); overload;
     procedure Invoke(const AName: string; var Args: TVariants;
-      Callback: THproseCallback1;
-      ErrorEvent: THproseErrorEvent;
-      ResultType: PTypeInfo; ResultMode: THproseResultMode; Simple: Boolean); overload;
+      Callback: TCallback1;
+      CallbackE: TCallbackE;
+      ResultType: PTypeInfo; ResultMode: TResultMode; Simple: Boolean); overload;
     procedure Invoke(const AName: string; var Args: TVariants;
-      Callback: THproseCallback2;
-      ErrorEvent: THproseErrorEvent;
+      Callback: TCallback2;
+      CallbackE: TCallbackE;
       ResultType: PTypeInfo;
-      ByRef: Boolean; ResultMode: THproseResultMode; Simple: Boolean); overload;
+      ByRef: Boolean; ResultMode: TResultMode; Simple: Boolean); overload;
   protected
     FUri: string;
     function SendAndReceive(Data: TBytes): TBytes; overload; virtual; abstract;
-    procedure SendAndReceive(Data: TBytes; Receiver: IHproseReceiver); overload; virtual;
-    function Blocking: Boolean; virtual;
   public
     constructor Create(AOwner: TComponent); override;
     class function New(const AUrl: string; const ANameSpace: string = ''): Variant;
     function UseService(const AUri: string = ''; const ANameSpace: string = ''): Variant; virtual;
-    procedure AddFilter(const Filter: IHproseFilter);
-    function RemoveFilter(const Filter: IHproseFilter): Boolean;
+    procedure AddFilter(const Filter: IFilter);
+    function RemoveFilter(const Filter: IFilter): Boolean;
     // Synchronous invoke
     function Invoke(const AName: string;
-      ResultMode: THproseResultMode = Normal): Variant;
+      ResultMode: TResultMode = Normal): Variant;
       overload;
     function Invoke(const AName: string; ResultType: PTypeInfo): Variant;
       overload;
     // Synchronous invoke
     function Invoke(const AName: string; const Args: array of const;
-      ResultMode: THproseResultMode = Normal; Simple: Boolean = False): Variant;
+      ResultMode: TResultMode = Normal; Simple: Boolean = False): Variant;
       overload;
     function Invoke(const AName: string; const Args: array of const;
       ResultType: PTypeInfo; Simple: Boolean = False): Variant;
@@ -123,7 +117,7 @@ type
     // Synchronous invoke
     function Invoke(const AName: string; const Arguments: TVarDataArray): Variant; overload;
     function Invoke(const AName: string; var Args: TVariants; ByRef: Boolean = True;
-      ResultMode: THproseResultMode = Normal; Simple: Boolean = False): Variant;
+      ResultMode: TResultMode = Normal; Simple: Boolean = False): Variant;
       overload;
     function Invoke(const AName: string; var Args: TVariants; ResultType: PTypeInfo;
       ByRef: Boolean = True; Simple: Boolean = False): Variant;
@@ -138,110 +132,117 @@ type
 {$ENDIF}
     // Asynchronous invoke
     procedure Invoke(const AName: string;
-      Callback: THproseCallback1;
-      ResultMode: THproseResultMode = Normal);
+      Callback: TCallback1;
+      ResultMode: TResultMode = Normal);
       overload;
     procedure Invoke(const AName: string;
-      Callback: THproseCallback1;
-      ErrorEvent: THproseErrorEvent;
-      ResultMode: THproseResultMode = Normal);
+      Callback: TCallback1;
+      CallbackE: TCallbackE;
+      ResultMode: TResultMode = Normal);
       overload;
     // Asynchronous invoke
     procedure Invoke(const AName: string;
-      Callback: THproseCallback1;
+      Callback: TCallback1;
       ResultType: PTypeInfo);
       overload;
     procedure Invoke(const AName: string;
-      Callback: THproseCallback1;
-      ErrorEvent: THproseErrorEvent;
+      Callback: TCallback1;
+      CallbackE: TCallbackE;
       ResultType: PTypeInfo);
       overload;
     // Asynchronous invoke
     procedure Invoke(const AName: string; const Args: array of const;
-      Callback: THproseCallback1;
-      ResultMode: THproseResultMode = Normal; Simple: Boolean = False);
+      Callback: TCallback1;
+      ResultMode: TResultMode = Normal; Simple: Boolean = False);
       overload;
     procedure Invoke(const AName: string; const Args: array of const;
-      Callback: THproseCallback1;
-      ErrorEvent: THproseErrorEvent;
-      ResultMode: THproseResultMode = Normal; Simple: Boolean = False);
+      Callback: TCallback1;
+      CallbackE: TCallbackE;
+      ResultMode: TResultMode = Normal; Simple: Boolean = False);
       overload;
     // Asynchronous invoke
     procedure Invoke(const AName: string; const Args: array of const;
-      Callback: THproseCallback1;
+      Callback: TCallback1;
       ResultType: PTypeInfo; Simple: Boolean = False);
       overload;
     procedure Invoke(const AName: string; const Args: array of const;
-      Callback: THproseCallback1;
-      ErrorEvent: THproseErrorEvent;
+      Callback: TCallback1;
+      CallbackE: TCallbackE;
       ResultType: PTypeInfo; Simple: Boolean = False);
       overload;
     // Asynchronous invoke
     procedure Invoke(const AName: string; var Args: TVariants;
-      Callback: THproseCallback1;
-      ResultMode: THproseResultMode = Normal; Simple: Boolean = False);
+      Callback: TCallback1;
+      ResultMode: TResultMode = Normal; Simple: Boolean = False);
       overload;
     procedure Invoke(const AName: string; var Args: TVariants;
-      Callback: THproseCallback1;
-      ErrorEvent: THproseErrorEvent;
-      ResultMode: THproseResultMode = Normal; Simple: Boolean = False);
-      overload;
-    // Asynchronous invoke
-    procedure Invoke(const AName: string; var Args: TVariants;
-      Callback: THproseCallback1;
-      ResultType: PTypeInfo; Simple: Boolean = False);
-      overload;
-    procedure Invoke(const AName: string; var Args: TVariants;
-      Callback: THproseCallback1;
-      ErrorEvent: THproseErrorEvent;
-      ResultType: PTypeInfo; Simple: Boolean = False);
+      Callback: TCallback1;
+      CallbackE: TCallbackE;
+      ResultMode: TResultMode = Normal; Simple: Boolean = False);
       overload;
     // Asynchronous invoke
     procedure Invoke(const AName: string; var Args: TVariants;
-      Callback: THproseCallback2;
+      Callback: TCallback1;
+      ResultType: PTypeInfo; Simple: Boolean = False);
+      overload;
+    procedure Invoke(const AName: string; var Args: TVariants;
+      Callback: TCallback1;
+      CallbackE: TCallbackE;
+      ResultType: PTypeInfo; Simple: Boolean = False);
+      overload;
+    // Asynchronous invoke
+    procedure Invoke(const AName: string; var Args: TVariants;
+      Callback: TCallback2;
       ByRef: Boolean = True;
-      ResultMode: THproseResultMode = Normal; Simple: Boolean = False);
+      ResultMode: TResultMode = Normal; Simple: Boolean = False);
       overload;
     procedure Invoke(const AName: string; var Args: TVariants;
-      Callback: THproseCallback2;
-      ErrorEvent: THproseErrorEvent;
+      Callback: TCallback2;
+      CallbackE: TCallbackE;
       ByRef: Boolean = True;
-      ResultMode: THproseResultMode = Normal; Simple: Boolean = False);
+      ResultMode: TResultMode = Normal; Simple: Boolean = False);
       overload;
     // Asynchronous invoke
     procedure Invoke(const AName: string; var Args: TVariants;
-      Callback: THproseCallback2;
+      Callback: TCallback2;
       ResultType: PTypeInfo;
       ByRef: Boolean = True; Simple: Boolean = False);
       overload;
     procedure Invoke(const AName: string; var Args: TVariants;
-      Callback: THproseCallback2;
-      ErrorEvent: THproseErrorEvent;
+      Callback: TCallback2;
+      CallbackE: TCallbackE;
       ResultType: PTypeInfo;
       ByRef: Boolean = True; Simple: Boolean = False);
       overload;
 {$IFDEF Supports_Generics}
     // Asynchronous invoke
     procedure Invoke<T>(const AName: string;
-      Callback: THproseCallback1<T>;
-      ErrorEvent: THproseErrorEvent = nil); overload;
+      Callback: TCallback1<T>;
+      CallbackE: TCallbackE = nil); overload;
     procedure Invoke<T>(const AName: string; const Args: array of const;
-      Callback: THproseCallback1<T>;
-      ErrorEvent: THproseErrorEvent = nil; Simple: Boolean = False); overload;
+      Callback: TCallback1<T>;
+      CallbackE: TCallbackE = nil; Simple: Boolean = False); overload;
     procedure Invoke<T>(const AName: string; var Args: TVariants;
-      Callback: THproseCallback2<T>;
+      Callback: TCallback2<T>;
       ByRef: Boolean = True; Simple: Boolean = False); overload;
     procedure Invoke<T>(const AName: string; var Args: TVariants;
-      Callback: THproseCallback2<T>;
-      ErrorEvent: THproseErrorEvent;
+      Callback: TCallback2<T>;
+      CallbackE: TCallbackE;
       ByRef: Boolean = True; Simple: Boolean = False); overload;
 {$ENDIF}
   published
     property Uri: string read FUri;
-    property Filter: IHproseFilter read GetFilter write SetFilter;
+    property Filter: IFilter read GetFilter write SetFilter;
     property NameSpace: string read FNameSpace write FNameSpace;
     // This event OnError only for asynchronous invoke
-    property OnError: THproseErrorEvent read FErrorEvent write FErrorEvent;
+    property OnError: TCallbackE read FCallbackE write FCallbackE;
+  end;
+
+  TClientContext = class(TContext)
+  private
+    FClient: THproseClient;
+  public
+    property Client: THproseClient read FClient;
   end;
 
 {$IFDEF Supports_Generics}
@@ -252,14 +253,14 @@ type
     FClient: THproseClient;
     FName: string;
     FArgs: TConstArray;
-    FCallback: THproseCallback1<T>;
-    FErrorEvent: THproseErrorEvent;
+    FCallback: TCallback1<T>;
+    FCallbackE: TCallbackE;
     FSimple: Boolean;
     FResult: T;
     FError: Exception;
     constructor Create(Client: THproseClient; const AName: string;
-      const Args: array of const; Callback: THproseCallback1<T>;
-      ErrorEvent: THproseErrorEvent; Simple: Boolean);
+      const Args: array of const; Callback: TCallback1<T>;
+      CallbackE: TCallbackE; Simple: Boolean);
   protected
     procedure Execute; override;
     procedure DoCallback;
@@ -271,43 +272,23 @@ type
     FClient: THproseClient;
     FName: string;
     FArgs: TVariants;
-    FCallback: THproseCallback2<T>;
-    FErrorEvent: THproseErrorEvent;
+    FCallback: TCallback2<T>;
+    FCallbackE: TCallbackE;
     FByRef: Boolean;
     FSimple: Boolean;
     FResult: T;
     FError: Exception;
     constructor Create(Client: THproseClient; const AName: string;
-      const Args: TVariants; Callback: THproseCallback2<T>;
-      ErrorEvent: THproseErrorEvent; ByRef: Boolean; Simple: Boolean);
+      const Args: TVariants; Callback: TCallback2<T>;
+      CallbackE: TCallbackE; ByRef: Boolean; Simple: Boolean);
   protected
     procedure Execute; override;
     procedure DoCallback;
     procedure DoError;
   end;
-
-  THproseReceiver<T> = class(TInterfacedObject, IHproseReceiver)
-    private
-      FClient: THproseClient;
-      FName: string;
-      FCallback1: THproseCallback1<T>;
-      FCallback2: THproseCallback2<T>;
-      FErrorEvent: THproseErrorEvent;
-    public
-      constructor Create(Client: THproseClient;
-        const AName: string;
-        Callback: THproseCallback1<T>;
-        ErrorEvent: THproseErrorEvent); overload;
-      constructor Create(Client: THproseClient;
-        const AName: string;
-        Callback: THproseCallback2<T>;
-        ErrorEvent: THproseErrorEvent); overload;
-      procedure Callback(Data: TBytes);
-  end;
-
 {$ENDIF}
 
-  THproseType = class
+  TType = class
   private
     FTypeInfo: PTypeInfo;
   public
@@ -317,12 +298,12 @@ type
     constructor Create(Info: PTypeInfo);
   end;
 
-function HproseType(Info: PTypeInfo): Variant;
+function TypeToVar(Info: PTypeInfo): Variant;
 
-function HproseCallback: Variant; overload;
-function HproseCallback(Callback: THproseCallback1): Variant; overload;
-function HproseCallback(Callback: THproseCallback2): Variant; overload;
-function HproseCallback(ErrorEvent: THproseErrorEvent): Variant; overload;
+function CallbackToVar: Variant; overload;
+function CallbackToVar(Callback: TCallback1): Variant; overload;
+function CallbackToVar(Callback: TCallback2): Variant; overload;
+function CallbackToVar(CallbackE: TCallbackE): Variant; overload;
 
 implementation
 
@@ -331,16 +312,16 @@ uses
 
 type
 
-  THproseCallback = class
+  TCallback = class
   private
-    FCallback1: THproseCallback1;
-    FCallback2: THproseCallback2;
-    FErrorEvent: THproseErrorEvent;
+    FCallback1: TCallback1;
+    FCallback2: TCallback2;
+    FCallbackE: TCallbackE;
   public
     constructor Create; overload;
-    constructor Create(Callback: THproseCallback1); overload;
-    constructor Create(Callback: THproseCallback2); overload;
-    constructor Create(ErrorEvent: THproseErrorEvent); overload;
+    constructor Create(Callback: TCallback1); overload;
+    constructor Create(Callback: TCallback2); overload;
+    constructor Create(CallbackE: TCallbackE); overload;
   end;
 
   TAsyncInvokeThread1 = class(TThread)
@@ -348,10 +329,10 @@ type
     FClient: THproseClient;
     FName: string;
     FArgs: TConstArray;
-    FCallback: THproseCallback1;
-    FErrorEvent: THproseErrorEvent;
+    FCallback: TCallback1;
+    FCallbackE: TCallbackE;
     FResultType: PTypeInfo;
-    FResultMode: THproseResultMode;
+    FResultMode: TResultMode;
     FSimple: Boolean;
     FResult: Variant;
     FError: Exception;
@@ -361,9 +342,9 @@ type
     procedure DoError;
   public
     constructor Create(Client: THproseClient; const AName: string;
-      const Args: array of const; Callback: THproseCallback1;
-      ErrorEvent: THproseErrorEvent; ResultType: PTypeInfo;
-      ResultMode: THproseResultMode; Simple: Boolean);
+      const Args: array of const; Callback: TCallback1;
+      CallbackE: TCallbackE; ResultType: PTypeInfo;
+      ResultMode: TResultMode; Simple: Boolean);
   end;
 
   TAsyncInvokeThread2 = class(TThread)
@@ -371,12 +352,12 @@ type
     FClient: THproseClient;
     FName: string;
     FArgs: TVariants;
-    FCallback1: THproseCallback1;
-    FCallback2: THproseCallback2;
-    FErrorEvent: THproseErrorEvent;
+    FCallback1: TCallback1;
+    FCallback2: TCallback2;
+    FCallbackE: TCallbackE;
     FResultType: PTypeInfo;
     FByRef: Boolean;
-    FResultMode: THproseResultMode;
+    FResultMode: TResultMode;
     FSimple: Boolean;
     FResult: Variant;
     FError: Exception;
@@ -386,111 +367,86 @@ type
     procedure DoError;
   public
     constructor Create(Client: THproseClient; const AName: string;
-      const Args: TVariants; Callback: THproseCallback1;
-      ErrorEvent: THproseErrorEvent; ResultType: PTypeInfo;
-      ByRef: Boolean; ResultMode: THproseResultMode; Simple: Boolean); overload;
+      const Args: TVariants; Callback: TCallback1;
+      CallbackE: TCallbackE; ResultType: PTypeInfo;
+      ByRef: Boolean; ResultMode: TResultMode; Simple: Boolean); overload;
     constructor Create(Client: THproseClient; const AName: string;
-      const Args: TVariants; Callback: THproseCallback2;
-      ErrorEvent: THproseErrorEvent; ResultType: PTypeInfo;
-      ByRef: Boolean; ResultMode: THproseResultMode; Simple: Boolean); overload;
+      const Args: TVariants; Callback: TCallback2;
+      CallbackE: TCallbackE; ResultType: PTypeInfo;
+      ByRef: Boolean; ResultMode: TResultMode; Simple: Boolean); overload;
   end;
 
-  THproseReceiver = class(TInterfacedObject, IHproseReceiver)
-    private
-      FClient: THproseClient;
-      FName: string;
-      FCallback1: THproseCallback1;
-      FCallback2: THproseCallback2;
-      FErrorEvent: THproseErrorEvent;
-      FResultType: PTypeInfo;
-      FResultMode: THproseResultMode;
-    public
-      constructor Create(Client: THproseClient;
-        const AName: string;
-        ACallback: THproseCallback1;
-        ErrorEvent: THproseErrorEvent;
-        ResultType: PTypeInfo;
-        ResultMode: THproseResultMode); overload;
-      constructor Create(Client: THproseClient;
-        const AName: string;
-        ACallback: THproseCallback2;
-        ErrorEvent: THproseErrorEvent;
-        ResultType: PTypeInfo;
-        ResultMode: THproseResultMode); overload;
-      procedure Callback(Data: TBytes);
-  end;
-
-{ THproseType }
+{ TType }
 
 {$IFDEF Supports_Generics}
-class function THproseType.New<T>: Variant;
+class function TType.New<T>: Variant;
 begin
   Result := ObjToVar(Self.Create(TypeInfo(T)));
 end;
 {$ENDIF}
 
-constructor THproseType.Create(Info: PTypeInfo);
+constructor TType.Create(Info: PTypeInfo);
 begin
   FTypeInfo := Info;
 end;
 
-function HproseType(Info: PTypeInfo): Variant;
+function TypeToVar(Info: PTypeInfo): Variant;
 begin
-  Result := ObjToVar(THproseType.Create(Info));
+  Result := ObjToVar(TType.Create(Info));
 end;
 
-function HproseCallback: Variant;
+function CallbackToVar: Variant;
 begin
-  Result := ObjToVar(THproseCallback.Create);
+  Result := ObjToVar(TCallback.Create);
 end;
 
-function HproseCallback(Callback: THproseCallback1): Variant;
+function CallbackToVar(Callback: TCallback1): Variant;
 begin
-  Result := ObjToVar(THproseCallback.Create(Callback));
+  Result := ObjToVar(TCallback.Create(Callback));
 end;
 
-function HproseCallback(Callback: THproseCallback2): Variant;
+function CallbackToVar(Callback: TCallback2): Variant;
 begin
-  Result := ObjToVar(THproseCallback.Create(Callback));
+  Result := ObjToVar(TCallback.Create(Callback));
 end;
 
-function HproseCallback(ErrorEvent: THproseErrorEvent): Variant;
+function CallbackToVar(CallbackE: TCallbackE): Variant;
 begin
-  Result := ObjToVar(THproseCallback.Create(ErrorEvent));
+  Result := ObjToVar(TCallback.Create(CallbackE));
 end;
 
-{ THproseCallback }
+{ TCallback }
 
-constructor THproseCallback.Create;
+constructor TCallback.Create;
 begin
   inherited Create;
   FCallback1 := nil;
   FCallback2 := nil;
-  FErrorEvent := nil;
+  FCallbackE := nil;
 end;
 
-constructor THproseCallback.Create(Callback: THproseCallback1);
+constructor TCallback.Create(Callback: TCallback1);
 begin
   inherited Create;
   FCallback1 := Callback;
   FCallback2 := nil;
-  FErrorEvent := nil;
+  FCallbackE := nil;
 end;
 
-constructor THproseCallback.Create(Callback: THproseCallback2);
+constructor TCallback.Create(Callback: TCallback2);
 begin
   inherited Create;
   FCallback1 := nil;
   FCallback2 := Callback;
-  FErrorEvent := nil;
+  FCallbackE := nil;
 end;
 
-constructor THproseCallback.Create(ErrorEvent: THproseErrorEvent);
+constructor TCallback.Create(CallbackE: TCallbackE);
 begin
   inherited Create;
   FCallback1 := nil;
   FCallback2 := nil;
-  FErrorEvent := ErrorEvent;
+  FCallbackE := CallbackE;
 end;
 
 { THproseClient }
@@ -500,7 +456,7 @@ begin
   inherited Create(AOwner);
   FUri := '';
   FNameSpace := '';
-  FErrorEvent := nil;
+  FCallbackE := nil;
   FFilters := THashedList.Create;
 end;
 
@@ -509,45 +465,45 @@ begin
   Result := Self.Create(nil).UseService(AUrl, ANameSpace);
 end;
 
-function THproseClient.GetFilter: IHproseFilter;
+function THproseClient.GetFilter: IFilter;
 begin
   if FFilters.Count = 0 then
     Result := nil
   else
-    VarToIntf(FFilters[0], IHproseFilter, Result);
+    VarToIntf(FFilters[0], IFilter, Result);
 end;
 
-procedure THproseClient.SetFilter(const Filter: IHproseFilter);
+procedure THproseClient.SetFilter(const Filter: IFilter);
 begin
   if FFilters.Count > 0 then FFilters.Clear;
   if Filter <> nil then FFilters.Add(Filter);
 end;
 
-procedure THproseClient.AddFilter(const Filter: IHproseFilter);
+procedure THproseClient.AddFilter(const Filter: IFilter);
 begin
   if Filter <> nil then FFilters.Add(Filter);
 end;
 
-function THproseClient.RemoveFilter(const Filter: IHproseFilter): Boolean;
+function THproseClient.RemoveFilter(const Filter: IFilter): Boolean;
 begin
   Result := (FFilters.Remove(Filter) >= 0);
 end;
 
 function THproseClient.DoInput(var Args: TVariants; ResultType: PTypeInfo;
-  ResultMode: THproseResultMode; Data: TBytes): Variant;
+  ResultMode: TResultMode; Data: TBytes): Variant;
 var
   I: Integer;
-  AFilter: IHproseFilter;
+  AFilter: IFilter;
   ATag: Byte;
   InStream: TBytesStream;
   HproseReader: THproseReader;
 begin
   for I := FFilters.Count - 1 downto 0 do begin
-    VarToIntf(FFilters[I], IHproseFilter, AFilter);
-    Data := AFilter.InputFilter(Data, Self);
+    VarToIntf(FFilters[I], IFilter, AFilter);
+    Data := AFilter.InputFilter(Data, nil);
   end;
   if Data[Length(Data) - 1] <> HproseTagEnd then
-    raise EHproseException.Create('Wrong Response: ' + #13#10 + StringOf(Data));
+    raise Exception.Create('Wrong Response: ' + #13#10 + StringOf(Data));
   Result := Null;
   if (ResultMode = RawWithEndTag) or
     (ResultMode = Raw) then begin
@@ -575,9 +531,9 @@ begin
         end
         else if ATag = HproseTagError then begin
           HproseReader.Reset;
-          raise EHproseException.Create(HproseReader.ReadString());
+          raise Exception.Create(HproseReader.ReadString());
         end
-        else raise EHproseException.Create('Wrong Response: ' + #13#10 + StringOf(Data));
+        else raise Exception.Create('Wrong Response: ' + #13#10 + StringOf(Data));
       end;
     finally
       HproseReader.Free;
@@ -587,7 +543,7 @@ begin
 end;
 
 function THproseClient.DoInput(ResultType: PTypeInfo;
-  ResultMode: THproseResultMode; Data: TBytes): Variant;
+  ResultMode: TResultMode; Data: TBytes): Variant;
 var
   Args: TVariants;
 begin
@@ -600,17 +556,17 @@ procedure THproseClient.DoInput(var Args: TVariants; ResultType: PTypeInfo;
       Data: TBytes; out Result);
 var
   I: Integer;
-  Filter: IHproseFilter;
+  Filter: IFilter;
   Tag: Byte;
   InStream: TBytesStream;
   HproseReader: THproseReader;
 begin
   for I := FFilters.Count - 1 downto 0 do begin
-    VarToIntf(FFilters[I], IHproseFilter, Filter);
+    VarToIntf(FFilters[I], IFilter, Filter);
     Data := Filter.InputFilter(Data, Self);
   end;
   if Data[Length(Data) - 1] <> HproseTagEnd then
-    raise EHproseException.Create('Wrong Response: ' + #13#10 + StringOf(Data));
+    raise Exception.Create('Wrong Response: ' + #13#10 + StringOf(Data));
   InStream := TBytesStream.Create(Data);
   HproseReader := THproseReader.Create(InStream);
   try
@@ -626,9 +582,9 @@ begin
       end
       else if Tag = HproseTagError then begin
         HproseReader.Reset;
-        raise EHproseException.Create(HproseReader.ReadString());
+        raise Exception.Create(HproseReader.ReadString());
       end
-      else raise EHproseException.Create('Wrong Response: ' + #13#10 + StringOf(Data));
+      else raise Exception.Create('Wrong Response: ' + #13#10 + StringOf(Data));
     end;
   finally
     HproseReader.Free;
@@ -649,7 +605,7 @@ function THproseClient.DoOutput(const AName: string;
   const Args: array of const; Simple: Boolean): TBytes;
 var
   I: Integer;
-  AFilter: IHproseFilter;
+  AFilter: IFilter;
   OutStream: TBytesStream;
   HproseWriter: THproseWriter;
 begin
@@ -670,8 +626,8 @@ begin
     OutStream.Free;
   end;
   for I := 0 to FFilters.Count - 1 do begin
-    VarToIntf(FFilters[I], IHproseFilter, AFilter);
-    Result := AFilter.OutputFilter(Result, Self);
+    VarToIntf(FFilters[I], IFilter, AFilter);
+    Result := AFilter.OutputFilter(Result, nil);
   end;
 end;
 
@@ -679,7 +635,7 @@ function THproseClient.DoOutput(const AName: string;
   const Args: TVariants; ByRef: Boolean; Simple: Boolean): TBytes;
 var
   I: Integer;
-  AFilter: IHproseFilter;
+  AFilter: IFilter;
   OutStream: TBytesStream;
   HproseWriter: THproseWriter;
 begin
@@ -701,28 +657,19 @@ begin
     OutStream.Free;
   end;
   for I := 0 to FFilters.Count - 1 do begin
-    VarToIntf(FFilters[I], IHproseFilter, AFilter);
-    Result := AFilter.OutputFilter(Result, Self);
+    VarToIntf(FFilters[I], IFilter, AFilter);
+    Result := AFilter.OutputFilter(Result, nil);
   end;
-end;
-
-procedure THproseClient.SendAndReceive(Data: TBytes; Receiver: IHproseReceiver);
-begin
-end;
-
-function THproseClient.Blocking: Boolean;
-begin
-  Result := True;
 end;
 
 function THproseClient.Invoke(const AName: string; const Arguments: TVarDataArray): Variant;
 var
   Async: Boolean;
-  Callback: THproseCallback;
-  Callback1: THproseCallback1;
-  Callback2: THproseCallback2;
-  ErrorEvent: THproseErrorEvent;
-  HType: THproseType;
+  Callback: TCallback;
+  Callback1: TCallback1;
+  Callback2: TCallback2;
+  CallbackE: TCallbackE;
+  HType: TType;
   Info: PTypeInfo;
   Args: TVariants;
   Len: Integer;
@@ -731,38 +678,38 @@ begin
   Callback := nil;
   Callback1 := nil;
   Callback2 := nil;
-  ErrorEvent := nil;
+  CallbackE := nil;
   HType := nil;
   Info := nil;
   Args := TVariants(Arguments);
   Len := Length(Args);
-  while (Len > 0) and VarToObj(Args[Len - 1], THproseType, HType) and Assigned(HType) do begin
+  while (Len > 0) and VarToObj(Args[Len - 1], TType, HType) and Assigned(HType) do begin
     if Assigned(HType.FTypeInfo) then Info := HType.FTypeInfo;
     HType.Free;
     Dec(Len);
     SetLength(Args, Len);
   end;
-  while (Len > 0) and VarToObj(Args[Len - 1], THproseCallback, Callback) and Assigned(Callback) do begin
+  while (Len > 0) and VarToObj(Args[Len - 1], TCallback, Callback) and Assigned(Callback) do begin
     Async := True;
     if Assigned(Callback.FCallback1) then Callback1 := Callback.FCallback1;
     if Assigned(Callback.FCallback2) then Callback2 := Callback.FCallback2;
-    if Assigned(Callback.FErrorEvent) then ErrorEvent := Callback.FErrorEvent;
+    if Assigned(Callback.FCallbackE) then CallbackE := Callback.FCallbackE;
     Callback.Free;
     Dec(Len);
     SetLength(Args, Len);
   end;
   if Async then
       if Assigned(Callback1) then
-        Invoke(AName, Args, Callback1, ErrorEvent, Info, Normal, False)
+        Invoke(AName, Args, Callback1, CallbackE, Info, Normal, False)
       else
-        Invoke(AName, Args, Callback2, ErrorEvent, Info, True, Normal, False)
+        Invoke(AName, Args, Callback2, CallbackE, Info, True, Normal, False)
   else
     Result := Invoke(AName, Args, Info, False, Normal, False);
 end;
 
 // Synchronous invoke
 function THproseClient.Invoke(const AName: string;
-  ResultMode: THproseResultMode): Variant;
+  ResultMode: TResultMode): Variant;
 begin
   Result := Invoke(AName, [], PTypeInfo(nil), ResultMode, True);
 end;
@@ -774,7 +721,7 @@ begin
 end;
 
 function THproseClient.Invoke(const AName: string;
-  const Args: array of const; ResultMode: THproseResultMode; Simple: Boolean): Variant;
+  const Args: array of const; ResultMode: TResultMode; Simple: Boolean): Variant;
 begin
   Result := Invoke(AName, Args, PTypeInfo(nil), ResultMode, Simple);
 end;
@@ -787,7 +734,7 @@ end;
 
 function THproseClient.Invoke(const AName: string;
   const Args: array of const; ResultType: PTypeInfo;
-  ResultMode: THproseResultMode; Simple: Boolean): Variant;
+  ResultMode: TResultMode; Simple: Boolean): Variant;
 begin
   Result := DoInput(ResultType, ResultMode, SendAndReceive(DoOutput(AName, Args, Simple)));
 end;
@@ -795,7 +742,7 @@ end;
 // Synchronous invoke
 
 function THproseClient.Invoke(const AName: string; var Args: TVariants;
-  ByRef: Boolean; ResultMode: THproseResultMode; Simple: Boolean): Variant;
+  ByRef: Boolean; ResultMode: TResultMode; Simple: Boolean): Variant;
 begin
   Result := Invoke(AName, Args, PTypeInfo(nil), ByRef, ResultMode, Simple);
 end;
@@ -808,7 +755,7 @@ end;
 
 function THproseClient.Invoke(const AName: string; var Args: TVariants;
   ResultType: PTypeInfo; ByRef: Boolean;
-  ResultMode: THproseResultMode; Simple: Boolean): Variant;
+  ResultMode: TResultMode; Simple: Boolean): Variant;
 var
   FullName: string;
 begin
@@ -862,267 +809,225 @@ end;
 
 // Asynchronous invoke
 procedure THproseClient.Invoke(const AName: string;
-  Callback: THproseCallback1;
-  ResultMode: THproseResultMode);
+  Callback: TCallback1;
+  ResultMode: TResultMode);
 var
   Args: array of TVarRec;
-  ErrorEvent: THproseErrorEvent;
+  CallbackE: TCallbackE;
 begin
   SetLength(Args, 0);
-  ErrorEvent := nil;
-  Invoke(AName, Args, Callback, ErrorEvent, nil, ResultMode, True);
+  CallbackE := nil;
+  Invoke(AName, Args, Callback, CallbackE, nil, ResultMode, True);
 end;
 
 procedure THproseClient.Invoke(const AName: string;
-  Callback: THproseCallback1;
-  ErrorEvent: THproseErrorEvent;
-  ResultMode: THproseResultMode);
+  Callback: TCallback1;
+  CallbackE: TCallbackE;
+  ResultMode: TResultMode);
 var
   Args: array of TVarRec;
 begin
   SetLength(Args, 0);
-  Invoke(AName, Args, Callback, ErrorEvent, nil, ResultMode, True);
+  Invoke(AName, Args, Callback, CallbackE, nil, ResultMode, True);
 end;
 
 // Asynchronous invoke
 procedure THproseClient.Invoke(const AName: string;
-  Callback: THproseCallback1;
+  Callback: TCallback1;
   ResultType: PTypeInfo);
 var
   Args: array of TVarRec;
-  ErrorEvent: THproseErrorEvent;
+  CallbackE: TCallbackE;
 begin
   SetLength(Args, 0);
-  ErrorEvent := nil;
-  Invoke(AName, Args, Callback, ErrorEvent, ResultType, Normal, True);
+  CallbackE := nil;
+  Invoke(AName, Args, Callback, CallbackE, ResultType, Normal, True);
 end;
 
 procedure THproseClient.Invoke(const AName: string;
-  Callback: THproseCallback1;
-  ErrorEvent: THproseErrorEvent;
+  Callback: TCallback1;
+  CallbackE: TCallbackE;
   ResultType: PTypeInfo);
 var
   Args: array of TVarRec;
 begin
   SetLength(Args, 0);
-  Invoke(AName, Args, Callback, ErrorEvent, ResultType, Normal, True);
+  Invoke(AName, Args, Callback, CallbackE, ResultType, Normal, True);
 end;
 
 // Asynchronous invoke
 procedure THproseClient.Invoke(const AName: string; const Args: array of const;
-  Callback: THproseCallback1;
-  ResultMode: THproseResultMode; Simple: Boolean);
+  Callback: TCallback1;
+  ResultMode: TResultMode; Simple: Boolean);
 var
-  ErrorEvent: THproseErrorEvent;
+  CallbackE: TCallbackE;
 begin
-  ErrorEvent := nil;
-  Invoke(AName, Args, Callback, ErrorEvent, nil, ResultMode, Simple);
+  CallbackE := nil;
+  Invoke(AName, Args, Callback, CallbackE, nil, ResultMode, Simple);
 end;
 
 procedure THproseClient.Invoke(const AName: string; const Args: array of const;
-  Callback: THproseCallback1;
-  ErrorEvent: THproseErrorEvent;
-  ResultMode: THproseResultMode; Simple: Boolean);
+  Callback: TCallback1;
+  CallbackE: TCallbackE;
+  ResultMode: TResultMode; Simple: Boolean);
 begin
-  Invoke(AName, Args, Callback, ErrorEvent, nil, ResultMode, Simple);
+  Invoke(AName, Args, Callback, CallbackE, nil, ResultMode, Simple);
 end;
 
 // Asynchronous invoke
 procedure THproseClient.Invoke(const AName: string; const Args: array of const;
-  Callback: THproseCallback1;
+  Callback: TCallback1;
   ResultType: PTypeInfo; Simple: Boolean);
 var
-  ErrorEvent: THproseErrorEvent;
+  CallbackE: TCallbackE;
 begin
-  ErrorEvent := nil;
-  Invoke(AName, Args, Callback, ErrorEvent, ResultType, Normal, Simple);
+  CallbackE := nil;
+  Invoke(AName, Args, Callback, CallbackE, ResultType, Normal, Simple);
 end;
 
 procedure THproseClient.Invoke(const AName: string; const Args: array of const;
-  Callback: THproseCallback1;
-  ErrorEvent: THproseErrorEvent;
+  Callback: TCallback1;
+  CallbackE: TCallbackE;
   ResultType: PTypeInfo; Simple: Boolean);
 begin
-  Invoke(AName, Args, Callback, ErrorEvent, ResultType, Normal, Simple);
+  Invoke(AName, Args, Callback, CallbackE, ResultType, Normal, Simple);
 end;
 
 procedure THproseClient.Invoke(const AName: string; const Args: array of const;
-  Callback: THproseCallback1;
-  ErrorEvent: THproseErrorEvent;
-  ResultType: PTypeInfo; ResultMode: THproseResultMode; Simple: Boolean);
+  Callback: TCallback1;
+  CallbackE: TCallbackE;
+  ResultType: PTypeInfo; ResultMode: TResultMode; Simple: Boolean);
 var
   FullName: string;
-  Receiver: IHproseReceiver;
 begin
   if FNameSpace <> '' then
     FullName := FNameSpace + '_' + AName
   else
     FullName := AName;
-  if Blocking then
-    TAsyncInvokeThread1.Create(Self, FullName, Args, Callback, ErrorEvent, ResultType, ResultMode, Simple)
-  else
-    try
-      Receiver := THproseReceiver.Create(Self, FullName, Callback, ErrorEvent, ResultType, ResultMode);
-      SendAndReceive(DoOutput(FullName, Args, Simple), Receiver);
-    except
-      on E: Exception do begin
-        if Assigned(ErrorEvent) then
-          ErrorEvent(FullName, E)
-        else if Assigned(FErrorEvent) then
-          FErrorEvent(FullName, E);
-      end;
-    end;
+  TAsyncInvokeThread1.Create(Self, FullName, Args, Callback, CallbackE, ResultType, ResultMode, Simple)
 end;
 
 // Asynchronous invoke
 procedure THproseClient.Invoke(const AName: string; var Args: TVariants;
-  Callback: THproseCallback1;
-  ResultMode: THproseResultMode; Simple: Boolean);
+  Callback: TCallback1;
+  ResultMode: TResultMode; Simple: Boolean);
 var
-  ErrorEvent: THproseErrorEvent;
+  CallbackE: TCallbackE;
 begin
-  ErrorEvent := nil;
-  Invoke(AName, Args, Callback, ErrorEvent, nil, ResultMode, Simple);
+  CallbackE := nil;
+  Invoke(AName, Args, Callback, CallbackE, nil, ResultMode, Simple);
 end;
 
 procedure THproseClient.Invoke(const AName: string; var Args: TVariants;
-  Callback: THproseCallback1;
-  ErrorEvent: THproseErrorEvent;
-  ResultMode: THproseResultMode; Simple: Boolean);
+  Callback: TCallback1;
+  CallbackE: TCallbackE;
+  ResultMode: TResultMode; Simple: Boolean);
 begin
-  Invoke(AName, Args, Callback, ErrorEvent, nil, ResultMode, Simple);
+  Invoke(AName, Args, Callback, CallbackE, nil, ResultMode, Simple);
 end;
 
 // Asynchronous invoke
 procedure THproseClient.Invoke(const AName: string; var Args: TVariants;
-  Callback: THproseCallback1;
+  Callback: TCallback1;
   ResultType: PTypeInfo; Simple: Boolean);
 var
-  ErrorEvent: THproseErrorEvent;
+  CallbackE: TCallbackE;
 begin
-  ErrorEvent := nil;
-  Invoke(AName, Args, Callback, ErrorEvent, ResultType, Normal, Simple);
+  CallbackE := nil;
+  Invoke(AName, Args, Callback, CallbackE, ResultType, Normal, Simple);
 end;
 
 procedure THproseClient.Invoke(const AName: string; var Args: TVariants;
-  Callback: THproseCallback1;
-  ErrorEvent: THproseErrorEvent;
+  Callback: TCallback1;
+  CallbackE: TCallbackE;
   ResultType: PTypeInfo; Simple: Boolean);
 begin
-  Invoke(AName, Args, Callback, ErrorEvent, ResultType, Normal, Simple);
+  Invoke(AName, Args, Callback, CallbackE, ResultType, Normal, Simple);
 end;
 
 procedure THproseClient.Invoke(const AName: string; var Args: TVariants;
-  Callback: THproseCallback1;
-  ErrorEvent: THproseErrorEvent;
+  Callback: TCallback1;
+  CallbackE: TCallbackE;
   ResultType: PTypeInfo;
-  ResultMode: THproseResultMode; Simple: Boolean);
+  ResultMode: TResultMode; Simple: Boolean);
 var
   FullName: string;
-  Receiver: IHproseReceiver;
 begin
   if FNameSpace <> '' then
     FullName := FNameSpace + '_' + AName
   else
     FullName := AName;
-  if Blocking then
-    TAsyncInvokeThread2.Create(Self, FullName, Args, Callback, ErrorEvent, ResultType, False, ResultMode, Simple)
-  else
-    try
-      Receiver := THproseReceiver.Create(Self, FullName, Callback, ErrorEvent, ResultType, ResultMode);
-      SendAndReceive(DoOutput(FullName, Args, False, Simple), Receiver);
-    except
-      on E: Exception do begin
-        if Assigned(ErrorEvent) then
-          ErrorEvent(FullName, E)
-        else if Assigned(FErrorEvent) then
-          FErrorEvent(FullName, E);
-      end;
-    end;
+  TAsyncInvokeThread2.Create(Self, FullName, Args, Callback, CallbackE, ResultType, False, ResultMode, Simple)
 end;
 
 // Asynchronous invoke
 procedure THproseClient.Invoke(const AName: string; var Args: TVariants;
-  Callback: THproseCallback2;
+  Callback: TCallback2;
   ByRef: Boolean;
-  ResultMode: THproseResultMode; Simple: Boolean);
+  ResultMode: TResultMode; Simple: Boolean);
 var
-  ErrorEvent: THproseErrorEvent;
+  CallbackE: TCallbackE;
 begin
-  ErrorEvent := nil;
-  Invoke(AName, Args, Callback, ErrorEvent, nil, ByRef, ResultMode, Simple);
+  CallbackE := nil;
+  Invoke(AName, Args, Callback, CallbackE, nil, ByRef, ResultMode, Simple);
 end;
 
 procedure THproseClient.Invoke(const AName: string; var Args: TVariants;
-  Callback: THproseCallback2;
-  ErrorEvent: THproseErrorEvent;
+  Callback: TCallback2;
+  CallbackE: TCallbackE;
   ByRef: Boolean;
-  ResultMode: THproseResultMode; Simple: Boolean);
+  ResultMode: TResultMode; Simple: Boolean);
 begin
-  Invoke(AName, Args, Callback, ErrorEvent, nil, ByRef, ResultMode, Simple);
+  Invoke(AName, Args, Callback, CallbackE, nil, ByRef, ResultMode, Simple);
 end;
 
 // Asynchronous invoke
 procedure THproseClient.Invoke(const AName: string; var Args: TVariants;
-  Callback: THproseCallback2;
+  Callback: TCallback2;
   ResultType: PTypeInfo;
   ByRef: Boolean; Simple: Boolean);
 var
-  ErrorEvent: THproseErrorEvent;
+  CallbackE: TCallbackE;
 begin
-  ErrorEvent := nil;
-  Invoke(AName, Args, Callback, ErrorEvent, ResultType, ByRef, Normal, Simple);
+  CallbackE := nil;
+  Invoke(AName, Args, Callback, CallbackE, ResultType, ByRef, Normal, Simple);
 end;
 
 procedure THproseClient.Invoke(const AName: string; var Args: TVariants;
-  Callback: THproseCallback2;
-  ErrorEvent: THproseErrorEvent;
+  Callback: TCallback2;
+  CallbackE: TCallbackE;
   ResultType: PTypeInfo;
   ByRef: Boolean; Simple: Boolean);
 begin
-  Invoke(AName, Args, Callback, ErrorEvent, ResultType, ByRef, Normal, Simple);
+  Invoke(AName, Args, Callback, CallbackE, ResultType, ByRef, Normal, Simple);
 end;
 
 procedure THproseClient.Invoke(const AName: string; var Args: TVariants;
-  Callback: THproseCallback2;
-  ErrorEvent: THproseErrorEvent;
+  Callback: TCallback2;
+  CallbackE: TCallbackE;
   ResultType: PTypeInfo;
-  ByRef: Boolean; ResultMode: THproseResultMode; Simple: Boolean);
+  ByRef: Boolean; ResultMode: TResultMode; Simple: Boolean);
 var
   FullName: string;
-  Receiver: IHproseReceiver;
 begin
   if FNameSpace <> '' then
     FullName := FNameSpace + '_' + AName
   else
     FullName := AName;
-  if Blocking then
-    TAsyncInvokeThread2.Create(Self, FullName, Args, Callback, ErrorEvent, ResultType, ByRef, ResultMode, Simple)
-  else
-    try
-      Receiver := THproseReceiver.Create(Self, FullName, Callback, ErrorEvent, ResultType, ResultMode);
-      SendAndReceive(DoOutput(FullName, Args, ByRef, Simple), Receiver);
-    except
-      on E: Exception do begin
-        if Assigned(ErrorEvent) then
-          ErrorEvent(FullName, E)
-        else if Assigned(FErrorEvent) then
-          FErrorEvent(FullName, E);
-      end;
-    end;
+  TAsyncInvokeThread2.Create(Self, FullName, Args, Callback, CallbackE, ResultType, ByRef, ResultMode, Simple)
 end;
 
 {$IFDEF Supports_Generics}
 procedure THproseClient.Invoke<T>(const AName: string;
-  Callback: THproseCallback1<T>;
-  ErrorEvent: THproseErrorEvent);
+  Callback: TCallback1<T>;
+  CallbackE: TCallbackE);
 begin
-  Self.Invoke<T>(AName, [], Callback, ErrorEvent, True);
+  Self.Invoke<T>(AName, [], Callback, CallbackE, True);
 end;
 
 procedure THproseClient.Invoke<T>(const AName: string; const Args: array of const;
-  Callback: THproseCallback1<T>;
-  ErrorEvent: THproseErrorEvent; Simple: Boolean);
+  Callback: TCallback1<T>;
+  CallbackE: TCallbackE; Simple: Boolean);
 var
   FullName: string;
 begin
@@ -1130,32 +1035,19 @@ begin
     FullName := FNameSpace + '_' + AName
   else
     FullName := AName;
-  if Blocking then
-    TAsyncInvokeThread1<T>.Create(Self, FullName, Args, Callback, ErrorEvent, Simple)
-  else
-    try
-      SendAndReceive(DoOutput(FullName, Args, Simple),
-        THproseReceiver<T>.Create(Self, FullName, Callback, ErrorEvent));
-    except
-      on E: Exception do begin
-        if Assigned(ErrorEvent) then
-          ErrorEvent(FullName, E)
-        else if Assigned(FErrorEvent) then
-          FErrorEvent(FullName, E);
-      end;
-    end;
+  TAsyncInvokeThread1<T>.Create(Self, FullName, Args, Callback, CallbackE, Simple)
 end;
 
 procedure THproseClient.Invoke<T>(const AName: string; var Args: TVariants;
-  Callback: THproseCallback2<T>;
+  Callback: TCallback2<T>;
   ByRef: Boolean; Simple: Boolean);
 begin
   Self.Invoke<T>(AName, Args, Callback, nil, ByRef, Simple);
 end;
 
 procedure THproseClient.Invoke<T>(const AName: string; var Args: TVariants;
-  Callback: THproseCallback2<T>;
-  ErrorEvent: THproseErrorEvent;
+  Callback: TCallback2<T>;
+  CallbackE: TCallbackE;
   ByRef: Boolean; Simple: Boolean);
 var
   FullName: string;
@@ -1164,20 +1056,7 @@ begin
     FullName := FNameSpace + '_' + AName
   else
     FullName := AName;
-  if Blocking then
-    TAsyncInvokeThread2<T>.Create(Self, FullName, Args, Callback, ErrorEvent, ByRef, Simple)
-  else
-    try
-      SendAndReceive(DoOutput(FullName, Args, ByRef, Simple),
-        THproseReceiver<T>.Create(Self, FullName, Callback, ErrorEvent));
-    except
-      on E: Exception do begin
-        if Assigned(ErrorEvent) then
-          ErrorEvent(FullName, E)
-        else if Assigned(FErrorEvent) then
-          FErrorEvent(FullName, E);
-      end;
-    end;
+  TAsyncInvokeThread2<T>.Create(Self, FullName, Args, Callback, CallbackE, ByRef, Simple)
 end;
 {$ENDIF}
 
@@ -1192,8 +1071,8 @@ end;
 
 constructor TAsyncInvokeThread1.Create(Client: THproseClient;
   const AName: string; const Args: array of const;
-  Callback: THproseCallback1; ErrorEvent: THproseErrorEvent;
-  ResultType: PTypeInfo; ResultMode: THproseResultMode; Simple: Boolean);
+  Callback: TCallback1; CallbackE: TCallbackE;
+  ResultType: PTypeInfo; ResultMode: TResultMode; Simple: Boolean);
 begin
   inherited Create(False);
   FreeOnTerminate := True;
@@ -1201,7 +1080,7 @@ begin
   FName := AName;
   FArgs := CreateConstArray(Args);
   FCallback := Callback;
-  FErrorEvent := ErrorEvent;
+  FCallbackE := CallbackE;
   FResultType := ResultType;
   FResultMode := ResultMode;
   FSimple := Simple;
@@ -1215,10 +1094,10 @@ end;
 
 procedure TAsyncInvokeThread1.DoError;
 begin
-  if Assigned(FErrorEvent) then
-    FErrorEvent(FName, FError)
-  else if Assigned(FClient.FErrorEvent) then
-    FClient.FErrorEvent(FName, FError);
+  if Assigned(FCallbackE) then
+    FCallbackE(FName, FError)
+  else if Assigned(FClient.FCallbackE) then
+    FClient.FCallbackE(FName, FError);
 end;
 
 procedure TAsyncInvokeThread1.Execute;
@@ -1246,9 +1125,9 @@ end;
 
 constructor TAsyncInvokeThread2.Create(Client: THproseClient;
   const AName: string; const Args: TVariants;
-  Callback: THproseCallback1; ErrorEvent: THproseErrorEvent;
+  Callback: TCallback1; CallbackE: TCallbackE;
   ResultType: PTypeInfo; ByRef: Boolean;
-  ResultMode: THproseResultMode; Simple: Boolean);
+  ResultMode: TResultMode; Simple: Boolean);
 begin
   inherited Create(False);
   FreeOnTerminate := True;
@@ -1257,7 +1136,7 @@ begin
   FArgs := Args;
   FCallback1 := Callback;
   FCallback2 := nil;
-  FErrorEvent := ErrorEvent;
+  FCallbackE := CallbackE;
   FResultType := ResultType;
   FByRef := ByRef;
   FResultMode := ResultMode;
@@ -1267,9 +1146,9 @@ end;
 
 constructor TAsyncInvokeThread2.Create(Client: THproseClient;
   const AName: string; const Args: TVariants;
-  Callback: THproseCallback2; ErrorEvent: THproseErrorEvent;
+  Callback: TCallback2; CallbackE: TCallbackE;
   ResultType: PTypeInfo; ByRef: Boolean;
-  ResultMode: THproseResultMode; Simple: Boolean);
+  ResultMode: TResultMode; Simple: Boolean);
 begin
   inherited Create(False);
   FreeOnTerminate := True;
@@ -1278,7 +1157,7 @@ begin
   FArgs := Args;
   FCallback1 := nil;
   FCallback2 := Callback;
-  FErrorEvent := ErrorEvent;
+  FCallbackE := CallbackE;
   FResultType := ResultType;
   FByRef := ByRef;
   FResultMode := ResultMode;
@@ -1295,10 +1174,10 @@ end;
 
 procedure TAsyncInvokeThread2.DoError;
 begin
-  if Assigned(FErrorEvent) then
-    FErrorEvent(FName, FError)
-  else if Assigned(FClient.FErrorEvent) then
-    FClient.FErrorEvent(FName, FError);
+  if Assigned(FCallbackE) then
+    FCallbackE(FName, FError)
+  else if Assigned(FClient.FCallbackE) then
+    FClient.FCallbackE(FName, FError);
 end;
 
 procedure TAsyncInvokeThread2.Execute;
@@ -1319,69 +1198,12 @@ begin
   Synchronize({$IFDEF FPC}@{$ENDIF}DoCallback);
 end;
 
-{ THproseReceiver }
-
-constructor THproseReceiver.Create(Client: THproseClient;
-  const AName: string;
-  ACallback: THproseCallback1;
-  ErrorEvent: THproseErrorEvent;
-  ResultType: PTypeInfo;
-  ResultMode: THproseResultMode);
-begin
-  inherited Create;
-  FClient := Client;
-  FName := AName;
-  FCallback1 := ACallback;
-  FCallback2 := nil;
-  FErrorEvent := ErrorEvent;
-  FResultType := ResultType;
-  FResultMode := ResultMode;
-end;
-
-constructor THproseReceiver.Create(Client: THproseClient;
-  const AName: string;
-  ACallback: THproseCallback2;
-  ErrorEvent: THproseErrorEvent;
-  ResultType: PTypeInfo;
-  ResultMode: THproseResultMode);
-begin
-  inherited Create;
-  FClient := Client;
-  FName := AName;
-  FCallback1 := nil;
-  FCallback2 := ACallback;
-  FErrorEvent := ErrorEvent;
-  FResultType := ResultType;
-  FResultMode := ResultMode;
-end;
-
-procedure THproseReceiver.Callback(Data: TBytes);
-var
-  Args: TVariants;
-  Result: Variant;
-begin
-  try
-    SetLength(Args, 0);
-    Result := FClient.DoInput(Args, FResultType, FResultMode, Data);
-  except
-    on E: Exception do begin
-      if Assigned(FErrorEvent) then
-        FErrorEvent(FName, E)
-      else if Assigned(FClient.FErrorEvent) then
-        FClient.FErrorEvent(FName, E);
-      Exit;
-    end;
-  end;
-  if Assigned(FCallback1) then FCallback1(Result)
-  else if Assigned(FCallback2) then FCallback2(Result, Args);
-end;
-
 {$IFDEF Supports_Generics}
 { TAsyncInvokeThread1<T> }
 
 constructor TAsyncInvokeThread1<T>.Create(Client: THproseClient;
   const AName: string; const Args: array of const;
-  Callback: THproseCallback1<T>; ErrorEvent: THproseErrorEvent; Simple: Boolean);
+  Callback: TCallback1<T>; CallbackE: TCallbackE; Simple: Boolean);
 begin
   inherited Create(False);
   FreeOnTerminate := True;
@@ -1389,7 +1211,7 @@ begin
   FName := AName;
   FArgs := CreateConstArray(Args);
   FCallback := Callback;
-  FErrorEvent := ErrorEvent;
+  FCallbackE := CallbackE;
   FSimple := Simple;
   FError := nil;
 end;
@@ -1401,10 +1223,10 @@ end;
 
 procedure TAsyncInvokeThread1<T>.DoError;
 begin
-  if Assigned(FErrorEvent) then
-    FErrorEvent(FName, FError)
-  else if Assigned(FClient.FErrorEvent) then
-    FClient.FErrorEvent(FName, FError);
+  if Assigned(FCallbackE) then
+    FCallbackE(FName, FError)
+  else if Assigned(FClient.FCallbackE) then
+    FClient.FCallbackE(FName, FError);
 end;
 
 procedure TAsyncInvokeThread1<T>.Execute;
@@ -1428,7 +1250,7 @@ end;
 
 constructor TAsyncInvokeThread2<T>.Create(Client: THproseClient;
   const AName: string; const Args: TVariants;
-  Callback: THproseCallback2<T>; ErrorEvent: THproseErrorEvent;
+  Callback: TCallback2<T>; CallbackE: TCallbackE;
   ByRef: Boolean; Simple: Boolean);
 begin
   inherited Create(False);
@@ -1437,7 +1259,7 @@ begin
   FName := AName;
   FArgs := Args;
   FCallback := Callback;
-  FErrorEvent := ErrorEvent;
+  FCallbackE := CallbackE;
   FByRef := ByRef;
   FSimple := Simple;
   FError := nil;
@@ -1450,10 +1272,10 @@ end;
 
 procedure TAsyncInvokeThread2<T>.DoError;
 begin
-  if Assigned(FErrorEvent) then
-    FErrorEvent(FName, FError)
-  else if Assigned(FClient.FErrorEvent) then
-    FClient.FErrorEvent(FName, FError);
+  if Assigned(FCallbackE) then
+    FCallbackE(FName, FError)
+  else if Assigned(FClient.FCallbackE) then
+    FClient.FCallbackE(FName, FError);
 end;
 
 procedure TAsyncInvokeThread2<T>.Execute;
@@ -1469,53 +1291,6 @@ begin
   Synchronize(DoCallback);
 end;
 
-{ THproseReceiver<T> }
-
-constructor THproseReceiver<T>.Create(Client: THproseClient;
-  const AName: string;
-  Callback: THproseCallback1<T>;
-  ErrorEvent: THproseErrorEvent);
-begin
-  inherited Create;
-  FClient := Client;
-  FName := AName;
-  FCallback1 := Callback;
-  FCallback2 := nil;
-  FErrorEvent := ErrorEvent;
-end;
-
-constructor THproseReceiver<T>.Create(Client: THproseClient;
-  const AName: string;
-  Callback: THproseCallback2<T>;
-  ErrorEvent: THproseErrorEvent);
-begin
-  inherited Create;
-  FClient := Client;
-  FName := AName;
-  FCallback1 := nil;
-  FCallback2 := Callback;
-  FErrorEvent := ErrorEvent;
-end;
-
-procedure THproseReceiver<T>.Callback(Data: TBytes);
-var
-  Args: TVariants;
-  Result: T;
-begin
-  try
-    FClient.DoInput(Args, TypeInfo(T), Data, Result);
-  except
-    on E: Exception do begin
-      if Assigned(FErrorEvent) then
-        FErrorEvent(FName, E)
-      else if Assigned(FClient.FErrorEvent) then
-        FClient.FErrorEvent(FName, E);
-      Exit;
-    end;
-  end;
-  if Assigned(FCallback1) then FCallback1(Result)
-  else if Assigned(FCallback2) then FCallback2(Result, Args);
-end;
 {$ENDIF}
 
 end.

@@ -14,7 +14,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: Jun 13, 2016                             *
+ * LastModified: Oct 30, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -84,7 +84,7 @@ type
     FClassRefList: IList;
     FAttrRefMap: IMap;
     function UnexpectedTag(Tag: Byte;
-      const ExpectTags: string = ''): EHproseException;
+      const ExpectTags: string = ''): Exception;
     function TagToString(Tag: Byte): string;
     function ReadByte: Byte;
     function ReadInt64(Tag: Byte): Int64; overload;
@@ -499,7 +499,7 @@ type
 
 function TFakeReaderRefer.ReadRef(I: Integer): Variant;
 begin
-  raise EHproseException.Create('Unexpected serialize tag "r" in stream');
+  raise Exception.Create('Unexpected serialize tag "r" in stream');
 end;
 
 procedure TFakeReaderRefer.Reset;
@@ -568,13 +568,13 @@ end;
 {$ENDIF}
 
 function THproseReader.UnexpectedTag(Tag: Byte;
-  const ExpectTags: string): EHproseException;
+  const ExpectTags: string): Exception;
 begin
   if ExpectTags = '' then
-    Result := EHproseException.Create('Unexpected serialize tag "' +
+    Result := Exception.Create('Unexpected serialize tag "' +
                                        Char(Tag) + '" in stream')
   else
-    Result := EHproseException.Create('Tag "' + ExpectTags +
+    Result := Exception.Create('Tag "' + ExpectTags +
                                        '" expected, but "' + Char(Tag) +
                                        '" found in stream');
 end;
@@ -602,7 +602,7 @@ begin
     htClass: Result := 'Class';
     htObject: Result := 'Object';
     htRef: Result := 'Object Reference';
-    htError: raise EHproseException.Create(ReadString());
+    htError: raise Exception.Create(ReadString());
   else
     raise UnexpectedTag(Tag);
   end;
@@ -833,7 +833,7 @@ begin
                           (C3 and $3F));
     end;
   else
-    raise EHproseException.Create('bad unicode encoding at $' + IntToHex(C, 4));
+    raise Exception.Create('bad unicode encoding at $' + IntToHex(C, 4));
   end;
 end;
 
@@ -882,10 +882,10 @@ begin
             Continue;
           end;
         end;
-        raise EHproseException.Create('bad unicode encoding at $' + IntToHex(C, 4));
+        raise Exception.Create('bad unicode encoding at $' + IntToHex(C, 4));
       end;
     else
-      raise EHproseException.Create('bad unicode encoding at $' + IntToHex(C, 4));
+      raise Exception.Create('bad unicode encoding at $' + IntToHex(C, 4));
     end;
   end;
   CheckTag(HproseTagQuote);
@@ -935,10 +935,10 @@ begin
             Continue;
           end;
         end;
-        raise EHproseException.Create('bad unicode encoding at $' + IntToHex(C, 4));
+        raise Exception.Create('bad unicode encoding at $' + IntToHex(C, 4));
       end;
     else
-      raise EHproseException.Create('bad unicode encoding at $' + IntToHex(C, 4));
+      raise Exception.Create('bad unicode encoding at $' + IntToHex(C, 4));
     end;
     Inc(I);
   end;
@@ -1477,9 +1477,9 @@ begin
   Result := FRefer.ReadRef(ReadInt(HproseTagSemicolon));
 end;
 
-function CastError(const SrcType, DestType: string): EHproseException;
+function CastError(const SrcType, DestType: string): Exception;
 begin
-  Result := EHproseException.Create(SrcType + ' can''t change to ' + DestType);
+  Result := Exception.Create(SrcType + ' can''t change to ' + DestType);
 end;
 
 function THproseReader.ReadInteger: Integer;
@@ -1929,9 +1929,9 @@ var
 begin
   Name := GetTypeName(Info);
   ElementName := GetElementName(Name);
-  ElementInfo := THproseClassManager.TypeInfo(ElementName);
+  ElementInfo := TClassManager.TypeInfo(ElementName);
   if ElementInfo = nil then
-    raise EHproseException.Create(ElementName + 'is not registered');
+    raise Exception.Create(ElementName + 'is not registered');
   case ElementInfo^.Kind of
 {$IFNDEF NEXTGEN}
     tkString: ReadArray<ShortString>(TArray<ShortString>(DynArray), ElementInfo);
@@ -1954,7 +1954,7 @@ begin
     else if GetTypeName(Info) = 'Extended' then
       ReadArray<Extended>(TArray<Extended>(DynArray), ElementInfo)
     else
-      raise EHproseException.Create('Can not unserialize ' + Name);
+      raise Exception.Create('Can not unserialize ' + Name);
     end;
   end;
 end;
@@ -2024,9 +2024,9 @@ var
 begin
   Name := GetTypeName(Info);
   ElementName := GetElementName(Name);
-  ElementInfo := THproseClassManager.TypeInfo(ElementName);
+  ElementInfo := TClassManager.TypeInfo(ElementName);
   if ElementInfo = nil then
-    raise EHproseException.Create(ElementName + 'is not registered');
+    raise Exception.Create(ElementName + 'is not registered');
   case ElementInfo^.Kind of
 {$IFNDEF NEXTGEN}
     tkString: Result := ReadTList<ShortString>(Info, ElementInfo);
@@ -2049,7 +2049,7 @@ begin
     else if GetTypeName(Info) = 'Extended' then
       Result := ReadTList<Extended>(Info, ElementInfo)
     else
-      raise EHproseException.Create('Can not unserialize ' + Name);
+      raise Exception.Create('Can not unserialize ' + Name);
     end;
   end;
 end;
@@ -2083,9 +2083,9 @@ var
 begin
   Name := GetTypeName(Info);
   ElementName := GetElementName(Name);
-  ElementInfo := THproseClassManager.TypeInfo(ElementName);
+  ElementInfo := TClassManager.TypeInfo(ElementName);
   if ElementInfo = nil then
-    raise EHproseException.Create(ElementName + 'is not registered');
+    raise Exception.Create(ElementName + 'is not registered');
   case ElementInfo^.Kind of
 {$IFNDEF NEXTGEN}
     tkString: Result := ReadTQueue<ShortString>(Info, ElementInfo);
@@ -2108,7 +2108,7 @@ begin
     else if GetTypeName(Info) = 'Extended' then
       Result := ReadTQueue<Extended>(Info, ElementInfo)
     else
-      raise EHproseException.Create('Can not unserialize ' + Name);
+      raise Exception.Create('Can not unserialize ' + Name);
     end;
   end;
 end;
@@ -2133,9 +2133,9 @@ var
 begin
   Name := GetTypeName(Info);
   ElementName := GetElementName(Name);
-  ElementInfo := THproseClassManager.TypeInfo(ElementName);
+  ElementInfo := TClassManager.TypeInfo(ElementName);
   if ElementInfo = nil then
-    raise EHproseException.Create(ElementName + 'is not registered');
+    raise Exception.Create(ElementName + 'is not registered');
   case ElementInfo^.Kind of
 {$IFNDEF NEXTGEN}
     tkString: Result := ReadTStack<ShortString>(Info, ElementInfo);
@@ -2158,7 +2158,7 @@ begin
     else if GetTypeName(Info) = 'Extended' then
       Result := ReadTStack<Extended>(Info, ElementInfo)
     else
-      raise EHproseException.Create('Can not unserialize ' + Name);
+      raise Exception.Create('Can not unserialize ' + Name);
     end;
   end;
 end;
@@ -2231,7 +2231,7 @@ begin
       Result := ReadTDictionary2<TKey, Extended>(
         Info, KeyInfo, ValueInfo)
     else
-      raise EHproseException.Create('Can not unserialize ' + GetTypeName(Info));
+      raise Exception.Create('Can not unserialize ' + GetTypeName(Info));
     end;
   end;
 end;
@@ -2243,12 +2243,12 @@ var
 begin
   Name := GetTypeName(Info);
   SplitKeyValueTypeName(GetElementName(Name), KeyName, ValueName);
-  KeyInfo := THproseClassManager.TypeInfo(KeyName);
-  ValueInfo := THproseClassManager.TypeInfo(ValueName);
+  KeyInfo := TClassManager.TypeInfo(KeyName);
+  ValueInfo := TClassManager.TypeInfo(ValueName);
   if KeyInfo = nil then
-    raise EHproseException.Create(KeyName + 'is not registered');
+    raise Exception.Create(KeyName + 'is not registered');
   if ValueInfo = nil then
-    raise EHproseException.Create(ValueName + 'is not registered');
+    raise Exception.Create(ValueName + 'is not registered');
   case KeyInfo^.Kind of
 {$IFNDEF NEXTGEN}
     tkString: Result := ReadTDictionary1<ShortString>(Info, KeyInfo, ValueInfo);
@@ -2271,7 +2271,7 @@ begin
     else if GetTypeName(KeyInfo) = 'Extended' then
       Result := ReadTDictionary1<Extended>(Info, KeyInfo, ValueInfo)
     else
-      raise EHproseException.Create('Can not unserialize ' + Name);
+      raise Exception.Create('Can not unserialize ' + Name);
     end;
   end;
 end;
@@ -2290,15 +2290,15 @@ var
 begin
   Name := GetTypeName(Info);
   if not IsSmartObject(Name) then
-    raise EHproseException.Create(Name + ' is not a ISmartObject interface');
+    raise Exception.Create(Name + ' is not a ISmartObject interface');
   ElementName := GetElementName(Name);
   Name := 'TSmartObject<' + ElementName + '>';
-  Info := THproseClassManager.TypeInfo(Name);
-  ElementInfo := THproseClassManager.TypeInfo(ElementName);
+  Info := TClassManager.TypeInfo(Name);
+  ElementInfo := TClassManager.TypeInfo(ElementName);
   if (Info = nil) or (ElementInfo = nil) then
-    raise EHproseException.Create(ElementName + 'is not registered');
+    raise Exception.Create(ElementName + 'is not registered');
   if ElementInfo^.Kind <> tkClass then
-    raise EHproseException.Create(ElementName + 'is not a Class');
+    raise Exception.Create(ElementName + 'is not a Class');
   AObject := ReadObject(GetTypeData(ElementInfo)^.ClassType);
   Result := TSmartClass(GetTypeData(Info)^.ClassType).Create(AObject) as ISmartObject;
 end;
@@ -2383,7 +2383,7 @@ begin
       tkInterface: begin
         AClass := GetClassByInterface(TypeData^.Guid);
         if AClass = nil then
-          raise EHproseException.Create(GetTypeName(Info) + ' is not registered')
+          raise Exception.Create(GetTypeName(Info) + ' is not registered')
         else if Supports(AClass, ISmartObject) then
           ISmartObject(Value) := ReadSmartObject(Info)
         else
@@ -2442,7 +2442,7 @@ begin
     htObject: Result := ReadObjectWithoutTag;
     htRef: Result := ReadRef;
   else
-    raise EHproseException.Create(TagToString(Tag) + 'can''t unserialize');
+    raise Exception.Create(TagToString(Tag) + 'can''t unserialize');
   end;
 end;
 
@@ -2524,7 +2524,7 @@ begin
         tkInterface: begin
           AClass := GetClassByInterface(TypeData^.Guid);
           if AClass = nil then
-            raise EHproseException.Create(GetTypeName(Info) + ' is not registered');
+            raise Exception.Create(GetTypeName(Info) + ' is not registered');
           Result := ReadInterface(AClass, TypeData^.Guid);
         end;
         tkDynArray:
@@ -2593,7 +2593,7 @@ begin
       ReadRaw(OStream);
     end;
   else
-    raise EHproseException.Create('Unexpected serialize tag "' +
+    raise Exception.Create('Unexpected serialize tag "' +
                                   Char(Tag) + '" in stream');
   end;
 end;
@@ -2651,7 +2651,7 @@ begin
       OStream.WriteBuffer(Tag, 1);
     end;
   else
-    raise EHproseException.Create('bad unicode encoding at $' +
+    raise Exception.Create('bad unicode encoding at $' +
                                   IntToHex(Tag, 2));
   end;
 end;
@@ -2711,11 +2711,11 @@ begin
           OStream.WriteBuffer(Tag, 1);
           Continue;
         end;
-        raise EHproseException.Create('bad unicode encoding at $' +
+        raise Exception.Create('bad unicode encoding at $' +
                                       IntToHex(Tag, 2));
       end;
     else
-      raise EHproseException.Create('bad unicode encoding at $' +
+      raise Exception.Create('bad unicode encoding at $' +
                                     IntToHex(Tag, 2));
     end;
   end;
@@ -3101,7 +3101,7 @@ var
 begin
   ClassAlias := GetClassAlias(Instance.ClassType);
   if ClassAlias = '' then
-    raise EHproseException.Create(Instance.ClassName + ' has not registered');
+    raise Exception.Create(Instance.ClassName + ' has not registered');
   PropertiesCache.Lock;
   try
     TempData := nil;
@@ -3761,9 +3761,9 @@ var
 begin
   ElementName := GetElementName(Name);
   if IsSmartObject(ElementName) then ElementName := 'ISmartObject';
-  Info := THproseClassManager.TypeInfo(ElementName);
+  Info := TClassManager.TypeInfo(ElementName);
   if Info = nil then
-    raise EHproseException.Create('Can not serialize ' + Name)
+    raise Exception.Create('Can not serialize ' + Name)
   else begin
     FRefer.SetRef(NativeInt(Pointer(DynArray)));
     Count := Length(B1Array);
@@ -3792,7 +3792,7 @@ begin
       else if GetTypeName(Info) = 'Extended' then
         for I := 0 to Count - 1 do WriteDouble(EArray[I])
       else
-        raise EHproseException.Create('Can not serialize ' + Name);
+        raise Exception.Create('Can not serialize ' + Name);
       end;
     end;
     FStream.WriteBuffer(HproseTagClosebrace, 1);
@@ -3864,9 +3864,9 @@ begin
   ClassName := AList.ClassName;
   ElementName := GetElementName(ClassName);
   if IsSmartObject(ElementName) then ElementName := 'ISmartObject';
-  Info := THproseClassManager.TypeInfo(ElementName);
+  Info := TClassManager.TypeInfo(ElementName);
   if Info = nil then
-    raise EHproseException.Create('Can not serialize ' + ClassName)
+    raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     FRefer.SetRef(ObjToVar(AList));
     Count := B1List.Count;
@@ -3895,7 +3895,7 @@ begin
       else if GetTypeName(Info) = 'Extended' then
         for E in EList do WriteDouble(E)
       else
-        raise EHproseException.Create('Can not serialize ' + ClassName);
+        raise Exception.Create('Can not serialize ' + ClassName);
       end;
     end;
     FStream.WriteBuffer(HproseTagClosebrace, 1);
@@ -3911,9 +3911,9 @@ var
   Count: Integer;
 begin
   ClassName := AList.ClassName;
-  Info := THproseClassManager.TypeInfo(GetElementName(ClassName));
+  Info := TClassManager.TypeInfo(GetElementName(ClassName));
   if Info = nil then
-    raise EHproseException.Create('Can not serialize ' + ClassName)
+    raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     FRefer.SetRef(ObjToVar(AList));
     Count := OList.Count;
@@ -3969,9 +3969,9 @@ begin
   ClassName := AQueue.ClassName;
   ElementName := GetElementName(ClassName);
   if IsSmartObject(ElementName) then ElementName := 'ISmartObject';
-  Info := THproseClassManager.TypeInfo(ElementName);
+  Info := TClassManager.TypeInfo(ElementName);
   if Info = nil then
-    raise EHproseException.Create('Can not serialize ' + ClassName)
+    raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     FRefer.SetRef(ObjToVar(AQueue));
     Count := B1Queue.Count;
@@ -4000,7 +4000,7 @@ begin
       else if GetTypeName(Info) = 'Extended' then
         for E in EQueue do WriteDouble(E)
       else
-        raise EHproseException.Create('Can not serialize ' + ClassName);
+        raise Exception.Create('Can not serialize ' + ClassName);
       end;
     end;
     FStream.WriteBuffer(HproseTagClosebrace, 1);
@@ -4016,9 +4016,9 @@ var
   Count: Integer;
 begin
   ClassName := AQueue.ClassName;
-  Info := THproseClassManager.TypeInfo(GetElementName(ClassName));
+  Info := TClassManager.TypeInfo(GetElementName(ClassName));
   if Info = nil then
-    raise EHproseException.Create('Can not serialize ' + ClassName)
+    raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     FRefer.SetRef(ObjToVar(AQueue));
     Count := OQueue.Count;
@@ -4074,9 +4074,9 @@ begin
   ClassName := AStack.ClassName;
   ElementName := GetElementName(ClassName);
   if IsSmartObject(ElementName) then ElementName := 'ISmartObject';
-  Info := THproseClassManager.TypeInfo(ElementName);
+  Info := TClassManager.TypeInfo(ElementName);
   if Info = nil then
-    raise EHproseException.Create('Can not serialize ' + ClassName)
+    raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     FRefer.SetRef(ObjToVar(AStack));
     Count := B1Stack.Count;
@@ -4105,7 +4105,7 @@ begin
       else if GetTypeName(Info) = 'Extended' then
         for E in EStack do WriteDouble(E)
       else
-        raise EHproseException.Create('Can not serialize ' + ClassName);
+        raise Exception.Create('Can not serialize ' + ClassName);
       end;
     end;
     FStream.WriteBuffer(HproseTagClosebrace, 1);
@@ -4121,9 +4121,9 @@ var
   Count: Integer;
 begin
   ClassName := AStack.ClassName;
-  Info := THproseClassManager.TypeInfo(GetElementName(ClassName));
+  Info := TClassManager.TypeInfo(GetElementName(ClassName));
   if Info = nil then
-    raise EHproseException.Create('Can not serialize ' + ClassName)
+    raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     FRefer.SetRef(ObjToVar(AStack));
     Count := OStack.Count;
@@ -4174,7 +4174,7 @@ begin
         WriteTDictionary2<TKey, Extended>(
           TDictionary<TKey, Extended>(ADict), KeyInfo, ValueInfo)
       else
-        raise EHproseException.Create('Can not serialize ' + ClassName);
+        raise Exception.Create('Can not serialize ' + ClassName);
       end;
     end;
 end;
@@ -4190,10 +4190,10 @@ begin
   SplitKeyValueTypeName(GetElementName(ClassName), KeyName, ValueName);
   if IsSmartObject(KeyName) then KeyName := 'ISmartObject';
   if IsSmartObject(ValueName) then ValueName := 'ISmartObject';
-  KeyInfo := THproseClassManager.TypeInfo(KeyName);
-  ValueInfo := THproseClassManager.TypeInfo(ValueName);
+  KeyInfo := TClassManager.TypeInfo(KeyName);
+  ValueInfo := TClassManager.TypeInfo(ValueName);
   if (KeyInfo = nil) or (ValueInfo = nil) then
-    raise EHproseException.Create('Can not serialize ' + ClassName)
+    raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     case KeyInfo^.Kind of
 {$IFNDEF NEXTGEN}
@@ -4217,7 +4217,7 @@ begin
       else if GetTypeName(KeyInfo) = 'Extended' then
          WriteTDictionary1<Extended>(ADict, KeyInfo, ValueInfo)
       else
-        raise EHproseException.Create('Can not serialize ' + ClassName);
+        raise Exception.Create('Can not serialize ' + ClassName);
       end;
     end;
   end;
@@ -4233,10 +4233,10 @@ var
 begin
   ClassName := ADict.ClassName;
   SplitKeyValueTypeName(GetElementName(ClassName), KeyName, ValueName);
-  KeyInfo := THproseClassManager.TypeInfo(KeyName);
-  ValueInfo := THproseClassManager.TypeInfo(ValueName);
+  KeyInfo := TClassManager.TypeInfo(KeyName);
+  ValueInfo := TClassManager.TypeInfo(ValueName);
   if (KeyInfo = nil) or (ValueInfo = nil) then
-    raise EHproseException.Create('Can not serialize ' + ClassName)
+    raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     FRefer.SetRef(ObjToVar(ADict));
     Count := ODict.Count;
