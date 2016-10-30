@@ -26,7 +26,7 @@ interface
 uses Classes, HproseCommon, HproseClient, SysUtils{$IFDEF FPC}, LResources{$ENDIF};
 
 type
-  THproseHeaderList = class(TStringList)
+  THeaderList = class(TStringList)
   protected
     FNameValueSeparator: string;
     FCaseSensitive: Boolean;
@@ -67,7 +67,7 @@ type
     FPort: string;
     FPath: string;
     FPara: string;
-    FHeaders: THproseHeaderList;
+    FHeaders: THeaderList;
     FKeepAlive: Boolean;
     FKeepAliveTimeout: integer;
     FProxyHost: string;
@@ -86,7 +86,7 @@ type
     {:Before HTTP operation you may define any non-standard headers for HTTP
      request, except of: 'Expect: 100-continue', 'Content-Length', 'Content-Type',
      'Connection', 'Authorization', 'Proxy-Authorization' and 'Host' headers.}
-    property Headers: THproseHeaderList read FHeaders;
+    property Headers: THeaderList read FHeaders;
 
     {:If @true (default value is @true), keepalives in HTTP protocol 1.1 is enabled.}
     property KeepAlive: Boolean read FKeepAlive write FKeepAlive;
@@ -206,9 +206,9 @@ begin
   Result := Result + Copy(Line, LinePos, MaxInt);
 end;
 
-{ THproseHeaderList }
+{ THeaderList }
 
-constructor THproseHeaderList.Create;
+constructor THeaderList.Create;
 begin
   inherited Create;
   FNameValueSeparator := ': ';
@@ -218,7 +218,7 @@ begin
   FFoldLinesLength := 78;
 end;
 
-procedure THproseHeaderList.DeleteFoldedLines(Index: Integer);
+procedure THeaderList.DeleteFoldedLines(Index: Integer);
 begin
   Inc(Index);
   while (Index < Count) and ((Length(Get(Index)) > 0) and
@@ -228,7 +228,7 @@ begin
   end;
 end;
 
-procedure THproseHeaderList.Extract(const AName: string; ADest: TStrings);
+procedure THeaderList.Extract(const AName: string; ADest: TStrings);
 var
   idx: Integer;
 begin
@@ -243,7 +243,7 @@ begin
   end;
 end;
 
-procedure THproseHeaderList.FoldAndInsert(AString: string; Index: Integer);
+procedure THeaderList.FoldAndInsert(AString: string; Index: Integer);
 var
   strs: TStringList;
   idx: Integer;
@@ -263,7 +263,7 @@ begin
   end;
 end;
 
-function THproseHeaderList.FoldLine(AString: string): TStringList;
+function THeaderList.FoldLine(AString: string): TStringList;
 var
   s: string;
 begin
@@ -278,7 +278,7 @@ begin
   end;
 end;
 
-function THproseHeaderList.GetName(Index: Integer): string;
+function THeaderList.GetName(Index: Integer): string;
 var
   P: Integer;
 begin
@@ -295,7 +295,7 @@ begin
   Result := Result;
 end;
 
-function THproseHeaderList.GetNameFromLine(ALine: Integer): string;
+function THeaderList.GetNameFromLine(ALine: Integer): string;
 var
   p: Integer;
 begin
@@ -308,12 +308,12 @@ begin
   Result := Copy(Result, 1, P - 1);
 end;
 
-function THproseHeaderList.GetValue(const Name: string): string;
+function THeaderList.GetValue(const Name: string): string;
 begin
   Result := GetValueFromLine(IndexOfName(Name));
 end;
 
-function THproseHeaderList.GetValueFromLine(ALine: Integer): string;
+function THeaderList.GetValueFromLine(ALine: Integer): string;
 var
   Name: string;
 begin
@@ -346,7 +346,7 @@ begin
   Result := TrimLeft(Result);
 end;
 
-function THproseHeaderList.IndexOfName(const Name: string): Integer;
+function THeaderList.IndexOfName(const Name: string): Integer;
 var
   S: string;
 begin
@@ -361,7 +361,7 @@ begin
   Result := -1;
 end;
 
-procedure THproseHeaderList.SetValue(const Name, Value: string);
+procedure THeaderList.SetValue(const Name, Value: string);
 var
   I: Integer;
 begin
@@ -560,7 +560,7 @@ constructor THproseHttpClient.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FHttpPool := TArrayList.Create(10);
-  FHeaders := THproseHeaderList.Create;
+  FHeaders := THeaderList.Create;
   FUser := '';
   FPassword := '';
   FKeepAlive := True;

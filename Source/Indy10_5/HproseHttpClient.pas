@@ -14,7 +14,7 @@
  *                                                        *
  * hprose indy http client unit for delphi.               *
  *                                                        *
- * LastModified: Jun 12, 2016                             *
+ * LastModified: Oct 30, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -27,7 +27,7 @@ uses Classes, HproseCommon, HproseClient, IdHeaderList, SysUtils{$IFDEF FPC}, LR
 
 type
 
-  THproseHeaderList = class(TIdHeaderList)
+  THeaderList = class(TIdHeaderList)
   public
     constructor Create; overload;
   end;
@@ -37,7 +37,7 @@ type
     FHttpPool: IList;
     FUserName: string;
     FPassword: string;
-    FHeaders: THproseHeaderList;
+    FHeaders: THeaderList;
     FProxyHost: string;
     FProxyPort: Integer;
     FProxyUser: string;
@@ -55,7 +55,7 @@ type
     {:Before HTTP operation you may define any non-standard headers for HTTP
      request, except of: 'Expect: 100-continue', 'Content-Length', 'Content-Type',
      'Connection', 'Authorization', 'Proxy-Authorization' and 'Host' headers.}
-    property Headers: THproseHeaderList read FHeaders;
+    property Headers: THeaderList read FHeaders;
 
     {:If @true (default value is @false), keepalives in HTTP protocol 1.1 is enabled.}
     property KeepAlive: Boolean read FKeepAlive write FKeepAlive;
@@ -98,9 +98,9 @@ uses IdHttp, IdGlobalProtocols, IdCookieManager;
 var
   CookieManager: TIdCookieManager = nil;
 
-{ THproseHeaderList }
+{ THeaderList }
 
-constructor THproseHeaderList.Create;
+constructor THeaderList.Create;
 begin
   inherited Create(TIdHeaderQuotingType.QuotePlain);
 end;
@@ -111,7 +111,7 @@ constructor THproseHttpClient.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FHttpPool := TArrayList.Create(10);
-  FHeaders := THproseHeaderList.Create;
+  FHeaders := THeaderList.Create;
   FUserName := '';
   FPassword := '';
   FKeepAlive := True;
