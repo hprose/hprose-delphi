@@ -298,12 +298,12 @@ type
     constructor Create(Info: PTypeInfo);
   end;
 
-function TypeToVar(Info: PTypeInfo): Variant;
+function GetType(Info: PTypeInfo): Variant;
 
-function CallbackToVar: Variant; overload;
-function CallbackToVar(Callback: TCallback1): Variant; overload;
-function CallbackToVar(Callback: TCallback2): Variant; overload;
-function CallbackToVar(CallbackE: TCallbackE): Variant; overload;
+function GetCallback: Variant; overload;
+function GetCallback(Callback: TCallback1): Variant; overload;
+function GetCallback(Callback: TCallback2): Variant; overload;
+function GetCallback(CallbackE: TCallbackE): Variant; overload;
 
 implementation
 
@@ -390,27 +390,27 @@ begin
   FTypeInfo := Info;
 end;
 
-function TypeToVar(Info: PTypeInfo): Variant;
+function GetType(Info: PTypeInfo): Variant;
 begin
   Result := ObjToVar(TType.Create(Info));
 end;
 
-function CallbackToVar: Variant;
+function GetCallback: Variant;
 begin
   Result := ObjToVar(TCallback.Create);
 end;
 
-function CallbackToVar(Callback: TCallback1): Variant;
+function GetCallback(Callback: TCallback1): Variant;
 begin
   Result := ObjToVar(TCallback.Create(Callback));
 end;
 
-function CallbackToVar(Callback: TCallback2): Variant;
+function GetCallback(Callback: TCallback2): Variant;
 begin
   Result := ObjToVar(TCallback.Create(Callback));
 end;
 
-function CallbackToVar(CallbackE: TCallbackE): Variant;
+function GetCallback(CallbackE: TCallbackE): Variant;
 begin
   Result := ObjToVar(TCallback.Create(CallbackE));
 end;
