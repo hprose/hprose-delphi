@@ -563,7 +563,7 @@ var
 begin
   for I := FFilters.Count - 1 downto 0 do begin
     VarToIntf(FFilters[I], IFilter, Filter);
-    Data := Filter.InputFilter(Data, Self);
+    Data := Filter.InputFilter(Data, nil);
   end;
   if Data[Length(Data) - 1] <> HproseTagEnd then
     raise Exception.Create('Wrong Response: ' + #13#10 + StringOf(Data));
