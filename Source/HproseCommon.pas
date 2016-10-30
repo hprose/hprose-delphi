@@ -33,6 +33,10 @@ type
   UInt64 = QWord;
 {$ENDIF}
 
+{$IFDEF DELPHI2009}
+  TArray<T> = array of T;
+{$ENDIF}
+
 {$IFNDEF DELPHI2009_UP}
   RawByteString = type AnsiString;
 {$IFDEF CPU64}
@@ -97,7 +101,7 @@ type
     property Count: Integer read GetCount;
   end;
 
-{$IFDEF Supports_Anonymous_Method}
+{$IFDEF SUPPORTS_ANONYMOUS_METHOD}
   TListCompareMethod = reference to function (const Value1, Value2: Variant): Integer;
 {$ELSE}
   TListCompareMethod = function (const Value1, Value2: Variant): Integer of object;
@@ -401,7 +405,7 @@ type
     property Current: TMapEntry read GetCurrent;
   end;
 
-{$IFDEF Supports_Anonymous_Method}
+{$IFDEF SUPPORTS_ANONYMOUS_METHOD}
   TMapCompareMethod = reference to function (const Entry1, Entry2: TMapEntry): Integer;
 {$ELSE}
   TMapCompareMethod = function (const Entry1, Entry2: TMapEntry): Integer of object;
@@ -694,7 +698,7 @@ type
 
   TSmartClass = class of TSmartObject;
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
   ISmartObject<T> = interface
   ['{91FEB85D-1284-4516-A9DA-5D370A338DA0}']
     function _: T;
@@ -730,9 +734,11 @@ type
     function OutputFilter(const Data: TBytes; const Context: TContext): TBytes;
   end;
 
-{$IFDEF DELPHI2009}
-  TArray<T> = array of T;
-{$ENDIF}
+  TFilter = class(TInterfacedObject, IFilter)
+  public
+    function InputFilter(const Data: TBytes; const Context: TContext): TBytes;  virtual; abstract;
+    function OutputFilter(const Data: TBytes; const Context: TContext): TBytes; virtual; abstract;
+  end;
 
 const
 
@@ -751,6 +757,8 @@ function GetTypeName(const Info: PTypeInfo): string;
 function GetTypeSize(const Info: PTypeInfo): Integer;
 {$IFDEF DELPHI6}
 function FindVarData(const Value: Variant): PVarData;
+{$ENDIF}
+{$IF DEFINED(FPC) OR DEFINED(DELPHI6)}
 function VarIsType(const V: Variant; AVarType: TVarType): Boolean; overload;
 function VarIsType(const V: Variant; const AVarTypes: array of TVarType):
   Boolean; overload;
@@ -761,7 +769,7 @@ function VarIsNumeric(const V: Variant): Boolean;
 function VarIsStr(const V: Variant): Boolean;
 function VarIsEmpty(const V: Variant): Boolean;
 function VarIsNull(const V: Variant): Boolean;
-{$ENDIF}
+{$IFEND}
 function VarIsObj(const Value: Variant): Boolean; overload;
 function VarIsObj(const Value: Variant; AClass: TClass): Boolean; overload;
 function VarToObj(const Value: Variant): TObject; overload;
@@ -816,7 +824,7 @@ function GetInterfaceByClass(const AClass: TInterfacedClass): TGUID;
 
 type
   TClassManager = class
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
   private
     class procedure RegisterSmartObject<T, I>(const Alias: string);
     class procedure Register(const TypeInfo: PTypeInfo; TypeName: string); overload;
@@ -870,7 +878,7 @@ implementation
 uses RTLConsts
 {$IFNDEF FPC}, StrUtils{$ENDIF}
 {$IFDEF DELPHIXE4_UP}{$IFNDEF NEXTGEN}, AnsiStrings{$ENDIF}{$ENDIF}
-{$IFDEF Supports_Rtti}, Rtti{$ENDIF}{$IFDEF DELPHIXE2_UP}, ObjAuto{$ENDIF}
+{$IFDEF SUPPORTS_RTTI}, Rtti{$ENDIF}{$IFDEF DELPHIXE2_UP}, ObjAuto{$ENDIF}
 {$IFDEF DELPHI7_UP}, ObjAutoX{$ENDIF};
 
 type
@@ -919,7 +927,7 @@ end;
 {$ENDIF}
 
 function GetTypeSize(const Info: PTypeInfo): Integer;
-{$IFNDEF Supports_Rtti}
+{$IFNDEF SUPPORTS_RTTI}
 var
   TypeData: PTypeData;
 begin
@@ -985,7 +993,9 @@ begin
   while Result.VType = varByRef or varVariant do
     Result := PVarData(Result.VPointer);
 end;
+{$ENDIF}
 
+{$IF DEFINED(FPC) OR DEFINED(DELPHI6)}
 function VarIsType(const V: Variant; AVarType: TVarType): Boolean;
 begin
   Result := FindVarData(V)^.VType = AVarType;
@@ -1068,7 +1078,8 @@ function VarIsNull(const V: Variant): Boolean;
 begin
   Result := FindVarData(V)^.VType = varNull;
 end;
-{$ENDIF}
+
+{$IFEND}
 
 function VarToObj(const Value: Variant): TObject;
 var
@@ -1438,7 +1449,7 @@ begin
       Result := Char(GetOrdProp(Instance, PropInfo));
     tkWString:
       Result := GetWideStrProp(Instance, PropInfo);
-{$IFDEF Supports_Unicode}
+{$IFDEF SUPPORTS_UNICODE}
     tkUString:
       Result := GetUnicodeStrProp(Instance, PropInfo);
 {$ENDIF}
@@ -1507,7 +1518,7 @@ begin
       SetStrProp(Instance, PropInfo, VarToStr(Value));
     tkWString:
       SetWideStrProp(Instance, PropInfo, VarToWideStr(Value));
-{$IFDEF Supports_Unicode}
+{$IFDEF SUPPORTS_UNICODE}
     tkUString:
   {$IFDEF FPC}
       SetUnicodeStrProp(Instance, PropInfo, VarToUnicodeStr(Value)); //SB: ??
@@ -1674,7 +1685,7 @@ begin
     varCurrency: Result := htDouble;
     varOleStr:   Result := htOleStr;
     varString:   Result := htOleStr;
-{$IFDEF Supports_Unicode}
+{$IFDEF SUPPORTS_UNICODE}
     varUString:  Result := htOleStr;
 {$ENDIF}
     varDate:     Result := htDate;
@@ -1963,7 +1974,7 @@ begin
 {$ELSE}
     vtWideString: string(Item.VWideString) := '';
 {$ENDIF}
-{$IFDEF Supports_Unicode}
+{$IFDEF SUPPORTS_UNICODE}
     vtUnicodeString: UnicodeString(Item.VUnicodeString) := '';
 {$ENDIF}
     vtInt64: Dispose(Item.VInt64);
@@ -2011,7 +2022,7 @@ begin
 {$IFDEF FPC}
     vtQWord:         Result := V.VQWord^;
 {$ENDIF}
-{$IFDEF Supports_Unicode}
+{$IFDEF SUPPORTS_UNICODE}
     vtUnicodeString: Result := UnicodeString(V.VUnicodeString);
 {$ENDIF}
     vtPointer:       Result := NativeInt(V.VPointer);
@@ -4299,49 +4310,21 @@ end;
 
 function TVarObjectType.CompareOp(const Left, Right: TVarData;
   const Operation: TVarOp): Boolean;
+var
+  L, R: TVarData;
 begin
+  L := FindVarData(Variant(Left))^;
+  R := FindVarData(Variant(Right))^;
   Result := False;
-  if (Left.VType = varObject) and (Right.VType = varObject) then
+  if (L.VType = varObject) and (R.VType = varObject) then
     case Operation of
       opCmpEQ:
-        Result := Left.VPointer = Right.VPointer;
+        Result := L.VPointer = R.VPointer;
       opCmpNE:
-        Result := Left.VPointer <> Right.VPointer;
+        Result := L.VPointer <> R.VPointer;
     else
       RaiseInvalidOp;
     end
-{$IFDEF DELPHI6}
-  else if (Left.VType = varObject or varByRef) and
-          (Right.VType = varObject) then
-    case Operation of
-      opCmpEQ:
-        Result := PPointer(Left.VPointer)^ = Right.VPointer;
-      opCmpNE:
-        Result := PPointer(Left.VPointer)^ <> Right.VPointer;
-    else
-      RaiseInvalidOp;
-    end
-  else if (Left.VType = varObject) and
-          (Right.VType = varObject or varByRef) then
-    case Operation of
-      opCmpEQ:
-        Result := Left.VPointer = PPointer(Right.VPointer)^;
-      opCmpNE:
-        Result := Left.VPointer <> PPointer(Right.VPointer)^;
-    else
-      RaiseInvalidOp;
-    end
-  else if (Left.VType = varObject or varByRef) and
-          (Right.VType = varObject or varByRef) then
-    case Operation of
-      opCmpEQ:
-        Result := PPointer(Left.VPointer)^ = PPointer(Right.VPointer)^;
-      opCmpNE:
-        Result := PPointer(Left.VPointer)^ <> PPointer(Right.VPointer)^;
-    else
-      RaiseInvalidOp;
-    end
-{$ENDIF}
   else
     case Operation of
       opCmpEQ:
@@ -4508,7 +4491,7 @@ begin
   end;
 end;
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
 
 { TSmartObject<T> }
 
@@ -4568,7 +4551,7 @@ begin
   TypeData := GetTypeData(TypeInfo);
   case TypeInfo^.Kind of
   tkEnumeration:
-{$IFDEF Supports_Rtti}
+{$IFDEF SUPPORTS_RTTI}
     TypeName := TRttiContext.Create.GetType(TypeInfo).QualifiedName;
 {$ELSE}
     UnitName := string(TypeData^.EnumUnitName);
@@ -4719,7 +4702,7 @@ initialization
   HproseClassMap := TCaseInsensitiveHashedMap.Create(False, True);
   HproseInterfaceMap := TCaseInsensitiveHashedMap.Create(False, True);
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
   HproseTypeMap := TCaseInsensitiveHashMap.Create(64, 0.75, False, True);
   HproseTypeMap.BeginWrite;
   try
@@ -4769,7 +4752,7 @@ initialization
   TClassManager.Register<ISmartObject>;
 {$ENDIF}
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
   TClassManager.Register<TArrayList, IImmutableList>('!IImmutableList');
   TClassManager.Register<TArrayList, IList>('!List');
   TClassManager.Register<TArrayList, IArrayList>('!ArrayList');

@@ -1,217 +1,217 @@
-// Delphi version
+// DELPHI VERSION
 
-{$ifdef VER140}
-  {$define DELPHI6}
-  {$define DELPHI6_UP}
-{$endif}
+{$IFDEF VER140}
+  {$DEFINE DELPHI6}
+  {$DEFINE DELPHI6_UP}
+{$ENDIF}
 
-{$ifdef VER150}
-  {$define DELPHI7}
-  {$define DELPHI7_UP}
-{$endif}
+{$IFDEF VER150}
+  {$DEFINE DELPHI7}
+  {$DEFINE DELPHI7_UP}
+{$ENDIF}
 
-{$ifdef VER160}
-  {$define DELPHI8}
-  {$define DELPHI8_UP}
-{$endif}
+{$IFDEF VER160}
+  {$DEFINE DELPHI8}
+  {$DEFINE DELPHI8_UP}
+{$ENDIF}
 
-{$ifdef VER170}
-  {$define DELPHI2005}
-  {$define DELPHI2005_UP}
-{$endif}
+{$IFDEF VER170}
+  {$DEFINE DELPHI2005}
+  {$DEFINE DELPHI2005_UP}
+{$ENDIF}
 
-{$ifdef VER180}
-  {$define DELPHI2006}
-  {$define DELPHI2006_UP}
-{$endif}
+{$IFDEF VER180}
+  {$DEFINE DELPHI2006}
+  {$DEFINE DELPHI2006_UP}
+{$ENDIF}
 
-{$ifdef VER185}
-  {$define DELPHI2007}
-  {$define DELPHI2007_UP}
-{$endif}
+{$IFDEF VER185}
+  {$DEFINE DELPHI2007}
+  {$DEFINE DELPHI2007_UP}
+{$ENDIF}
 
-{$ifdef VER200}
-  {$define DELPHI2009}
-  {$define DELPHI2009_UP}
-{$endif}
+{$IFDEF VER200}
+  {$DEFINE DELPHI2009}
+  {$DEFINE DELPHI2009_UP}
+{$ENDIF}
 
-{$ifdef VER210}
-  {$define DELPHI2010}
-  {$define DELPHI2010_UP}
-{$endif}
+{$IFDEF VER210}
+  {$DEFINE DELPHI2010}
+  {$DEFINE DELPHI2010_UP}
+{$ENDIF}
 
-{$ifdef VER220}
-  {$define DELPHIXE}
-  {$define DELPHIXE_UP}
-{$endif}
+{$IFDEF VER220}
+  {$DEFINE DELPHIXE}
+  {$DEFINE DELPHIXE_UP}
+{$ENDIF}
 
-{$ifdef VER230}
-  {$define DELPHIXE2}
-  {$define DELPHIXE2_UP}
-{$endif}
+{$IFDEF VER230}
+  {$DEFINE DELPHIXE2}
+  {$DEFINE DELPHIXE2_UP}
+{$ENDIF}
 
-{$ifdef VER240}
-  {$define DELPHIXE3}
-  {$define DELPHIXE3_UP}
-{$endif}
+{$IFDEF VER240}
+  {$DEFINE DELPHIXE3}
+  {$DEFINE DELPHIXE3_UP}
+{$ENDIF}
 
-{$ifdef VER250}
-  {$define DELPHIXE4}
-  {$define DELPHIXE4_UP}
-{$endif}
+{$IFDEF VER250}
+  {$DEFINE DELPHIXE4}
+  {$DEFINE DELPHIXE4_UP}
+{$ENDIF}
 
-{$ifdef VER260}
-  {$define DELPHIXE5}
-  {$define DELPHIXE5_UP}
-{$endif}
+{$IFDEF VER260}
+  {$DEFINE DELPHIXE5}
+  {$DEFINE DELPHIXE5_UP}
+{$ENDIF}
 
-{$ifdef VER270}
-  {$define DELPHIXE6}
-  {$define DELPHIXE6_UP}
-{$endif}
+{$IFDEF VER270}
+  {$DEFINE DELPHIXE6}
+  {$DEFINE DELPHIXE6_UP}
+{$ENDIF}
 
-{$ifdef VER280}
-  {$define DELPHIXE7}
-  {$define DELPHIXE7_UP}
-{$endif}
+{$IFDEF VER280}
+  {$DEFINE DELPHIXE7}
+  {$DEFINE DELPHIXE7_UP}
+{$ENDIF}
 
-{$ifdef VER290}
-  {$define DELPHIXE8}
-  {$define DELPHIXE8_UP}
-{$endif}
+{$IFDEF VER290}
+  {$DEFINE DELPHIXE8}
+  {$DEFINE DELPHIXE8_UP}
+{$ENDIF}
 
-{$ifdef VER300}
-  {$define DELPHI10}
-  {$define DELPHI10_UP}
-{$endif}
+{$IFDEF VER300}
+  {$DEFINE DELPHI10}
+  {$DEFINE DELPHI10_UP}
+{$ENDIF}
 
-{$ifdef VER310}
-  {$define DELPHI10_1}
-  {$define DELPHI10_1_UP}
-{$endif}
+{$IFDEF VER310}
+  {$DEFINE DELPHI10_1}
+  {$DEFINE DELPHI10_1_UP}
+{$ENDIF}
 
-{$ifdef VER320}
-  {$define DELPHI10_2}
-  {$define DELPHI10_2_UP}
-{$endif}
+{$IFDEF VER320}
+  {$DEFINE DELPHI10_2}
+  {$DEFINE DELPHI10_2_UP}
+{$ENDIF}
 
-{$ifdef DELPHI10_2_UP}
-  {$define DELPHI10_1_UP}
-{$endif}
+{$IFDEF DELPHI10_2_UP}
+  {$DEFINE DELPHI10_1_UP}
+{$ENDIF}
 
-{$ifdef DELPHI10_1_UP}
-  {$define DELPHI10_UP}
-{$endif}
+{$IFDEF DELPHI10_1_UP}
+  {$DEFINE DELPHI10_UP}
+{$ENDIF}
 
-{$ifdef DELPHI10_UP}
-  {$define DELPHIXE8_UP}
-{$endif}
+{$IFDEF DELPHI10_UP}
+  {$DEFINE DELPHIXE8_UP}
+{$ENDIF}
 
-{$ifdef DELPHIXE8_UP}
-  {$define DELPHIXE7_UP}
-{$endif}
+{$IFDEF DELPHIXE8_UP}
+  {$DEFINE DELPHIXE7_UP}
+{$ENDIF}
 
-{$ifdef DELPHIXE7_UP}
-  {$define DELPHIXE6_UP}
-{$endif}
+{$IFDEF DELPHIXE7_UP}
+  {$DEFINE DELPHIXE6_UP}
+{$ENDIF}
 
-{$ifdef DELPHIXE6_UP}
-  {$define DELPHIXE5_UP}
-{$endif}
+{$IFDEF DELPHIXE6_UP}
+  {$DEFINE DELPHIXE5_UP}
+{$ENDIF}
 
-{$ifdef DELPHIXE5_UP}
-  {$define DELPHIXE4_UP}
-{$endif}
+{$IFDEF DELPHIXE5_UP}
+  {$DEFINE DELPHIXE4_UP}
+{$ENDIF}
 
-{$ifdef DELPHIXE4_UP}
-  {$define DELPHIXE3_UP}
-{$endif}
+{$IFDEF DELPHIXE4_UP}
+  {$DEFINE DELPHIXE3_UP}
+{$ENDIF}
 
-{$ifdef DELPHIXE3_UP}
-  {$define DELPHIXE2_UP}
-{$endif}
+{$IFDEF DELPHIXE3_UP}
+  {$DEFINE DELPHIXE2_UP}
+{$ENDIF}
 
-{$ifdef DELPHIXE2_UP}
-  {$define DELPHIXE_UP}
-{$endif}
+{$IFDEF DELPHIXE2_UP}
+  {$DEFINE DELPHIXE_UP}
+{$ENDIF}
 
-{$ifdef DELPHIXE_UP}
-  {$define DELPHI2010_UP}
-{$endif}
+{$IFDEF DELPHIXE_UP}
+  {$DEFINE DELPHI2010_UP}
+{$ENDIF}
 
-{$ifdef DELPHI2010_UP}
-  {$define DELPHI2009_UP}
-{$endif}
+{$IFDEF DELPHI2010_UP}
+  {$DEFINE DELPHI2009_UP}
+{$ENDIF}
 
-{$ifdef DELPHI2009_UP}
-  {$define DELPHI2007_UP}
-{$endif}
+{$IFDEF DELPHI2009_UP}
+  {$DEFINE DELPHI2007_UP}
+{$ENDIF}
 
-{$ifdef DELPHI2007_UP}
-  {$define DELPHI2006_UP}
-{$endif}
+{$IFDEF DELPHI2007_UP}
+  {$DEFINE DELPHI2006_UP}
+{$ENDIF}
 
-{$ifdef DELPHI2006_UP}
-  {$define DELPHI2005_UP}
-{$endif}
+{$IFDEF DELPHI2006_UP}
+  {$DEFINE DELPHI2005_UP}
+{$ENDIF}
 
-{$ifdef DELPHI2005_UP}
-  {$define DELPHI8_UP}
-{$endif}
+{$IFDEF DELPHI2005_UP}
+  {$DEFINE DELPHI8_UP}
+{$ENDIF}
 
-{$ifdef DELPHI8_UP}
-  {$define DELPHI7_UP}
-{$endif}
+{$IFDEF DELPHI8_UP}
+  {$DEFINE DELPHI7_UP}
+{$ENDIF}
 
-{$ifdef DELPHI7_UP}
-  {$define DELPHI6_UP}
-{$endif}
+{$IFDEF DELPHI7_UP}
+  {$DEFINE DELPHI6_UP}
+{$ENDIF}
 
-// Delphi features
+// DELPHI FEATURES
 
-{$ifdef DELPHI2005_UP}
-  {$define Supports_For_In}
-  {$define Supports_Inline}
-  {$define Supports_Nested_Constants}
-  {$define Supports_Nested_Types}
-{$endif}
+{$IFDEF DELPHI2005_UP}
+  {$DEFINE SUPPORTS_FOR_IN}
+  {$DEFINE SUPPORTS_INLINE}
+  {$DEFINE SUPPORTS_NESTED_CONSTANTS}
+  {$DEFINE SUPPORTS_NESTED_TYPES}
+{$ENDIF}
 
-{$ifdef DELPHI2006_UP}
-  {$define Supports_Static}
-{$endif}
+{$IFDEF DELPHI2006_UP}
+  {$DEFINE SUPPORTS_STATIC}
+{$ENDIF}
 
-{$ifdef DELPHI2009_UP}
-  {$define Supports_Unicode}
-  {$define Supports_Generics}
-  {$define Supports_Anonymous_Method}
-  {$define Supports_UInt64}
-{$endif}
+{$IFDEF DELPHI2009_UP}
+  {$DEFINE SUPPORTS_UNICODE}
+  {$DEFINE SUPPORTS_GENERICS}
+  {$DEFINE SUPPORTS_ANONYMOUS_METHOD}
+  {$DEFINE SUPPORTS_UINT64}
+{$ENDIF}
 
-{$ifdef DELPHI2010_UP}
-  {$define Supports_Rtti}
-  {$define Supports_Rtti2}
-{$endif}
+{$IFDEF DELPHI2010_UP}
+  {$DEFINE SUPPORTS_RTTI}
+  {$DEFINE SUPPORTS_RTTI2}
+{$ENDIF}
 
-{$ifdef DELPHIXE3_UP}
-  {$legacyifend on}
-{$endif}
+{$IFDEF DELPHIXE3_UP}
+  {$LEGACYIFEND ON}
+{$ENDIF}
 
-// Free Pascal
+// FREE PASCAL
 
-{$ifdef FPC}
-  {$define Supports_UInt64}
-  {$define Supports_Rtti2}
-  {$mode objfpc}
-  {$inline on}
+{$IFDEF FPC}
+  {$DEFINE SUPPORTS_UINT64}
+  {$DEFINE SUPPORTS_RTTI2}
+  {$MODE OBJFPC}
+  {$INLINE ON}
   {$H+}
-{$endif}
+{$ENDIF}
 
-{$if defined(FPC) and (FPC_FULLVERSION > 20400)}
-  {$define Supports_Unicode}
-{$ifend}
+{$IF DEFINED(FPC) AND (FPC_FULLVERSION > 20400)}
+  {$DEFINE SUPPORTS_UNICODE}
+{$IFEND}
 
-{$ifdef CPUX64}
-  {$define CPU64}
-{$endif}
+{$IFDEF CPUX64}
+  {$DEFINE CPU64}
+{$ENDIF}
 
 {$H+}

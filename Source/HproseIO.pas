@@ -26,7 +26,7 @@ unit HproseIO;
 interface
 
 uses Classes, HproseCommon
-{$IFDEF Supports_Generics}, Generics.Collections {$ENDIF}, TypInfo, SysUtils;
+{$IFDEF SUPPORTS_GENERICS}, Generics.Collections {$ENDIF}, TypInfo, SysUtils;
 
 const
   { Hprose Serialize Tags }
@@ -88,7 +88,7 @@ type
     function TagToString(Tag: Byte): string;
     function ReadByte: Byte;
     function ReadInt64(Tag: Byte): Int64; overload;
-{$IFDEF Supports_UInt64}
+{$IFDEF SUPPORTS_UINT64}
     function ReadUInt64(Tag: Byte): UInt64; overload;
 {$ENDIF}
 {$IFNDEF NEXTGEN}
@@ -125,11 +125,11 @@ type
     function ReadObjectWithoutTag(AClass: TClass): TObject; overload;
     procedure ReadClass;
     function ReadRef: Variant;
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
     procedure ReadArray<T>(var DynArray: TArray<T>; Info: PTypeInfo); overload;
     procedure ReadArray(Info: PTypeInfo; out DynArray); overload;
     procedure ReadDynArray(Info: PTypeInfo; out DynArray); overload;
-{$IFDEF Supports_Rtti}
+{$IFDEF SUPPORTS_RTTI}
     function ReadTList<T>(Info, ElementInfo: PTypeInfo): TList<T>; overload;
     function ReadTList(Info: PTypeInfo): TObject; overload;
     function ReadTQueue<T>(Info, ElementInfo: PTypeInfo): TQueue<T>; overload;
@@ -182,7 +182,7 @@ type
     function ReadObjectWithoutTag: Variant; overload;
     function ReadInteger: Integer;
     function ReadInt64: Int64; overload;
-{$IFDEF Supports_UInt64}
+{$IFDEF SUPPORTS_UINT64}
     function ReadUInt64: UInt64; overload;
 {$ENDIF}
     function ReadExtended: Extended;
@@ -201,7 +201,7 @@ type
     function ReadVariantArray: TVariants; overload;
     function ReadInterface(AClass: TClass; const IID: TGUID): IInterface;
     function ReadObject(AClass: TClass): TObject;
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
     procedure Unserialize(Info: PTypeInfo; out Value); overload;
     function Unserialize<T>: T; overload;
 {$ENDIF}
@@ -248,7 +248,7 @@ type
     procedure WriteStrings(const SS: TStrings);
     procedure WriteList(const AList: TAbstractList); overload;
     procedure WriteMap(const AMap: TAbstractMap); overload;
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
     procedure Serialize(const Value; Info: PTypeInfo); overload;
     procedure WriteArray(const DynArray; const Name: string); overload;
     procedure WriteArrayWithRef(const DynArray; Info: PTypeInfo); overload;
@@ -307,7 +307,7 @@ type
     procedure WriteListWithRef(const AList: IList); overload;
     procedure WriteMap(const AMap: IMap); overload;
     procedure WriteMapWithRef(const AMap: IMap);
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
     procedure Serialize<T>(const Value: T); overload;
     procedure WriteArray<T>(const DynArray: array of T); overload;
     procedure WriteDynArray<T>(const DynArray: TArray<T>);
@@ -337,7 +337,7 @@ type
   public
     class function Serialize(const Value: Variant; Simple: Boolean = False): TBytes; overload;
     class function Serialize(const Value: array of const; Simple: Boolean = False): TBytes; overload;
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
     class function Serialize<T>(const Value: T; Simple: Boolean = False): TBytes; overload;
     class function Unserialize<T>(const Data:TBytes; Simple: Boolean = False): T; overload;
 {$ELSE}
@@ -361,7 +361,7 @@ implementation
 
 uses DateUtils, Math, StrUtils,
 {$IFNDEF FPC}RTLConsts, SysConst, {$ENDIF}
-{$IFDEF Supports_Rtti}Rtti, {$ENDIF}
+{$IFDEF SUPPORTS_RTTI}Rtti, {$ENDIF}
      Variants;
 type
 
@@ -437,7 +437,7 @@ const
   HproseTagBoolean   :array[Boolean] of Byte = (Byte('f'), Byte('t'));
   HproseTagSign      :array[Boolean] of Byte = (Byte('-'), Byte('+'));
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
 type
   TB1 = Byte;
   TB2 = Word;
@@ -696,7 +696,7 @@ begin
   end;
 end;
 
-{$IFDEF Supports_UInt64}
+{$IFDEF SUPPORTS_UINT64}
 function THproseReader.ReadUInt64(Tag: Byte): UInt64;
 var
   I: Integer;
@@ -1544,7 +1544,7 @@ begin
   end;
 end;
 
-{$IFDEF Supports_UInt64}
+{$IFDEF SUPPORTS_UINT64}
 function THproseReader.ReadUInt64: UInt64;
 var
   Tag: Byte;
@@ -1851,13 +1851,13 @@ end;
 
 function THproseReader.ReadObject(AClass: TClass): TObject;
 var
-{$IFDEF Supports_Rtti}
+{$IFDEF SUPPORTS_RTTI}
   ClassName: string;
   Info: PTypeInfo;
 {$ENDIF}
   Tag: Byte;
 begin
-{$IFDEF Supports_Rtti}
+{$IFDEF SUPPORTS_RTTI}
   ClassName := AClass.ClassName;
   Info := PTypeInfo(AClass.ClassInfo);
 {$ENDIF}
@@ -1871,7 +1871,7 @@ begin
         Result := ReadList(AClass)
       else if AClass.InheritsFrom(TAbstractMap) then
         Result := ReadListAsMap(AClass)
-{$IFDEF Supports_Rtti}
+{$IFDEF SUPPORTS_RTTI}
       else if AnsiStartsText('TList<', ClassName) or
         AnsiStartsText('TObjectList<', ClassName) then
         Result := ReadTList(Info)
@@ -1887,7 +1887,7 @@ begin
     htMap:
       if AClass.InheritsFrom(TAbstractMap) then
         Result := ReadMap(AClass)
-{$IFDEF Supports_Rtti}
+{$IFDEF SUPPORTS_RTTI}
       else if AnsiStartsText('TDictionary<', ClassName) or
         AnsiStartsText('TObjectDictionary<', ClassName) then
         Result := ReadTDictionary(Info)
@@ -1910,7 +1910,7 @@ begin
   end;
 end;
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
 procedure THproseReader.ReadArray<T>(var DynArray: TArray<T>; Info: PTypeInfo);
 var
   Count, I: Integer;
@@ -1993,7 +1993,7 @@ begin
   end;
 end;
 
-{$IFDEF Supports_Rtti}
+{$IFDEF SUPPORTS_RTTI}
 function THproseReader.ReadTList<T>(Info, ElementInfo: PTypeInfo): TList<T>;
 var
   Count, I: Integer;
@@ -2515,7 +2515,7 @@ begin
         tkWString:
           Result := ReadString;
 {$ENDIF}
-{$IFDEF Supports_Unicode}
+{$IFDEF SUPPORTS_UNICODE}
         tkUString:
           Result := UnicodeString(ReadString);
 {$ENDIF}
@@ -2876,7 +2876,7 @@ begin
       WriteDouble(Value);
     varCurrency:
       WriteCurrency(Value);
-    varString, {$IFDEF Supports_Unicode}varUString, {$ENDIF}varOleStr:
+    varString, {$IFDEF SUPPORTS_UNICODE}varUString, {$ENDIF}varOleStr:
       WriteWideString(Value);
     varDate:
       WriteDateTimeWithRef(Value);
@@ -2965,7 +2965,7 @@ begin
 {$IFDEF FPC}
       vtQWord:         WriteLong(V.VQWord^);
 {$ENDIF}
-{$IFDEF Supports_Unicode}
+{$IFDEF SUPPORTS_UNICODE}
       vtUnicodeString: WriteStringWithRef(UnicodeString(V.VUnicodeString));
 {$ENDIF}
     else
@@ -3457,7 +3457,7 @@ begin
   else if AObject is TAbstractMap then WriteMap(TAbstractMap(AObject))
   else if AObject is TStrings then WriteStrings(TStrings(AObject))
   else
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
   if AnsiStartsText('TList<', Name) then
     WriteList(AObject)
   else if AnsiStartsText('TQueue<', Name) then
@@ -3662,7 +3662,7 @@ begin
   FClassRefList.Clear;
 end;
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
 
 procedure THproseWriter.Serialize(const Value; Info: PTypeInfo);
 var
@@ -4472,7 +4472,7 @@ begin
   Result := HproseSerialize(Value, Simple);
 end;
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
 
 class function THproseFormatter.Serialize<T>(const Value: T; Simple: Boolean): TBytes;
 var

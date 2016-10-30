@@ -14,7 +14,7 @@
  *                                                        *
  * ObjAutoX unit for delphi.                              *
  *                                                        *
- * LastModified: Sep 11, 2014                             *
+ * LastModified: Oct 30, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -65,7 +65,7 @@ type
     CallingConvention: TCallingConvention;
     ReturnType: ^PTypeInfo;
     ParamSize: Word;
-  {$IFDEF Supports_Rtti2}
+  {$IFDEF SUPPORTS_RTTI2}
     ParamCount: Byte;
   {$ENDIF}
   end;
@@ -187,7 +187,7 @@ begin
           Result := -1;
       end;
     end;
-    tkString, tkLString,{$IFDEF Supports_Unicode}tkUString,{$ENDIF} tkWString, tkInterface, tkClass:
+    tkString, tkLString,{$IFDEF SUPPORTS_UNICODE}tkUString,{$ENDIF} tkWString, tkInterface, tkClass:
       Result := 4;
     tkMethod, tkInt64:
       Result := 8;
@@ -211,30 +211,30 @@ const
   none = ckNone;
   cvt  = ckConvert;
   err  = ckError;
-  Codes: array[varEmpty..{$IFDEF Supports_UInt64}varUInt64{$ELSE}varInt64{$ENDIF}, varEmpty..{$IFDEF Supports_UInt64}varUInt64{$ELSE}varInt64{$ENDIF}] of TConvertKind =
+  Codes: array[varEmpty..{$IFDEF SUPPORTS_UINT64}varUInt64{$ELSE}varInt64{$ENDIF}, varEmpty..{$IFDEF SUPPORTS_UINT64}varUInt64{$ELSE}varInt64{$ENDIF}] of TConvertKind =
     ({v From} {To >}{vt_empty} {vt_null} {vt_i2} {vt_i4} {vt_r4} {vt_r8} {vt_cy} {vt_date} {vt_bstr} {vt_dispatch} {vt_error} {vt_bool} {vt_variant} {vt_unknown} {vt_decimal} {0x0f } {vt_i1} {vt_ui1} {vt_ui2} {vt_ui4} {vt_i8} {vt_ui8}
-    {vt_empty}      (none,      err,      err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        err,         err,         err,    err,    err,     err,     err,     err    {$IFDEF Supports_UInt64},err{$ENDIF}),
-    {vt_null}       (err,       none,     err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        err,         err,         err,    err,    err,     err,     err,     err    {$IFDEF Supports_UInt64},err{$ENDIF}),
-    {vt_i2}         (err,       err,      none,   cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
-    {vt_i4}         (err,       err,      none,   none,   cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
-    {vt_r4}         (err,       err,      cvt,    cvt,    none,   cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
-    {vt_r8}         (err,       err,      cvt,    cvt,    cvt,    none,   none,   none,     cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
-    {vt_cy}         (err,       err,      cvt,    cvt,    cvt,    none,   none,   none,     cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
-    {vt_date}       (err,       err,      cvt,    cvt,    cvt,    none,   none,   none,     cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
-    {vt_bstr}       (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      none,     err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
-    {vt_dispatch}   (err,       err,      err,    err,    err,    err,    err,    err,      err,      none,         err,       err,      none,        none,        err,         err,    err,    err,     err,     err,     err    {$IFDEF Supports_UInt64},err{$ENDIF}),
-    {vt_error}      (err,       err,      err,    err,    err,    err,    err,    err,      err,      err,          none,      err,      none,        err,         err,         err,    err,    err,     err,     err,     err    {$IFDEF Supports_UInt64},err{$ENDIF}),
-    {vt_bool}       (err,       err,      cvt,    cvt,    err,    err,    err,    err,      cvt,      err,          err,       none,     none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
-    {vt_variant}    (cvt,       cvt,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      cvt,          cvt,       cvt,      none,        cvt,         cvt,         cvt,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
-    {vt_unknown}    (err,       err,      err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        none,        err,         err,    err,    err,     err,     err,     err    {$IFDEF Supports_UInt64},err{$ENDIF}),
-    {vt_decimal}    (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         none,        err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
-    {0x0f }         (err,       err,      err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        err,         err,         none,   err,    err,     err,     err,     err    {$IFDEF Supports_UInt64},err{$ENDIF}),
-    {vt_i1}         (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
-    {vt_ui1}        (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    cvt,     cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
-    {vt_ui2}        (err,       err,      none,   cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    none,    cvt,     cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
-    {vt_ui4}        (err,       err,      none,   none,   cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    none,    none,    cvt    {$IFDEF Supports_UInt64},cvt{$ENDIF}),
-    {vt_i8}         (err,       err,      none,   none,   cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    none,    none,    none   {$IFDEF Supports_UInt64},none{$ENDIF})
-{$IFDEF Supports_UInt64}
+    {vt_empty}      (none,      err,      err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        err,         err,         err,    err,    err,     err,     err,     err    {$IFDEF SUPPORTS_UINT64},err{$ENDIF}),
+    {vt_null}       (err,       none,     err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        err,         err,         err,    err,    err,     err,     err,     err    {$IFDEF SUPPORTS_UINT64},err{$ENDIF}),
+    {vt_i2}         (err,       err,      none,   cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF SUPPORTS_UINT64},cvt{$ENDIF}),
+    {vt_i4}         (err,       err,      none,   none,   cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF SUPPORTS_UINT64},cvt{$ENDIF}),
+    {vt_r4}         (err,       err,      cvt,    cvt,    none,   cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF SUPPORTS_UINT64},cvt{$ENDIF}),
+    {vt_r8}         (err,       err,      cvt,    cvt,    cvt,    none,   none,   none,     cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF SUPPORTS_UINT64},cvt{$ENDIF}),
+    {vt_cy}         (err,       err,      cvt,    cvt,    cvt,    none,   none,   none,     cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF SUPPORTS_UINT64},cvt{$ENDIF}),
+    {vt_date}       (err,       err,      cvt,    cvt,    cvt,    none,   none,   none,     cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF SUPPORTS_UINT64},cvt{$ENDIF}),
+    {vt_bstr}       (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      none,     err,          err,       cvt,      none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF SUPPORTS_UINT64},cvt{$ENDIF}),
+    {vt_dispatch}   (err,       err,      err,    err,    err,    err,    err,    err,      err,      none,         err,       err,      none,        none,        err,         err,    err,    err,     err,     err,     err    {$IFDEF SUPPORTS_UINT64},err{$ENDIF}),
+    {vt_error}      (err,       err,      err,    err,    err,    err,    err,    err,      err,      err,          none,      err,      none,        err,         err,         err,    err,    err,     err,     err,     err    {$IFDEF SUPPORTS_UINT64},err{$ENDIF}),
+    {vt_bool}       (err,       err,      cvt,    cvt,    err,    err,    err,    err,      cvt,      err,          err,       none,     none,        err,         cvt,         err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF SUPPORTS_UINT64},cvt{$ENDIF}),
+    {vt_variant}    (cvt,       cvt,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      cvt,          cvt,       cvt,      none,        cvt,         cvt,         cvt,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF SUPPORTS_UINT64},cvt{$ENDIF}),
+    {vt_unknown}    (err,       err,      err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        none,        err,         err,    err,    err,     err,     err,     err    {$IFDEF SUPPORTS_UINT64},err{$ENDIF}),
+    {vt_decimal}    (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         none,        err,    cvt,    cvt,     cvt,     cvt,     cvt    {$IFDEF SUPPORTS_UINT64},cvt{$ENDIF}),
+    {0x0f }         (err,       err,      err,    err,    err,    err,    err,    err,      err,      err,          err,       err,      none,        err,         err,         none,   err,    err,     err,     err,     err    {$IFDEF SUPPORTS_UINT64},err{$ENDIF}),
+    {vt_i1}         (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    cvt,     cvt,     cvt    {$IFDEF SUPPORTS_UINT64},cvt{$ENDIF}),
+    {vt_ui1}        (err,       err,      cvt,    cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    cvt,     cvt,     cvt    {$IFDEF SUPPORTS_UINT64},cvt{$ENDIF}),
+    {vt_ui2}        (err,       err,      none,   cvt,    cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    none,    cvt,     cvt    {$IFDEF SUPPORTS_UINT64},cvt{$ENDIF}),
+    {vt_ui4}        (err,       err,      none,   none,   cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    none,    none,    cvt    {$IFDEF SUPPORTS_UINT64},cvt{$ENDIF}),
+    {vt_i8}         (err,       err,      none,   none,   cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    none,    none,    none   {$IFDEF SUPPORTS_UINT64},none{$ENDIF})
+{$IFDEF SUPPORTS_UINT64}
     {vt_ui8}       ,(err,       err,      none,   none,   cvt,    cvt,    cvt,    cvt,      cvt,      err,          err,       cvt,      none,        err,         cvt,         err,    none,   none,    none,    none,    none,   none)
 {$ENDIF}
   );
@@ -318,7 +318,7 @@ begin
     end;
     tkString:  Result := varString;
     tkLString: Result := varString;
-	{$IFDEF Supports_Unicode}
+	{$IFDEF SUPPORTS_UNICODE}
     tkUString: Result := varUString;
 	{$ENDIF}
     tkWString: Result := varOleStr;
@@ -332,7 +332,7 @@ begin
     end;
     tkVariant: Result := varVariant;
     tkInt64:
-	{$IFDEF Supports_UInt64}
+	{$IFDEF SUPPORTS_UINT64}
       begin
         TypeData := GetTypeData(TypeInfo);
         if TypeData^.MinInt64Value >= 0 then

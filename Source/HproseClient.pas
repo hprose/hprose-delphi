@@ -28,7 +28,7 @@ interface
 uses HproseCommon, Classes, SysUtils, TypInfo, Variants;
 
 type
-{$IFDEF Supports_Anonymous_Method}
+{$IFDEF SUPPORTS_ANONYMOUS_METHOD}
   TCallback1 = reference to procedure(Result: Variant);
   TCallback2 = reference to procedure(Result: Variant;
     const Args: TVariants);
@@ -43,7 +43,7 @@ type
                                 const Error: Exception) of object;
 {$ENDIF}
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
   TCallback1<T> = reference to procedure(Result: T);
   TCallback2<T> = reference to procedure(Result: T;
     const Args: TVariants);
@@ -64,7 +64,7 @@ type
       const Args: array of const; Simple: Boolean): TBytes; overload;
     function DoOutput(const AName: string; const Args: TVariants;
       ByRef: Boolean; Simple: Boolean): TBytes; overload;
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
     procedure DoInput(var Args: TVariants; ResultType: PTypeInfo;
       Data: TBytes; out Result); overload;
     procedure DoInput(ResultType: PTypeInfo;
@@ -122,7 +122,7 @@ type
     function Invoke(const AName: string; var Args: TVariants; ResultType: PTypeInfo;
       ByRef: Boolean = True; Simple: Boolean = False): Variant;
       overload;
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
     // Synchronous invoke
     function Invoke<T>(const AName: string): T; overload;
     function Invoke<T>(const AName: string; const Args: array of const;
@@ -214,7 +214,7 @@ type
       ResultType: PTypeInfo;
       ByRef: Boolean = True; Simple: Boolean = False);
       overload;
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
     // Asynchronous invoke
     procedure Invoke<T>(const AName: string;
       Callback: TCallback1<T>;
@@ -245,7 +245,7 @@ type
     property Client: THproseClient read FClient;
   end;
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
 // The following two classes is private class, but they can't be moved to the
 // implementation section because of E2506.
   TAsyncInvokeThread1<T> = class(TThread)
@@ -292,7 +292,7 @@ type
   private
     FTypeInfo: PTypeInfo;
   public
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
     class function New<T>: Variant;
 {$ENDIF}
     constructor Create(Info: PTypeInfo);
@@ -378,7 +378,7 @@ type
 
 { TType }
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
 class function TType.New<T>: Variant;
 begin
   Result := ObjToVar(Self.Create(TypeInfo(T)));
@@ -551,7 +551,7 @@ begin
   Result := DoInput(Args, ResultType, ResultMode, Data);
 end;
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
 procedure THproseClient.DoInput(var Args: TVariants; ResultType: PTypeInfo;
       Data: TBytes; out Result);
 var
@@ -766,7 +766,7 @@ begin
   Result := DoInput(Args, ResultType, ResultMode, SendAndReceive(DoOutput(FullName, Args, ByRef, Simple)));
 end;
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
 // Synchronous invoke
 function THproseClient.Invoke<T>(const AName: string): T;
 var
@@ -1015,7 +1015,7 @@ begin
   TAsyncInvokeThread2.Create(Self, FullName, Args, Callback, CallbackE, ResultType, ByRef, ResultMode, Simple)
 end;
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
 procedure THproseClient.Invoke<T>(const AName: string;
   Callback: TCallback1<T>;
   CallbackE: TCallbackE);
@@ -1196,7 +1196,7 @@ begin
   Synchronize({$IFDEF FPC}@{$ENDIF}DoCallback);
 end;
 
-{$IFDEF Supports_Generics}
+{$IFDEF SUPPORTS_GENERICS}
 { TAsyncInvokeThread1<T> }
 
 constructor TAsyncInvokeThread1<T>.Create(Client: THproseClient;
