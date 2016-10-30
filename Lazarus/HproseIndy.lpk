@@ -8,7 +8,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <IncludeFiles Value="D:\git\hprose-delphi\Source\"/>
+        <IncludeFiles Value="..\Source;..\Source\Indy10_5"/>
         <OtherUnitFiles Value="..\Source;..\Source\Indy10_5"/>
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
