@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Oct 30, 2016                             *
+ * LastModified: Nov 2, 2016                              *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -738,6 +738,24 @@ type
   public
     function InputFilter(const Data: TBytes; const Context: TContext): TBytes;  virtual; abstract;
     function OutputFilter(const Data: TBytes; const Context: TContext): TBytes; virtual; abstract;
+  end;
+
+  { TFilterList }
+
+  TFilterList = class
+  private
+    FFilters: IList;
+  public
+    constructor Create;
+    function Get(Index: Integer): IFilter;
+    procedure Put(Index: Integer; const Value: IFilter);
+    function GetCount: Integer;
+    function Add(const Filter: IFilter): TFilterList;
+    function Remove(const Filter: IFilter): TFilterList;
+    function InputFilter(const Data: TBytes; const Context: TContext): TBytes;
+    function OutputFilter(const Data: TBytes; const Context: TContext): TBytes;
+    property Filter[Index: Integer]: IFilter read Get write Put; default;
+    property Count: Integer read GetCount;
   end;
 
 const
@@ -4059,6 +4077,71 @@ constructor TContext.Create(AUserData: IMap);
 begin
   FUserData := TCaseInsensitiveHashMap.Create(16, 0.75, False);
   if AUserData <> nil then FUserData.PutAll(AUserData);
+end;
+
+{ TFilterList }
+
+constructor TFilterList.Create();
+begin
+  FFilters := THashedList.Create;
+end;
+
+function TFilterList.Get(Index: Integer): IFilter;
+var
+  F: Variant;
+begin
+  Result := nil;
+  F := FFilters[Index];
+  if (not VarIsNull(F)) and (not VarIsEmpty(F)) then
+    VarToIntf(F, IFilter, Result);
+end;
+
+procedure TFilterList.Put(Index: Integer; const Value: IFilter);
+begin
+  FFilters[Index] := Value;
+end;
+
+function TFilterList.GetCount: Integer;
+begin
+  Result := FFilters.Count;
+end;
+
+function TFilterList.Add(const Filter: IFilter): TFilterList;
+begin
+  FFilters.Add(Filter);
+  Result := Self;
+end;
+
+function TFilterList.Remove(const Filter: IFilter): TFilterList;
+begin
+  FFilters.Remove(Filter);
+  Result := Self;
+end;
+
+function TFilterList.InputFilter(const Data: TBytes; const Context: TContext
+  ): TBytes;
+var
+  I: Integer;
+  AFilter: IFilter;
+begin
+  Result := Data;
+  for I := FFilters.Count - 1 downto 0 do begin
+    VarToIntf(FFilters[I], IFilter, AFilter);
+    Result := AFilter.InputFilter(Result, Context);
+  end;
+end;
+
+function TFilterList.OutputFilter(const Data: TBytes; const Context: TContext
+  ): TBytes;
+var
+  I: Integer;
+  AFilter: IFilter;
+begin
+  Result := Data;
+  for I := 0 to FFilters.Count - 1 do begin
+    VarToIntf(FFilters[I], IFilter, AFilter);
+    Result := AFilter.OutputFilter(Result, Context);
+  end;
 end;
 
 { TVarObjectType }
