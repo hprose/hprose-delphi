@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Nov 2, 2016                              *
+ * LastModified: Nov 4, 2016                              *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -23,9 +23,13 @@ unit HproseCommon;
 
 {$I Hprose.inc}
 
+{$IFDEF DELPHIXE3_UP}
+  {$LEGACYIFEND ON}
+{$ENDIF}
+ 
 interface
 
-uses Classes, SyncObjs, SysUtils, TypInfo, Variants;
+uses Classes{$IFDEF SUPPORTS_GENERICS}, Generics.Collections {$ENDIF}, SyncObjs, SysUtils, TypInfo, Variants;
 
 type
 
@@ -685,33 +689,27 @@ type
   ['{496CD091-9C33-423A-BC4A-61AF16C74A75}']
     function Value: TObject;
   end;
-
+  
   TSmartObject = class(TInterfacedObject, ISmartObject)
+  private
+    FValue: TObject;
   protected
-    FObject: TObject;
+    function Value: TObject;
   public
     constructor Create(AObject: TObject); virtual;
-    class function New(const AClass: TClass): ISmartObject;
-    function Value: TObject;
     destructor Destroy; override;
   end;
 
   TSmartClass = class of TSmartObject;
 
 {$IFDEF SUPPORTS_GENERICS}
-  ISmartObject<T> = interface
-  ['{91FEB85D-1284-4516-A9DA-5D370A338DA0}']
-    function _: T;
-  end;
+  ISmartObject<T> = reference to function: T;
 
 {$M+}
-  TSmartObject<T> = class(TSmartObject, ISmartObject<T>)
-  protected
-    constructor Create0;
+  TSmartObject<T: class, constructor> = class(TSmartObject, ISmartObject<T>)
   public
-    constructor Create(AObject: TObject); override;
-    class function New: ISmartObject<T>;
-    function _: T;
+    constructor Create; reintroduce;
+    function Invoke: T;
   end;
 {$M-}
 {$ENDIF}
@@ -848,9 +846,9 @@ type
     class procedure Register(const TypeInfo: PTypeInfo; TypeName: string); overload;
   public
     class procedure Register(const TypeInfo: PTypeInfo); overload;
-    class procedure Register<T>; overload;
-    class procedure Register<T: class>(const Alias: string); overload;
-    class procedure Register<T: TInterfacedObject; I: IInterface>(const Alias: string); overload;
+    class procedure Register<T: class, constructor>; overload;
+    class procedure Register<T: class, constructor>(const Alias: string); overload;
+    class procedure Register<T: class, constructor; I: IInterface>(const Alias: string); overload;
     class function GetAlias<T: class>: string; overload;
     class function GetInterface<T: TInterfacedObject>: TGUID; overload;
     class function GetClass<I>: TInterfacedClass; overload;
@@ -4452,54 +4450,6 @@ begin
 end;
 
 var
-  SmartObjectsRef: IMap;
-
-{ TSmartObject }
-
-constructor TSmartObject.Create(AObject: TObject);
-var
-  V: NativeInt;
-begin
-  SmartObjectsRef.Lock;
-  FObject := AObject;
-  V := NativeInt(Pointer(FObject));
-  if SmartObjectsRef.ContainsKey(V) then
-    SmartObjectsRef[V] := SmartObjectsRef[V] + 1
-  else
-    SmartObjectsRef[V] := 1;
-  SmartObjectsRef.UnLock;
-end;
-
-destructor TSmartObject.Destroy;
-var
-  V: NativeInt;
-begin
-  if SmartObjectsRef <> nil then begin
-    SmartObjectsRef.Lock;
-    V := NativeInt(Pointer(FObject));
-    SmartObjectsRef[V] := SmartObjectsRef[V] - 1;
-    if SmartObjectsRef[V] = 0 then begin
-      SmartObjectsRef.Delete(V);
-      FreeAndNil(FObject);
-    end;
-    SmartObjectsRef.UnLock;
-  end
-  else
-    FreeAndNil(FObject);
-  inherited;
-end;
-
-class function TSmartObject.New(const AClass: TClass): ISmartObject;
-begin
-  Result := TSmartObject.Create(AClass.Create) as ISmartObject;
-end;
-
-function TSmartObject.Value: TObject;
-begin
-  Result := FObject;
-end;
-
-var
   HproseClassMap: IMap;
   HproseInterfaceMap: IMap;
 
@@ -4574,40 +4524,37 @@ begin
   end;
 end;
 
+{ TSmartObject }
+
+function TSmartObject.Value: TObject;
+begin
+  Result := FValue;
+end;
+
+constructor TSmartObject.Create(AObject: TObject);
+begin
+  inherited Create;
+  FValue := AObject;
+end;
+
+destructor TSmartObject.Destroy;
+begin
+  FValue.Free;
+  inherited;
+end;
+
 {$IFDEF SUPPORTS_GENERICS}
 
 { TSmartObject<T> }
 
-constructor TSmartObject<T>.Create0();
-var
-  TI: PTypeInfo;
+constructor TSmartObject<T>.Create;
 begin
-  TI := TypeInfo(T);
-  if TI^.Kind <> tkClass then
-    raise ETypeError.Create(GetTypeName(TI) + 'is not a Class');
-  inherited Create(GetTypeData(TI)^.ClassType.Create)
+  inherited Create(T.Create());
 end;
 
-constructor TSmartObject<T>.Create(AObject: TObject);
-var
-  TI: PTypeInfo;
+function TSmartObject<T>.Invoke: T;
 begin
-  TI := TypeInfo(T);
-  if TI^.Kind <> tkClass then
-    raise ETypeError.Create(GetTypeName(TI) + 'is not a Class');
-  if not AObject.ClassType.InheritsFrom(GetTypeData(TI)^.ClassType) then
-    raise ETypeError.Create(AObject.ClassName + 'is not a ' + GetTypeName(TI));
-  inherited Create(AObject);
-end;
-
-function TSmartObject<T>._: T;
-begin
-  Result := T(Pointer(@FObject)^);
-end;
-
-class function TSmartObject<T>.New: ISmartObject<T>;
-begin
-  Result := TSmartObject<T>.Create0 as ISmartObject<T>;
+  Result := T(Pointer(@FValue)^);
 end;
 
 var
@@ -4684,8 +4631,7 @@ begin
   TI := System.TypeInfo(T);
   Register(TI);
   TypeName := GetTypeName(TI);
-  if (TI^.Kind = tkClass) and
-     not StrUtils.AnsiStartsText('TSmartObject<', TypeName) then
+  if StrUtils.AnsiStartsText('TSmartObject<', TypeName) then
     Self.RegisterSmartObject<TSmartObject<T>, ISmartObject<T>>(TypeName);
 end;
 
@@ -4694,8 +4640,7 @@ var
   TI: PTypeInfo;
 begin
   TI := System.TypeInfo(T);
-  if PTypeInfo(TI)^.Kind = tkClass then
-    RegisterClass(GetTypeData(TI)^.ClassType, Alias);
+  RegisterClass(GetTypeData(TI)^.ClassType, Alias);
   Self.Register<T>;
 end;
 
@@ -4709,7 +4654,7 @@ begin
     raise ETypeError.Create(GetTypeName(ITI) + ' must be a interface');
   RegisterClass(TInterfacedClass(GetTypeData(TTI)^.ClassType), GetTypeData(ITI)^.Guid, Alias);
   Self.Register<T>;
-  Self.Register<I>;
+  Self.Register(ITI);
 end;
 
 class function TClassManager.GetAlias<T>: string;
@@ -4832,7 +4777,8 @@ initialization
     HproseTypeMap.EndWrite;
   end;
 
-  TClassManager.Register<ISmartObject>;
+  TClassManager.Register(TypeInfo(ISmartObject));
+
 {$ENDIF}
 
 {$IFDEF SUPPORTS_GENERICS}
@@ -4864,7 +4810,6 @@ RegisterClass(TCaseInsensitiveArrayList, ICaseInsensitiveArrayList, '!CaseInsens
   VarObjectType := TVarObjectType.Create;
   varObject := VarObjectType.VarType;
 
-  SmartObjectsRef := THashMap.Create;
 finalization
   FreeAndNil(VarObjectType);
 
