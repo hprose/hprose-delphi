@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Nov 4, 2016                              *
+ * LastModified: Nov 7, 2016                              *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -714,48 +714,6 @@ type
 {$M-}
 {$ENDIF}
 
-  { TContext }
-
-  TContext = class
-  private
-    FUserData: ICaseInsensitiveHashMap;
-    function Get(Key: string): Variant;
-    procedure Put(Key: string; const Value: Variant);
-  public
-    constructor Create(AUserData: IMap = nil);
-    property UserData[Key: string]: Variant read Get write Put; default;
-  end;
-
-  IFilter = interface
-  ['{4AD7CCF2-1121-4CA4-92A7-5704C5956BA4}']
-    function InputFilter(const Data: TBytes; const Context: TContext): TBytes;
-    function OutputFilter(const Data: TBytes; const Context: TContext): TBytes;
-  end;
-
-  TFilter = class(TInterfacedObject, IFilter)
-  public
-    function InputFilter(const Data: TBytes; const Context: TContext): TBytes;  virtual; abstract;
-    function OutputFilter(const Data: TBytes; const Context: TContext): TBytes; virtual; abstract;
-  end;
-
-  { TFilterList }
-
-  TFilterList = class
-  private
-    FFilters: IList;
-  public
-    constructor Create;
-    function Get(Index: Integer): IFilter;
-    procedure Put(Index: Integer; const Value: IFilter);
-    function GetCount: Integer;
-    function Add(const Filter: IFilter): TFilterList;
-    function Remove(const Filter: IFilter): TFilterList;
-    function InputFilter(const Data: TBytes; const Context: TContext): TBytes;
-    function OutputFilter(const Data: TBytes; const Context: TContext): TBytes;
-    property Filter[Index: Integer]: IFilter read Get write Put; default;
-    property Count: Integer read GetCount;
-  end;
-
 const
 
 {$IFDEF CPU64}
@@ -883,6 +841,92 @@ function WideBytesOf(const Value: WideString): TBytes;
 
 {$IFNDEF DELPHIXE3_UP}
 function BytesOf(const Val: Pointer; const Len: integer): TBytes; overload;
+{$ENDIF}
+
+type
+
+  { TContext }
+
+  TContext = class
+  private
+    FUserData: ICaseInsensitiveHashMap;
+    function Get(Key: string): Variant;
+    procedure Put(Key: string; const Value: Variant);
+  public
+    constructor Create(AUserData: IMap = nil);
+    property UserData[Key: string]: Variant read Get write Put; default;
+  end;
+
+  IFilter = interface
+  ['{4AD7CCF2-1121-4CA4-92A7-5704C5956BA4}']
+    function InputFilter(const Data: TBytes; const Context: TContext): TBytes;
+    function OutputFilter(const Data: TBytes; const Context: TContext): TBytes;
+  end;
+
+  TFilter = class(TInterfacedObject, IFilter)
+  public
+    function InputFilter(const Data: TBytes; const Context: TContext): TBytes;  virtual; abstract;
+    function OutputFilter(const Data: TBytes; const Context: TContext): TBytes; virtual; abstract;
+  end;
+
+  { TFilterList }
+
+  TFilterList = class
+  private
+    FFilters: IList;
+  public
+    constructor Create;
+    function Get(Index: Integer): IFilter;
+    procedure Put(Index: Integer; const Value: IFilter);
+    function GetCount: Integer;
+    function Add(const Filter: IFilter): TFilterList;
+    function Remove(const Filter: IFilter): TFilterList;
+    function InputFilter(const Data: TBytes; const Context: TContext): TBytes;
+    function OutputFilter(const Data: TBytes; const Context: TContext): TBytes;
+    property Filter[Index: Integer]: IFilter read Get write Put; default;
+    property Count: Integer read GetCount;
+  end;
+
+{$IFDEF SUPPORTS_ANONYMOUS_METHOD}
+  TNextInvokeHandler = reference to function(const Name: String;
+                                            var Args: TVariants;
+                                        const Context: TContext): Variant;
+  TInvokeHandler = reference to function(const Name: String;
+                                        var Args: TVariants;
+                                    const Context: TContext;
+                             const Next: TNextInvokeHandler): Variant;
+  TNextFilterHandler = reference to function(const Request: TBytes;
+                                           const Context: TContext): TBytes;
+  TFilterHandler = reference to function(const Request: TBytes;
+                                       const Context: TContext;
+                               const Next: TNextFilterHandler): TBytes;
+
+  THandlerManager = class
+  private
+    FInvokeHandlers: TList<TInvokeHandler>;
+    FBeforeFilterHandlers: TList<TFilterHandler>;
+    FAfterFilterHandlers: TList<TFilterHandler>;
+    FDefaultInvokeHandler: TNextInvokeHandler;
+    FDefaultBeforeFilterHandler: TNextFilterHandler;
+    FDefaultAfterFilterHandler: TNextFilterHandler;
+    FInvokeHandler: TNextInvokeHandler;
+    FBeforeFilterHandler: TNextFilterHandler;
+    FAfterFilterHandler: TNextFilterHandler;
+    function GetNextInvokeHandler(const next: TNextInvokeHandler;
+      const handler: TInvokeHandler): TNextInvokeHandler;
+    function GetNextFilterHandler(const next: TNextFilterHandler;
+      const handler: TFilterHandler): TNextFilterHandler;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure AddInvokeHandler(const handler: TInvokeHandler);
+    procedure AddBeforeFilterHandler(const handler: TFilterHandler);
+    procedure AddAfterFilterHandler(const handler: TFilterHandler);
+    property InvokeHandler: TNextInvokeHandler read FInvokeHandler write FDefaultInvokeHandler;
+    property BeforeFilterHandler: TNextFilterHandler read FBeforeFilterHandler write FDefaultBeforeFilterHandler;
+    property AfterFilterHandler: TNextFilterHandler read FAfterFilterHandler write FDefaultAfterFilterHandler;
+  end;
+
 {$ENDIF}
 
 implementation
@@ -4059,89 +4103,6 @@ begin
   if FPosition > FLength then FLength := FPosition;
 end;
 
-{ TContext }
-
-function TContext.Get(Key: string): Variant;
-begin
-  Result := FUserData[Key];
-end;
-
-procedure TContext.Put(Key: string; const Value: Variant);
-begin
-  FUserData[Key] := Value;
-end;
-
-constructor TContext.Create(AUserData: IMap);
-begin
-  FUserData := TCaseInsensitiveHashMap.Create(16, 0.75, False);
-  if AUserData <> nil then FUserData.PutAll(AUserData);
-end;
-
-{ TFilterList }
-
-constructor TFilterList.Create();
-begin
-  FFilters := THashedList.Create;
-end;
-
-function TFilterList.Get(Index: Integer): IFilter;
-var
-  F: Variant;
-begin
-  Result := nil;
-  F := FFilters[Index];
-  if (not VarIsNull(F)) and (not VarIsEmpty(F)) then
-    VarToIntf(F, IFilter, Result);
-end;
-
-procedure TFilterList.Put(Index: Integer; const Value: IFilter);
-begin
-  FFilters[Index] := Value;
-end;
-
-function TFilterList.GetCount: Integer;
-begin
-  Result := FFilters.Count;
-end;
-
-function TFilterList.Add(const Filter: IFilter): TFilterList;
-begin
-  FFilters.Add(Filter);
-  Result := Self;
-end;
-
-function TFilterList.Remove(const Filter: IFilter): TFilterList;
-begin
-  FFilters.Remove(Filter);
-  Result := Self;
-end;
-
-function TFilterList.InputFilter(const Data: TBytes; const Context: TContext
-  ): TBytes;
-var
-  I: Integer;
-  AFilter: IFilter;
-begin
-  Result := Data;
-  for I := FFilters.Count - 1 downto 0 do begin
-    VarToIntf(FFilters[I], IFilter, AFilter);
-    Result := AFilter.InputFilter(Result, Context);
-  end;
-end;
-
-function TFilterList.OutputFilter(const Data: TBytes; const Context: TContext
-  ): TBytes;
-var
-  I: Integer;
-  AFilter: IFilter;
-begin
-  Result := Data;
-  for I := 0 to FFilters.Count - 1 do begin
-    VarToIntf(FFilters[I], IFilter, AFilter);
-    Result := AFilter.OutputFilter(Result, Context);
-  end;
-end;
-
 { TVarObjectType }
 
 {$IF DEFINED(FPC) AND (FPC_VERSION < 3.0)}
@@ -4725,6 +4686,166 @@ begin
   RegisterClass(AClass, Alias);
 end;
 
+
+{ TContext }
+
+function TContext.Get(Key: string): Variant;
+begin
+  Result := FUserData[Key];
+end;
+
+procedure TContext.Put(Key: string; const Value: Variant);
+begin
+  FUserData[Key] := Value;
+end;
+
+constructor TContext.Create(AUserData: IMap);
+begin
+  FUserData := TCaseInsensitiveHashMap.Create(16, 0.75, False);
+  if AUserData <> nil then FUserData.PutAll(AUserData);
+end;
+
+{ TFilterList }
+
+constructor TFilterList.Create();
+begin
+  inherited Create;
+  FFilters := THashedList.Create();
+end;
+
+function TFilterList.Get(Index: Integer): IFilter;
+var
+  F: Variant;
+begin
+  Result := nil;
+  F := FFilters[Index];
+  if (not VarIsNull(F)) and (not VarIsEmpty(F)) then
+    VarToIntf(F, IFilter, Result);
+end;
+
+procedure TFilterList.Put(Index: Integer; const Value: IFilter);
+begin
+  FFilters[Index] := Value;
+end;
+
+function TFilterList.GetCount: Integer;
+begin
+  Result := FFilters.Count;
+end;
+
+function TFilterList.Add(const Filter: IFilter): TFilterList;
+begin
+  FFilters.Add(Filter);
+  Result := Self;
+end;
+
+function TFilterList.Remove(const Filter: IFilter): TFilterList;
+begin
+  FFilters.Remove(Filter);
+  Result := Self;
+end;
+
+function TFilterList.InputFilter(const Data: TBytes; const Context: TContext
+  ): TBytes;
+var
+  I: Integer;
+  AFilter: IFilter;
+begin
+  Result := Data;
+  for I := FFilters.Count - 1 downto 0 do begin
+    VarToIntf(FFilters[I], IFilter, AFilter);
+    Result := AFilter.InputFilter(Result, Context);
+  end;
+end;
+
+function TFilterList.OutputFilter(const Data: TBytes; const Context: TContext
+  ): TBytes;
+var
+  I: Integer;
+  AFilter: IFilter;
+begin
+  Result := Data;
+  for I := 0 to FFilters.Count - 1 do begin
+    VarToIntf(FFilters[I], IFilter, AFilter);
+    Result := AFilter.OutputFilter(Result, Context);
+  end;
+end;
+
+{$IFDEF SUPPORTS_ANONYMOUS_METHOD}
+{ THandlerManager }
+
+procedure THandlerManager.AddAfterFilterHandler(const Handler: TFilterHandler);
+var
+  Next: TNextFilterHandler;
+  I: Integer;
+begin
+  FAfterFilterHandlers.Add(Handler);
+  Next := FDefaultAfterFilterHandler;
+  for I := FAfterFilterHandlers.Count - 1 downto 0 do
+    Next := GetNextFilterHandler(Next, FAfterFilterHandlers[I]);
+  FAfterFilterHandler := Next;
+end;
+
+procedure THandlerManager.AddBeforeFilterHandler(const Handler: TFilterHandler);
+var
+  Next: TNextFilterHandler;
+  I: Integer;
+begin
+  FBeforeFilterHandlers.Add(Handler);
+  Next := FDefaultBeforeFilterHandler;
+  for I := FBeforeFilterHandlers.Count - 1 downto 0 do
+    Next := GetNextFilterHandler(Next, FBeforeFilterHandlers[I]);
+  FBeforeFilterHandler := Next;
+end;
+
+procedure THandlerManager.AddInvokeHandler(const Handler: TInvokeHandler);
+var
+  Next: TNextInvokeHandler;
+  I: Integer;
+begin
+  FInvokeHandlers.Add(Handler);
+  Next := FDefaultInvokeHandler;
+  for I := FInvokeHandlers.Count - 1 downto 0 do
+    Next := GetNextInvokeHandler(Next, FInvokeHandlers[I]);
+  FInvokeHandler := Next;
+end;
+
+constructor THandlerManager.Create;
+begin
+  inherited Create;
+  FInvokeHandlers := TList<TInvokeHandler>.Create();
+  FBeforeFilterHandlers := TList<TFilterHandler>.Create();
+  FAfterFilterHandlers := TList<TFilterHandler>.Create();
+end;
+
+destructor THandlerManager.Destroy;
+begin
+  FreeAndNil(FInvokeHandlers);
+  FreeAndNil(FBeforeFilterHandlers);
+  FreeAndNil(FAfterFilterHandlers);
+  inherited Destroy;
+end;
+
+function THandlerManager.GetNextFilterHandler(const Next: TNextFilterHandler;
+  const Handler: TFilterHandler): TNextFilterHandler;
+begin
+  Result := function(const Request: TBytes; const Context: TContext): TBytes
+  begin
+    Result := Handler(Request, Context, Next)
+  end;
+end;
+
+function THandlerManager.GetNextInvokeHandler(const Next: TNextInvokeHandler;
+  const Handler: TInvokeHandler): TNextInvokeHandler;
+begin
+  Result := function(const Name: String;
+                    var Args: TVariants;
+                    const Context: TContext): Variant
+  begin
+    Result := Handler(Name, Args, Context, Next)
+  end;
+end;
+{$ENDIF}
 
 initialization
   HproseClassMap := TCaseInsensitiveHashedMap.Create(False, True);
