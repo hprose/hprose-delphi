@@ -535,12 +535,12 @@ end;
 
 procedure TRealReaderRefer.Reset;
 begin
-  if FRefList <> nil then FRefList.Clear;
+  if Assigned(FRefList) then FRefList.Clear;
 end;
 
 function TRealReaderRefer.SetRef(const V: Variant): Integer;
 begin
-  if FRefList = nil then FRefList := TArrayList.Create(False);
+  if not Assigned(FRefList) then FRefList := TArrayList.Create(False);
   Result := FRefList.Add(V);
 end;
 
@@ -1278,7 +1278,7 @@ begin
   FRefer.SetRef(Result);
   for I := 0 to Count - 1 do begin
     PropInfo := GetPropInfo(AClass, ReadString);
-    if (PropInfo <> nil) then
+    if Assigned(PropInfo) then
       HproseCommon.SetPropValue(Instance, PropInfo,
                    Unserialize(PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF}))
     else Unserialize;
@@ -1296,7 +1296,7 @@ begin
   FRefer.SetRef(ObjToVar(Result));
   for I := 0 to Count - 1 do begin
     PropInfo := GetPropInfo(AClass, ReadString);
-    if (PropInfo <> nil) then
+    if Assigned(PropInfo) then
       HproseCommon.SetPropValue(Result, PropInfo,
                    Unserialize(PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF}))
     else Unserialize;
@@ -1323,7 +1323,7 @@ begin
   for I := 0 to Count - 1 do AttrNames[I] := ReadString;
   CheckTag(HproseTagClosebrace);
   AClass := GetClassByAlias(Name);
-  if AClass = nil then begin
+  if not Assigned(AClass) then begin
     Key := IInterface(TInterfacedObject.Create);
     FClassRefList.Add(Key);
     FAttrRefMap[Key] := AttrNames;
@@ -1377,7 +1377,7 @@ begin
   C := FClassRefList[ReadInt(HproseTagOpenbrace)];
   if VarType(C) = varNativeInt then begin
     RegisteredClass := TClass(NativeInt(C));
-    if (AClass = nil) or
+    if not Assigned(AClass) or
        RegisteredClass.InheritsFrom(AClass) then AClass := RegisteredClass;
   end;
   AttrNames := VarToList(FAttrRefMap[C]);
@@ -1387,7 +1387,7 @@ begin
   FRefer.SetRef(Result);
   for I := 0 to Count - 1 do begin
     PropInfo := GetPropInfo(Instance, AttrNames[I]);
-    if (PropInfo <> nil) then
+    if Assigned(PropInfo) then
       HproseCommon.SetPropValue(Instance, PropInfo,
                    Unserialize(PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF}))
     else Unserialize;
@@ -1406,7 +1406,7 @@ begin
   C := FClassRefList[ReadInt(HproseTagOpenbrace)];
   if VarType(C) = varNativeInt then begin
     RegisteredClass := TClass(NativeInt(C));
-    if (AClass = nil) or
+    if not Assigned(AClass) or
        RegisteredClass.InheritsFrom(AClass) then AClass := RegisteredClass;
   end;
   AttrNames := VarToList(FAttrRefMap[C]);
@@ -1415,7 +1415,7 @@ begin
   FRefer.SetRef(ObjToVar(Result));
   for I := 0 to Count - 1 do begin
     PropInfo := GetPropInfo(Result, AttrNames[I]);
-    if (PropInfo <> nil) then
+    if Assigned(PropInfo) then
       HproseCommon.SetPropValue(Result, PropInfo,
                    Unserialize(PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF}))
     else Unserialize;
@@ -1457,7 +1457,7 @@ begin
     end
     else for I := 0 to Count - 1 do begin
       PropInfo := GetPropInfo(Instance, AttrNames[I]);
-      if (PropInfo <> nil) then
+      if Assigned(PropInfo) then
         HproseCommon.SetPropValue(Instance, PropInfo,
                      Unserialize(PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF}))
       else Unserialize;
@@ -1932,7 +1932,7 @@ begin
   Name := GetTypeName(Info);
   ElementName := GetElementName(Name);
   ElementInfo := TClassManager.TypeInfo(ElementName);
-  if ElementInfo = nil then
+  if not Assigned(ElementInfo) then
     raise Exception.Create(ElementName + 'is not registered');
   case ElementInfo^.Kind of
 {$IFNDEF NEXTGEN}
@@ -1973,7 +1973,7 @@ type
 
 procedure DynArrayAddRef(P: Pointer);
 begin
-  if P <> nil then
+  if Assigned(P) then
     Inc(PDynArrayRec(PByte(P) - SizeOf(TDynArrayRec))^.RefCnt);
 end;
 
@@ -2027,7 +2027,7 @@ begin
   Name := GetTypeName(Info);
   ElementName := GetElementName(Name);
   ElementInfo := TClassManager.TypeInfo(ElementName);
-  if ElementInfo = nil then
+  if not Assigned(ElementInfo) then
     raise Exception.Create(ElementName + 'is not registered');
   case ElementInfo^.Kind of
 {$IFNDEF NEXTGEN}
@@ -2086,7 +2086,7 @@ begin
   Name := GetTypeName(Info);
   ElementName := GetElementName(Name);
   ElementInfo := TClassManager.TypeInfo(ElementName);
-  if ElementInfo = nil then
+  if not Assigned(ElementInfo) then
     raise Exception.Create(ElementName + 'is not registered');
   case ElementInfo^.Kind of
 {$IFNDEF NEXTGEN}
@@ -2136,7 +2136,7 @@ begin
   Name := GetTypeName(Info);
   ElementName := GetElementName(Name);
   ElementInfo := TClassManager.TypeInfo(ElementName);
-  if ElementInfo = nil then
+  if not Assigned(ElementInfo) then
     raise Exception.Create(ElementName + 'is not registered');
   case ElementInfo^.Kind of
 {$IFNDEF NEXTGEN}
@@ -2247,9 +2247,9 @@ begin
   SplitKeyValueTypeName(GetElementName(Name), KeyName, ValueName);
   KeyInfo := TClassManager.TypeInfo(KeyName);
   ValueInfo := TClassManager.TypeInfo(ValueName);
-  if KeyInfo = nil then
+  if not Assigned(KeyInfo) then
     raise Exception.Create(KeyName + 'is not registered');
-  if ValueInfo = nil then
+  if not Assigned(ValueInfo) then
     raise Exception.Create(ValueName + 'is not registered');
   case KeyInfo^.Kind of
 {$IFNDEF NEXTGEN}
@@ -2297,7 +2297,7 @@ begin
   Name := 'TSmartObject<' + ElementName + '>';
   Info := TClassManager.TypeInfo(Name);
   ElementInfo := TClassManager.TypeInfo(ElementName);
-  if (Info = nil) or (ElementInfo = nil) then
+  if not Assigned(Info) or not Assigned(ElementInfo) then
     raise Exception.Create(ElementName + 'is not registered');
   if ElementInfo^.Kind <> tkClass then
     raise Exception.Create(ElementName + 'is not a Class');
@@ -2384,7 +2384,7 @@ begin
         Int64(Value) := ReadInt64;
       tkInterface: begin
         AClass := GetClassByInterface(TypeData^.Guid);
-        if AClass = nil then
+        if not Assigned(AClass) then
           raise Exception.Create(GetTypeName(Info) + ' is not registered')
         else if Supports(AClass, ISmartObject) then
           ISmartObject(Value) := ReadSmartObject(Info)
@@ -2454,7 +2454,7 @@ var
   TypeName: string;
   AClass: TClass;
 begin
-  if Info = nil then Result := Unserialize
+  if not Assigned(Info) then Result := Unserialize
   else begin
     Result := Unassigned;
     TypeName := GetTypeName(Info);
@@ -2525,7 +2525,7 @@ begin
           Result := ReadInt64;
         tkInterface: begin
           AClass := GetClassByInterface(TypeData^.Guid);
-          if AClass = nil then
+          if not Assigned(AClass) then
             raise Exception.Create(GetTypeName(Info) + ' is not registered');
           Result := ReadInterface(AClass, TypeData^.Guid);
         end;
@@ -2883,7 +2883,7 @@ begin
     varDate:
       WriteDateTimeWithRef(Value);
     varUnknown:
-      if (IInterface(Value) = nil) then
+      if not Assigned(IInterface(Value)) then
         WriteNull
       else if Supports(IInterface(Value), IList, AList) then
         WriteListWithRef(AList)
@@ -2902,7 +2902,7 @@ begin
         WriteArrayWithRef(Value)
     else if P^.VType and not varByRef = varObject then begin
       Obj := VarToObj(Value);
-      if Obj = nil then WriteNull else WriteObjectWithRef(Obj);
+      if not Assigned(Obj) then WriteNull else WriteObjectWithRef(Obj);
     end
   end;
 end;
@@ -2948,12 +2948,12 @@ begin
       vtWideString:    WriteStringWithRef(string(V.VWideString));
 {$ENDIF}
       vtObject:
-        if V.VObject = nil then WriteNull else WriteObjectWithRef(V.VObject);
+        if not Assigned(V.VObject) then WriteNull else WriteObjectWithRef(V.VObject);
       vtWideChar:      WriteUTF8Char(V.VWideChar);
       vtCurrency:      WriteCurrency(V.VCurrency^);
       vtVariant:       Serialize(V.VVariant^);
       vtInterface:
-        if IInterface(V.VInterface) = nil then
+        if not Assigned(IInterface(V.VInterface)) then
           WriteNull
         else if Supports(IInterface(V.VInterface), IList, AList) then
           WriteListWithRef(AList)
@@ -3108,7 +3108,7 @@ begin
   try
     TempData := nil;
     CachePointer := PSerializeCache(NativeInt(PropertiesCache[ClassAlias]));
-    if CachePointer = nil then begin
+    if not Assigned(CachePointer) then begin
       New(CachePointer);
       try
         CachePointer^.RefCount := 0;
@@ -3719,7 +3719,7 @@ begin
       tkInt64: WriteLong(IntToStr(Int64(Value)));
       tkDynArray: WriteArrayWithRef(Value, Info);
       tkInterface: begin
-        if IInterface(Value) = nil then
+        if not Assigned(IInterface(Value)) then
           WriteNull
         else if Supports(IInterface(Value), IList, AList) then
           WriteListWithRef(AList)
@@ -3732,7 +3732,7 @@ begin
       end;
       tkClass: begin
         Obj := TObject(Value);
-        if Obj = nil then WriteNull else WriteObjectWithRef(Obj);
+        if not Assigned(Obj) then WriteNull else WriteObjectWithRef(Obj);
       end;
     end;
   end;
@@ -3764,7 +3764,7 @@ begin
   ElementName := GetElementName(Name);
   if IsSmartObject(ElementName) then ElementName := 'ISmartObject';
   Info := TClassManager.TypeInfo(ElementName);
-  if Info = nil then
+  if not Assigned(Info) then
     raise Exception.Create('Can not serialize ' + Name)
   else begin
     FRefer.SetRef(NativeInt(Pointer(DynArray)));
@@ -3867,7 +3867,7 @@ begin
   ElementName := GetElementName(ClassName);
   if IsSmartObject(ElementName) then ElementName := 'ISmartObject';
   Info := TClassManager.TypeInfo(ElementName);
-  if Info = nil then
+  if not Assigned(Info) then
     raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     FRefer.SetRef(ObjToVar(AList));
@@ -3914,7 +3914,7 @@ var
 begin
   ClassName := AList.ClassName;
   Info := TClassManager.TypeInfo(GetElementName(ClassName));
-  if Info = nil then
+  if not Assigned(Info) then
     raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     FRefer.SetRef(ObjToVar(AList));
@@ -3972,7 +3972,7 @@ begin
   ElementName := GetElementName(ClassName);
   if IsSmartObject(ElementName) then ElementName := 'ISmartObject';
   Info := TClassManager.TypeInfo(ElementName);
-  if Info = nil then
+  if not Assigned(Info) then
     raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     FRefer.SetRef(ObjToVar(AQueue));
@@ -4019,7 +4019,7 @@ var
 begin
   ClassName := AQueue.ClassName;
   Info := TClassManager.TypeInfo(GetElementName(ClassName));
-  if Info = nil then
+  if not Assigned(Info) then
     raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     FRefer.SetRef(ObjToVar(AQueue));
@@ -4077,7 +4077,7 @@ begin
   ElementName := GetElementName(ClassName);
   if IsSmartObject(ElementName) then ElementName := 'ISmartObject';
   Info := TClassManager.TypeInfo(ElementName);
-  if Info = nil then
+  if not Assigned(Info) then
     raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     FRefer.SetRef(ObjToVar(AStack));
@@ -4124,7 +4124,7 @@ var
 begin
   ClassName := AStack.ClassName;
   Info := TClassManager.TypeInfo(GetElementName(ClassName));
-  if Info = nil then
+  if not Assigned(Info) then
     raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     FRefer.SetRef(ObjToVar(AStack));
@@ -4194,7 +4194,7 @@ begin
   if IsSmartObject(ValueName) then ValueName := 'ISmartObject';
   KeyInfo := TClassManager.TypeInfo(KeyName);
   ValueInfo := TClassManager.TypeInfo(ValueName);
-  if (KeyInfo = nil) or (ValueInfo = nil) then
+  if not Assigned(KeyInfo) or not Assigned(ValueInfo) then
     raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     case KeyInfo^.Kind of
@@ -4237,7 +4237,7 @@ begin
   SplitKeyValueTypeName(GetElementName(ClassName), KeyName, ValueName);
   KeyInfo := TClassManager.TypeInfo(KeyName);
   ValueInfo := TClassManager.TypeInfo(ValueName);
-  if (KeyInfo = nil) or (ValueInfo = nil) then
+  if not Assigned(KeyInfo) or not Assigned(ValueInfo) then
     raise Exception.Create('Can not serialize ' + ClassName)
   else begin
     FRefer.SetRef(ObjToVar(ADict));
