@@ -3928,7 +3928,7 @@ var
 begin
   Len := Length(Val);
   SetLength(Result, Len);
-  Move(Val[1], Result[0], Len);
+  if Len > 0 then Move(Val[1], Result[0], Len);
 end;
 
 function BytesOf(const Val: AnsiChar): TBytes;
@@ -3954,7 +3954,7 @@ begin
   if Assigned(Bytes) then begin
     Len := Length(Bytes);
     SetLength(Result, Len);
-    Move(Bytes[0], Result[1], Len);
+    if Len > 0 then Move(Bytes[0], Result[1], Len);
   end
   else
     Result := '';
@@ -3967,7 +3967,7 @@ begin
   if Assigned(Value) then begin
     Len := Length(Value);
     SetLength(Result, Len div 2);
-    Move(Value[0], Result[1], Len);
+    if Len > 0 then Move(Value[0], Result[1], Len);
   end
   else
     Result := '';
@@ -3979,7 +3979,7 @@ var
 begin
   Len := Length(Value) * 2;
   SetLength(Result, Len);
-  Move(Value[1], Result[0], Len);
+  if Len > 0 then Move(Value[1], Result[0], Len);
 end;
 
 {$ENDIF}
@@ -3988,7 +3988,7 @@ end;
 function BytesOf(const Val: Pointer; const Len: integer): TBytes;
 begin
   SetLength(Result, Len);
-  Move(PByte(Val)^, Result[0], Len);
+  if Len > 0 then Move(PByte(Val)^, Result[0], Len);
 end;
 {$ENDIF}
 
@@ -3998,9 +3998,8 @@ var
   Temp: string;
 begin
   N := Length(StringArray);
-  for I := 0 to N - 1 do begin
-    Result[I] := StringArray[I];
-  end;
+  SetLength(Result, N);
+  for I := 0 to N - 1 do Result[I] := StringArray[I];
   if N > 1 then begin
     Randomize;
     for I := 0 to N - 1 do begin
