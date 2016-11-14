@@ -14,7 +14,7 @@
  *                                                        *
  * hprose synapse http client unit for delphi.            *
  *                                                        *
- * LastModified: Oct 30, 2016                             *
+ * LastModified: Nov 14, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -75,13 +75,13 @@ type
     FProxyUser: string;
     FProxyPass: string;
     FUserAgent: string;
-    FTimeout: Integer;
   protected
-    function SendAndReceive(Data: TBytes): TBytes; override;
+    function SendAndReceive(const Data: TBytes;
+      const Context: TClientContext): TBytes; override;
+    procedure InitURI(const AValue: string); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function UseService(const AUri: string = ''; const ANameSpace: string = ''): Variant; override;
   published
     {:Before HTTP operation you may define any non-standard headers for HTTP
      request, except of: 'Expect: 100-continue', 'Content-Length', 'Content-Type',
@@ -115,9 +115,6 @@ type
 
     {:Password for user authorization.}
     property Password: string read FPassword write FPassword;
-
-    {:Specify default timeout for socket operations.}
-    property Timeout: Integer read FTimeout write FTimeout;
   end;
 
 procedure Register;
@@ -500,7 +497,8 @@ end;
 
 { THproseHttpClient }
 
-function THproseHttpClient.SendAndReceive(Data: TBytes): TBytes;
+function THproseHttpClient.SendAndReceive(const Data: TBytes;
+  const Context: TClientContext): TBytes;
 var
   HttpSend: THttpSend;
   Cookie: string;
@@ -528,7 +526,7 @@ begin
   HttpSend.ProxyUser := FProxyUser;
   HttpSend.ProxyPass := FProxyPass;
   HttpSend.UserAgent := FUserAgent;
-  HttpSend.Timeout := FTimeout;
+  HttpSend.Timeout := Context.Settings.Timeout;
   HttpSend.Protocol := '1.1';
   HttpSend.MimeType := 'application/hprose';
   Cookie := GetCookie(FHost,
@@ -536,7 +534,7 @@ begin
                       LowerCase(FProtocol) = 'https');
   if Cookie <> '' then HttpSend.Headers.Add('Cookie: ' + Cookie);
   HttpSend.Document.WriteBuffer(Data[0], Length(Data));
-  if (HttpSend.HTTPMethod('POST', FUri)) then begin
+  if (HttpSend.HTTPMethod('POST', URI)) then begin
     SetCookie(HttpSend.Headers, FHost);
     SetLength(Result, HttpSend.Document.Size);
     Move(HttpSend.Document.Memory^, Result[0], Length(Result));
@@ -570,7 +568,6 @@ begin
   FProxyUser := '';
   FProxyPass := '';
   FUserAgent := 'Hprose Http Client for Delphi (Synapse)';
-  FTimeout := 30000;
 end;
 
 destructor THproseHttpClient.Destroy;
@@ -588,10 +585,10 @@ begin
   inherited;
 end;
 
-function THproseHttpClient.UseService(const AUri: string; const ANameSpace: string): Variant;
+procedure THproseHttpClient.InitURI(const AValue: string);
 begin
-  Result := inherited UseService(AUri, ANameSpace);
-  ParseURL(FUri, FProtocol, FUser, FPassword, FHost, FPort, FPath, FPara);
+  inherited InitURI(AValue);
+  ParseURL(URI, FProtocol, FUser, FPassword, FHost, FPort, FPath, FPara);
 end;
 
 procedure Register;

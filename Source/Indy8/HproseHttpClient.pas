@@ -14,7 +14,7 @@
  *                                                        *
  * hprose indy http client unit for delphi.               *
  *                                                        *
- * LastModified: Oct 30, 2016                             *
+ * LastModified: Nov 14, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -32,7 +32,7 @@ type
   THproseHttpClient = class(THproseClient)
   private
     FHttpPool: IList;
-    FIdUri: TIdURI;
+    FIdURI: TIdURI;
     FUserName: string;
     FPassword: string;
     FHeaders: THeaderList;
@@ -43,13 +43,13 @@ type
     FUserAgent: string;
     FKeepAlive: Boolean;
     FKeepAliveTimeout: Integer;
-    FTimeout: Integer;
   protected
-    function SendAndReceive(Data: TBytes): TBytes; override;
+    function SendAndReceive(const Data: TBytes;
+      const Context: TClientContext): TBytes; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function UseService(const AUri: string = ''; const ANameSpace: string = ''): Variant; override;
+    procedure InitURI(const AValue: string); override;
   published
     {:Before HTTP operation you may define any non-standard headers for HTTP
      request, except of: 'Expect: 100-continue', 'Content-Length', 'Content-Type',
@@ -83,9 +83,6 @@ type
 
     {:Password for user authorization.}
     property Password: string read FPassword write FPassword;
-
-    {:Specify default timeout for socket operations. not valid in Indy8}
-    property Timeout: Integer read FTimeout write FTimeout;
   end;
 
 procedure Register;
@@ -204,7 +201,7 @@ constructor THproseHttpClient.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FHttpPool := TArrayList.Create(10);
-  FIdUri := nil;
+  FIdURI := nil;
   FHeaders := THeaderList.Create;
   FUserName := '';
   FPassword := '';
@@ -229,18 +226,20 @@ begin
     FHttpPool.Unlock;
   end;
   FreeAndNil(FHeaders);
-  FreeAndNil(FIdUri);
+  FreeAndNil(FIdURI);
   inherited;
 end;
 
-function THproseHttpClient.UseService(const AUri: string; const ANameSpace: string): Variant;
+procedure THproseHttpClient.InitURI(const AValue: string);
+
 begin
-  Result := inherited UseService(AUri, ANameSpace);
-  FreeAndNil(FIdUri);
-  FIdUri := TIdURI.Create(FUri);
+  inherited InitURI(AValue);
+  FreeAndNil(FIdURI);
+  FIdURI := TIdURI.Create(URI);
 end;
 
-function THproseHttpClient.SendAndReceive(Data: TBytes): TBytes;
+function THproseHttpClient.SendAndReceive(const Data: TBytes;
+  const Context: TClientContext): TBytes;
 var
   IdHttp: TIdHttp;
   Cookie: string;
@@ -274,15 +273,15 @@ begin
   IdHttp.Request.ContentType := 'application/hprose';
   IdHttp.ProtocolVersion := pv1_1;
   IdHttp.Request.ExtraHeaders := FHeaders;
-  Cookie := GetCookie(FIdUri.Host,
-                      FIdUri.Path,
-                      LowerCase(FIdUri.Protocol) = 'https');
+  Cookie := GetCookie(FIdURI.Host,
+                      FIdURI.Path,
+                      LowerCase(FIdURI.Protocol) = 'https');
   if Cookie <> '' then IdHttp.Request.ExtraHeaders.Values['Cookie'] := Cookie;
   OutStream := TBytesStream.Create(Data);
   InStream := TBytesStream.Create;
   try
-    IdHttp.DoRequest(hmPost, FUri, OutStream, InStream);
-    SetCookie(IdHttp.Response.ExtraHeaders, FIdUri.Host);
+    IdHttp.DoRequest(hmPost, URI, OutStream, InStream);
+    SetCookie(IdHttp.Response.ExtraHeaders, FIdURI.Host);
     Result := InStream.Bytes;
     SetLength(Result, InStream.Size);
   finally

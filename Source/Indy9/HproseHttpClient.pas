@@ -14,7 +14,7 @@
  *                                                        *
  * hprose indy http client unit for delphi.               *
  *                                                        *
- * LastModified: Oct 30, 2016                             *
+ * LastModified: Nov 14, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -42,9 +42,9 @@ type
     FUserAgent: string;
     FKeepAlive: Boolean;
     FKeepAliveTimeout: Integer;
-    FTimeout: Integer;
   protected
-    function SendAndReceive(Data: TBytes): TBytes; override;
+    function SendAndReceive(const Data: TBytes;
+      const Context: TClientContext): TBytes; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -81,9 +81,6 @@ type
 
     {:Password for user authorization.}
     property Password: string read FPassword write FPassword;
-
-    {:Specify default timeout for socket operations.}
-    property Timeout: Integer read FTimeout write FTimeout;
   end;
 
 procedure Register;
@@ -111,7 +108,6 @@ begin
   FProxyUser := '';
   FProxyPass := '';
   FUserAgent := 'Hprose Http Client for Delphi (Indy9)';
-  FTimeout := 30000;
 end;
 
 destructor THproseHttpClient.Destroy;
@@ -129,7 +125,8 @@ begin
   inherited;
 end;
 
-function THproseHttpClient.SendAndReceive(Data: TBytes): TBytes;
+function THproseHttpClient.SendAndReceive(const Data: TBytes;
+  const Context: TClientContext): TBytes;
 var
   IdHttp: TIdHttp;
   OutStream, InStream: TBytesStream;
@@ -143,7 +140,7 @@ begin
   finally
     FHttpPool.Unlock;
   end;
-  IdHttp.ReadTimeout := FTimeout;
+  IdHttp.ReadTimeout := Context.Settings.Timeout;
   IdHttp.Request.UserAgent := FUserAgent;
   if FProxyHost <> '' then begin
     IdHttp.ProxyParams.ProxyServer := FProxyHost;
@@ -170,7 +167,7 @@ begin
   OutStream := TBytesStream.Create(Data);
   InStream := TBytesStream.Create;
   try
-    IdHttp.DoRequest(hmPost, FUri, OutStream, InStream);
+    IdHttp.DoRequest(hmPost, URI, OutStream, InStream);
     Result := InStream.Bytes;
     SetLength(Result, InStream.Size);
   finally
