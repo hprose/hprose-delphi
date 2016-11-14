@@ -14,7 +14,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: Oct 30, 2016                             *
+ * LastModified: Nov 14, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -1661,7 +1661,9 @@ begin
     htNull,
     htEmpty,
     htFalse: Result := False;
+    htNaN,
     htTrue: Result := True;
+    htInfinity: begin ReadInfinityWithoutTag; Result := True; end;
     htUTF8Char: Result := StrToBool(string(ReadUTF8CharWithoutTag));
     htString: Result := StrToBool(ReadStringWithoutTag);
   else
