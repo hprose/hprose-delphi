@@ -1,4 +1,4 @@
-{
+{                    
 /**********************************************************\
 |                                                          |
 |                          hprose                          |
@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Nov 7, 2016                              *
+ * LastModified: Nov 14, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -29,7 +29,7 @@ unit HproseCommon;
  
 interface
 
-uses Classes{$IFDEF SUPPORTS_GENERICS}, Generics.Collections {$ENDIF}, SyncObjs, SysUtils, TypInfo, Variants;
+uses Classes, SyncObjs, SysUtils, TypInfo, Variants;
 
 type
 
@@ -62,6 +62,7 @@ type
   PVariants = ^TVariants;
 
   TConstArray = array of TVarRec;
+  TStringArray = array of string;
 
   ETypeError = class(Exception);
   EHashBucketError = class(Exception);
@@ -787,6 +788,7 @@ function CreateConstArray(const Elements: array of const): TConstArray;
 procedure FinalizeVarRec(var Item: TVarRec);
 procedure FinalizeConstArray(var Arr: TConstArray);
 function VarRecToVar(const V: TVarRec): Variant;
+function ToVariants(const Elements: array of const): TVariants;
 
 procedure RegisterClass(const AClass: TClass; const Alias: string); overload;
 procedure RegisterClass(const AClass: TInterfacedClass; const IID: TGUID; const Alias: string); overload;
@@ -843,6 +845,8 @@ function WideBytesOf(const Value: WideString): TBytes;
 function BytesOf(const Val: Pointer; const Len: integer): TBytes; overload;
 {$ENDIF}
 
+function ShuffleStringArray(const StringArray: array of string): TStringArray;
+
 type
 
   { TContext }
@@ -853,20 +857,21 @@ type
     function Get(Key: string): Variant;
     procedure Put(Key: string; const Value: Variant);
   public
-    constructor Create(AUserData: IMap = nil);
-    property UserData[Key: string]: Variant read Get write Put; default;
+    constructor Create(const AUserData: IMap);
+    property UserData: ICaseInsensitiveHashMap read FUserData write FUserData;
+    property Item[Key: string]: Variant read Get write Put; default;
   end;
 
   IFilter = interface
   ['{4AD7CCF2-1121-4CA4-92A7-5704C5956BA4}']
-    function InputFilter(const Data: TBytes; const Context: TContext): TBytes;
-    function OutputFilter(const Data: TBytes; const Context: TContext): TBytes;
+    function InputFilter(var Data: TBytes; const Context: TContext): TBytes;
+    function OutputFilter(var Data: TBytes; const Context: TContext): TBytes;
   end;
 
   TFilter = class(TInterfacedObject, IFilter)
   public
-    function InputFilter(const Data: TBytes; const Context: TContext): TBytes;  virtual; abstract;
-    function OutputFilter(const Data: TBytes; const Context: TContext): TBytes; virtual; abstract;
+    function InputFilter(var Data: TBytes; const Context: TContext): TBytes;  virtual; abstract;
+    function OutputFilter(var Data: TBytes; const Context: TContext): TBytes; virtual; abstract;
   end;
 
   { TFilterList }
@@ -877,57 +882,74 @@ type
   public
     constructor Create;
     function Get(Index: Integer): IFilter;
-    procedure Put(Index: Integer; const Value: IFilter);
     function GetCount: Integer;
     function Add(const Filter: IFilter): TFilterList;
     function Remove(const Filter: IFilter): TFilterList;
-    function InputFilter(const Data: TBytes; const Context: TContext): TBytes;
-    function OutputFilter(const Data: TBytes; const Context: TContext): TBytes;
-    property Filter[Index: Integer]: IFilter read Get write Put; default;
+    function InputFilter(var Data: TBytes; const Context: TContext): TBytes;
+    function OutputFilter(var Data: TBytes; const Context: TContext): TBytes;
+    property Filter[Index: Integer]: IFilter read Get; default;
     property Count: Integer read GetCount;
   end;
 
+
+  PNextInvokeHandler = ^TNextInvokeHandler;
+  PNextFilterHandler = ^TNextFilterHandler;
+
 {$IFDEF SUPPORTS_ANONYMOUS_METHOD}
-  TNextInvokeHandler = reference to function(const Name: String;
-                                            var Args: TVariants;
-                                        const Context: TContext): Variant;
-  TInvokeHandler = reference to function(const Name: String;
-                                        var Args: TVariants;
-                                    const Context: TContext;
-                             const Next: TNextInvokeHandler): Variant;
-  TNextFilterHandler = reference to function(const Request: TBytes;
-                                           const Context: TContext): TBytes;
-  TFilterHandler = reference to function(const Request: TBytes;
-                                       const Context: TContext;
-                               const Next: TNextFilterHandler): TBytes;
+  TInvokeHandler = reference to function(const AName: String;
+                                         var Args: TVariants;
+                                     const Context: TContext;
+                                    Next: PNextInvokeHandler): Variant;
+  TFilterHandler = reference to function(var Request: TBytes;
+                                     const Context: TContext;
+                                    Next: PNextFilterHandler): TBytes;
+{$ELSE}
+  TInvokeHandler = function(const AName: String;
+                            var Args: TVariants;
+                        const Context: TContext;
+                       Next: PNextInvokeHandler): Variant of object;
+  TFilterHandler = function(var Request: TBytes;
+                        const Context: TContext;
+                       Next: PNextFilterHandler): TBytes of object;
+{$ENDIF}
+
+  TNextInvokeHandler = record
+    Handler: TInvokeHandler;
+    Next: PNextInvokeHandler;
+  end;
+
+  TNextFilterHandler = record
+    Handler: TFilterHandler;
+    Next: PNextFilterHandler;
+  end;
 
   THandlerManager = class
   private
-    FInvokeHandlers: TList<TInvokeHandler>;
-    FBeforeFilterHandlers: TList<TFilterHandler>;
-    FAfterFilterHandlers: TList<TFilterHandler>;
-    FDefaultInvokeHandler: TNextInvokeHandler;
-    FDefaultBeforeFilterHandler: TNextFilterHandler;
-    FDefaultAfterFilterHandler: TNextFilterHandler;
-    FInvokeHandler: TNextInvokeHandler;
-    FBeforeFilterHandler: TNextFilterHandler;
-    FAfterFilterHandler: TNextFilterHandler;
-    function GetNextInvokeHandler(const next: TNextInvokeHandler;
-      const handler: TInvokeHandler): TNextInvokeHandler;
-    function GetNextFilterHandler(const next: TNextFilterHandler;
-      const handler: TFilterHandler): TNextFilterHandler;
+    FInvokeHandler: PNextInvokeHandler;
+    FLastInvokeHandler: PNextInvokeHandler;
+    FDefaultInvokeHandler: PNextInvokeHandler;
+    FBeforeFilterHandler: PNextFilterHandler;
+    FLastBeforeFilterHandler: PNextFilterHandler;
+    FDefaultBeforeFilterHandler: PNextFilterHandler;
+    FAfterFilterHandler: PNextFilterHandler;
+    FLastAfterFilterHandler: PNextFilterHandler;
+    FDefaultAfterFilterHandler: PNextFilterHandler;
+    function GetNextInvokeHandler(const Next: PNextInvokeHandler;
+      const Handler: TInvokeHandler): PNextInvokeHandler;
+    function GetNextFilterHandler(const Next: PNextFilterHandler;
+      const Handler: TFilterHandler): PNextFilterHandler;
   public
-    constructor Create;
+    constructor Create(const AInvokeHandler: TInvokeHandler;
+      const ABeforeFilterHandler: TFilterHandler;
+      const AAfterFilterHandler: TFilterHandler);
     destructor Destroy; override;
-    procedure AddInvokeHandler(const handler: TInvokeHandler);
-    procedure AddBeforeFilterHandler(const handler: TFilterHandler);
-    procedure AddAfterFilterHandler(const handler: TFilterHandler);
-    property InvokeHandler: TNextInvokeHandler read FInvokeHandler write FDefaultInvokeHandler;
-    property BeforeFilterHandler: TNextFilterHandler read FBeforeFilterHandler write FDefaultBeforeFilterHandler;
-    property AfterFilterHandler: TNextFilterHandler read FAfterFilterHandler write FDefaultAfterFilterHandler;
+    procedure AddInvokeHandler(const Handler: TInvokeHandler);
+    procedure AddBeforeFilterHandler(const Handler: TFilterHandler);
+    procedure AddAfterFilterHandler(const Handler: TFilterHandler);
+    property InvokeHandler: PNextInvokeHandler read FInvokeHandler;
+    property BeforeFilterHandler: PNextFilterHandler read FBeforeFilterHandler;
+    property AfterFilterHandler: PNextFilterHandler read FAfterFilterHandler;
   end;
-
-{$ENDIF}
 
 implementation
 
@@ -1186,7 +1208,7 @@ begin
     P := FindVarData(Value);
     if P^.VType = varObject then begin
       Obj := TObject(P^.VPointer) as AClass;
-      Result := (Obj <> nil) or (P^.VPointer = nil);
+      Result := Assigned(Obj) or not Assigned(P^.VPointer);
     end
     else if P^.VType <> varNull then
       Result := False;
@@ -1289,7 +1311,7 @@ type
 
 function IntfToObj(const Intf: IInterface): TInterfacedObject; {$IFDEF DELPHI2010_UP}inline;{$ENDIF}
 begin
-  if Intf = nil then
+  if not Assigned(Intf) then
     result := nil
   else begin
 {$IFDEF DELPHI2010_UP}
@@ -2088,16 +2110,25 @@ begin
     vtPointer:       Result := NativeInt(V.VPointer);
     vtClass:         Result := NativeInt(V.VClass);
     vtObject:
-      if V.VObject = nil then
+      if not Assigned(V.VObject) then
         Result := Null
       else
         Result := ObjToVar(V.VObject);
     vtInterface:
-      if IInterface(V.VInterface) = nil then
+      if not Assigned(IInterface(V.VInterface)) then
         Result := Null
       else
         Result := IInterface(V.VInterface);
   end;
+end;
+
+function ToVariants(const Elements: array of const): TVariants;
+var
+  I: Integer;
+begin
+  SetLength(Result, Length(Elements));
+  for I := Low(Elements) to High(Elements) do
+    Result[I] := VarRecToVar(Elements[I]);
 end;
 
 type
@@ -2239,13 +2270,13 @@ end;
 
 procedure TAbstractList.InitLock;
 begin
-  if FLock = nil then
+  if not Assigned(FLock) then
     FLock := TCriticalSection.Create;
 end;
 
 procedure TAbstractList.InitReadWriteLock;
 begin
-  if FReadWriteLock = nil then
+  if not Assigned(FReadWriteLock) then
     FReadWriteLock := TMultiReadExclusiveWriteSynchronizer.Create;
 end;
 
@@ -2789,7 +2820,7 @@ var
   TempItem: PHashItem;
 begin
   HashIndex := GetHashIndex(Item^.HashCode);
-  if FIndices[HashIndex] = nil then begin
+  if not Assigned(FIndices[HashIndex]) then begin
     Item^.Prev := Item;
     Item^.Next := nil;
     FIndices[HashIndex] := Item;
@@ -2801,14 +2832,14 @@ begin
         Item^.Prev := TempItem;
         Item^.Next := TempItem^.Next;
         TempItem^.Next := Item;
-        if Item^.Next = nil then
+        if not Assigned(Item^.Next) then
           FIndices[HashIndex]^.Prev := Item
         else
           Item^.Next^.Prev := Item;
         Exit;
       end;
       TempItem := TempItem^.Prev;
-    until TempItem^.Next = nil;
+    until not Assigned(TempItem^.Next);
     Item^.Prev := Findices[HashIndex]^.Prev;
     Item^.Next := Findices[HashIndex];
     Item^.Next^.Prev := Item;
@@ -2832,7 +2863,7 @@ var
   Item: PHashItem;
 begin
   for I := 0 to FCapacity - 1 do begin
-    while FIndices[I] <> nil do begin
+    while Assigned(FIndices[I]) do begin
       Item := FIndices[I]^.Next;
       Dispose(FIndices[I]);
       FIndices[I] := Item;
@@ -2847,15 +2878,15 @@ var
 begin
   HashIndex := GetHashIndex(HashCode);
   Result := FIndices[HashIndex];
-  while Result <> nil do begin
+  while Assigned(Result) do begin
     if Result^.Index = Index then begin
       if Result^.Prev = Result then
         FIndices[HashIndex] := nil
-      else if Result^.Prev^.Next = nil then begin
+      else if not Assigned(Result^.Prev^.Next) then begin
         Findices[HashIndex] := Result^.Next;
         Result^.Next^.Prev := Result^.Prev;
       end
-      else if Result^.Next = nil then begin
+      else if not Assigned(Result^.Next) then begin
         Result^.Prev^.Next := Result^.Next;
         Findices[HashIndex]^.Prev := Result^.Prev;
       end
@@ -2874,7 +2905,7 @@ var
   Item: PHashItem;
 begin
   Item := Remove(HashCode, Index);
-  if Item <> nil then begin
+  if Assigned(Item) then begin
     Dispose(Item);
     Dec(FCount);
   end;
@@ -2909,7 +2940,7 @@ begin
   Result := -1;
   HashIndex := GetHashIndex(HashCode);
   Item := FIndices[HashIndex];
-  while Item <> nil do begin
+  while Assigned(Item) do begin
     if (Item^.HashCode = HashCode) and CompareProc(Item^.Index, Value) then begin
       Result := Item^.Index;
       Exit;
@@ -2927,7 +2958,7 @@ begin
   Result := -1;
   HashIndex := GetHashIndex(HashCode);
   Item := FIndices[HashIndex];
-  if Item = nil then Exit;
+  if not Assigned(Item) then Exit;
   Item := Item^.Prev;
   repeat
     if (Item^.HashCode = HashCode) and CompareProc(Item^.Index, Value) then begin
@@ -2935,7 +2966,7 @@ begin
       Exit;
     end;
     Item := Item^.Prev;
-  until Item^.Next = nil;
+  until not Assigned(Item^.Next);
 end;
 
 function THashBucket.Modify(OldHashCode, NewHashCode,
@@ -2972,7 +3003,7 @@ begin
     FCapacity := NewCapacity;
     for I := 0 to OldCapacity - 1 do begin
       Item := OldIndices[I];
-      while Item <> nil do begin
+      while Assigned(Item) do begin
         Next := Item^.Next;
         Insert(Item);
         Item := Next;
@@ -2992,7 +3023,7 @@ end;
 procedure THashedList.Clear;
 begin
   inherited;
-  if FHashBucket <> nil then FHashBucket.Clear;
+  if Assigned(FHashBucket) then FHashBucket.Clear;
 end;
 
 constructor THashedList.Create(ACapacity: Integer; Sync, ReadWriteSync: Boolean);
@@ -3437,13 +3468,13 @@ end;
 
 procedure TAbstractMap.InitLock;
 begin
-  if FLock = nil then
+  if not Assigned(FLock) then
     FLock := TCriticalSection.Create;
 end;
 
 procedure TAbstractMap.InitReadWriteLock;
 begin
-  if FReadWriteLock = nil then
+  if not Assigned(FReadWriteLock) then
     FReadWriteLock := TMultiReadExclusiveWriteSynchronizer.Create;
 end;
 
@@ -3961,6 +3992,28 @@ begin
 end;
 {$ENDIF}
 
+function ShuffleStringArray(const StringArray: array of string): TStringArray;
+var
+  I, J, N: Integer;
+  Temp: string;
+begin
+  N := Length(StringArray);
+  for I := 0 to N - 1 do begin
+    Result[I] := StringArray[I];
+  end;
+  if N > 1 then begin
+    Randomize;
+    for I := 0 to N - 1 do begin
+      J := Random(N);
+      if I <> J then begin
+        Temp := Result[I];
+        Result[I] := Result[J];
+        Result[J] := Temp;
+      end;
+    end;
+  end;
+end;
+
 {$IF NOT DEFINED(DELPHI2009_UP) AND NOT DEFINED(FPC)}
 const
   MemoryDelta = $2000; { Must be a power of 2 }
@@ -4194,7 +4247,7 @@ begin
         end;
     end;
   end;
-  has_result := (Dest <> nil);
+  has_result := Assigned(Dest);
   if has_result then
     variant(Dest^) := Unassigned;
   case CallDesc^.CallType of
@@ -4287,7 +4340,7 @@ begin
   end
   else begin
 {$IFDEF DELPHI7_UP}
-    Result := GetMethodInfo(Obj, Name) <> nil;
+    Result := Assigned(GetMethodInfo(Obj, Name));
     if Result then Variant(Dest) := ObjectInvoke(Obj, Name, TVariants(Arguments));
 {$ELSE}
     Result := False;
@@ -4303,7 +4356,7 @@ var
 begin
   Obj := GetInstance(V);
   Info := GetPropInfo(PTypeInfo(Obj.ClassInfo), Name);
-  Result := Info <> nil;
+  Result := Assigned(Info);
   if Result then Variant(Dest) := HproseCommon.GetPropValue(Obj, Info);
 end;
 
@@ -4315,7 +4368,7 @@ var
 begin
   Obj := GetInstance(V);
   Info := GetPropInfo(PTypeInfo(Obj.ClassInfo), Name);
-  Result := Info <> nil;
+  Result := Assigned(Info);
   if Result then HproseCommon.SetPropValue(Obj, Info, Variant(Value));
 end;
 
@@ -4391,7 +4444,7 @@ end;
 
 function TVarObjectType.IsClear(const V: TVarData): Boolean;
 begin
-  Result := V.VPointer = nil;
+  Result := not Assigned(V.VPointer);
 end;
 
 function ListSplit(ListClass: TListClass; Str: string;
@@ -4699,10 +4752,10 @@ begin
   FUserData[Key] := Value;
 end;
 
-constructor TContext.Create(AUserData: IMap);
+constructor TContext.Create(const AUserData: IMap);
 begin
   FUserData := TCaseInsensitiveHashMap.Create(16, 0.75, False);
-  if AUserData <> nil then FUserData.PutAll(AUserData);
+  if Assigned(AUserData) then FUserData.PutAll(AUserData);
 end;
 
 { TFilterList }
@@ -4723,11 +4776,6 @@ begin
     VarToIntf(F, IFilter, Result);
 end;
 
-procedure TFilterList.Put(Index: Integer; const Value: IFilter);
-begin
-  FFilters[Index] := Value;
-end;
-
 function TFilterList.GetCount: Integer;
 begin
   Result := FFilters.Count;
@@ -4735,7 +4783,7 @@ end;
 
 function TFilterList.Add(const Filter: IFilter): TFilterList;
 begin
-  FFilters.Add(Filter);
+  if Assigned(Filter) then FFilters.Add(Filter);
   Result := Self;
 end;
 
@@ -4745,7 +4793,7 @@ begin
   Result := Self;
 end;
 
-function TFilterList.InputFilter(const Data: TBytes; const Context: TContext
+function TFilterList.InputFilter(var Data: TBytes; const Context: TContext
   ): TBytes;
 var
   I: Integer;
@@ -4758,7 +4806,7 @@ begin
   end;
 end;
 
-function TFilterList.OutputFilter(const Data: TBytes; const Context: TContext
+function TFilterList.OutputFilter(var Data: TBytes; const Context: TContext
   ): TBytes;
 var
   I: Integer;
@@ -4771,81 +4819,107 @@ begin
   end;
 end;
 
-{$IFDEF SUPPORTS_ANONYMOUS_METHOD}
 { THandlerManager }
 
 procedure THandlerManager.AddAfterFilterHandler(const Handler: TFilterHandler);
 var
-  Next: TNextFilterHandler;
-  I: Integer;
+  Next: PNextFilterHandler;
 begin
-  FAfterFilterHandlers.Add(Handler);
-  Next := FDefaultAfterFilterHandler;
-  for I := FAfterFilterHandlers.Count - 1 downto 0 do
-    Next := GetNextFilterHandler(Next, FAfterFilterHandlers[I]);
-  FAfterFilterHandler := Next;
+  Next := GetNextFilterHandler(FDefaultAfterFilterHandler, Handler);
+  if not Assigned(FLastAfterFilterHandler) then begin
+    FLastAfterFilterHandler := Next;
+    FAfterFilterHandler := Next;
+  end
+  else begin
+    FLastAfterFilterHandler^.Next := Next;
+    FLastAfterFilterHandler := Next;
+  end
 end;
 
 procedure THandlerManager.AddBeforeFilterHandler(const Handler: TFilterHandler);
 var
-  Next: TNextFilterHandler;
-  I: Integer;
+  Next: PNextFilterHandler;
 begin
-  FBeforeFilterHandlers.Add(Handler);
-  Next := FDefaultBeforeFilterHandler;
-  for I := FBeforeFilterHandlers.Count - 1 downto 0 do
-    Next := GetNextFilterHandler(Next, FBeforeFilterHandlers[I]);
-  FBeforeFilterHandler := Next;
+  Next := GetNextFilterHandler(FDefaultBeforeFilterHandler, Handler);
+  if not Assigned(FLastBeforeFilterHandler) then begin
+    FLastBeforeFilterHandler := Next;
+    FBeforeFilterHandler := Next;
+  end
+  else begin
+    FLastBeforeFilterHandler^.Next := Next;
+    FLastBeforeFilterHandler := Next;
+  end
 end;
 
 procedure THandlerManager.AddInvokeHandler(const Handler: TInvokeHandler);
 var
-  Next: TNextInvokeHandler;
-  I: Integer;
+  Next: PNextInvokeHandler;
 begin
-  FInvokeHandlers.Add(Handler);
-  Next := FDefaultInvokeHandler;
-  for I := FInvokeHandlers.Count - 1 downto 0 do
-    Next := GetNextInvokeHandler(Next, FInvokeHandlers[I]);
-  FInvokeHandler := Next;
+  Next := GetNextInvokeHandler(FDefaultInvokeHandler, Handler);
+  if not Assigned(FLastInvokeHandler) then begin
+    FLastInvokeHandler := Next;
+    FInvokeHandler := Next;
+  end
+  else begin
+    FLastInvokeHandler^.Next := Next;
+    FLastInvokeHandler := Next;
+  end
 end;
 
-constructor THandlerManager.Create;
+constructor THandlerManager.Create(const AInvokeHandler: TInvokeHandler;
+  const ABeforeFilterHandler: TFilterHandler;
+  const AAfterFilterHandler: TFilterHandler);
 begin
   inherited Create;
-  FInvokeHandlers := TList<TInvokeHandler>.Create();
-  FBeforeFilterHandlers := TList<TFilterHandler>.Create();
-  FAfterFilterHandlers := TList<TFilterHandler>.Create();
+  FDefaultInvokeHandler := GetNextInvokeHandler(nil, AInvokeHandler);
+  FDefaultBeforeFilterHandler := GetNextFilterHandler(nil, ABeforeFilterHandler);
+  FDefaultAfterFilterHandler := GetNextFilterHandler(nil, AAfterFilterHandler);
+  FInvokeHandler := FDefaultInvokeHandler;
+  FBeforeFilterHandler := FDefaultBeforeFilterHandler;
+  FAfterFilterHandler := FDefaultAfterFilterHandler;
+  FLastInvokeHandler := nil;
+  FLastBeforeFilterHandler := nil;
+  FLastAfterFilterHandler := nil;
 end;
 
 destructor THandlerManager.Destroy;
+var
+  ANextInvokeHandler: PNextInvokeHandler;
+  ANextFilterHandler: PNextFilterHandler;
 begin
-  FreeAndNil(FInvokeHandlers);
-  FreeAndNil(FBeforeFilterHandlers);
-  FreeAndNil(FAfterFilterHandlers);
+  While Assigned(FInvokeHandler) do begin
+    ANextInvokeHandler := FInvokeHandler;
+    FInvokeHandler := FInvokeHandler^.Next;
+    Dispose(ANextInvokeHandler);
+  end;
+  While Assigned(FBeforeFilterHandler) do begin
+    ANextFilterHandler := FBeforeFilterHandler;
+    FBeforeFilterHandler := FBeforeFilterHandler^.Next;
+    Dispose(ANextFilterHandler);
+  end;
+  While Assigned(FAfterFilterHandler) do begin
+    ANextFilterHandler := FAfterFilterHandler;
+    FAfterFilterHandler := FAfterFilterHandler^.Next;
+    Dispose(ANextFilterHandler);
+  end;
   inherited Destroy;
 end;
 
-function THandlerManager.GetNextFilterHandler(const Next: TNextFilterHandler;
-  const Handler: TFilterHandler): TNextFilterHandler;
+function THandlerManager.GetNextInvokeHandler(const Next: PNextInvokeHandler;
+  const Handler: TInvokeHandler): PNextInvokeHandler;
 begin
-  Result := function(const Request: TBytes; const Context: TContext): TBytes
-  begin
-    Result := Handler(Request, Context, Next)
-  end;
+  New(Result);
+  Result^.Handler := Handler;
+  Result^.Next := Next;
 end;
 
-function THandlerManager.GetNextInvokeHandler(const Next: TNextInvokeHandler;
-  const Handler: TInvokeHandler): TNextInvokeHandler;
+function THandlerManager.GetNextFilterHandler(const Next: PNextFilterHandler;
+  const Handler: TFilterHandler): PNextFilterHandler;
 begin
-  Result := function(const Name: String;
-                    var Args: TVariants;
-                    const Context: TContext): Variant
-  begin
-    Result := Handler(Name, Args, Context, Next)
-  end;
+  New(Result);
+  Result^.Handler := Handler;
+  Result^.Next := Next;
 end;
-{$ENDIF}
 
 initialization
   HproseClassMap := TCaseInsensitiveHashedMap.Create(False, True);
