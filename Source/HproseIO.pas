@@ -499,6 +499,7 @@ type
 
 function TFakeReaderRefer.ReadRef(I: Integer): Variant;
 begin
+  Result := Unassigned;
   raise Exception.Create('Unexpected serialize tag "r" in stream');
 end;
 
@@ -602,7 +603,7 @@ begin
     htClass: Result := 'Class';
     htObject: Result := 'Object';
     htRef: Result := 'Object Reference';
-    htError: raise Exception.Create(ReadString());
+    htError: raise Exception.Create(string(ReadString()));
   else
     raise UnexpectedTag(Tag);
   end;
@@ -623,12 +624,13 @@ var
 begin
   Tag := 0;
   FStream.ReadBuffer(Tag, 1);
-  if Pos(Char(Tag), StringOf(ExpectTags)) = 0 then raise UnexpectedTag(Tag, StringOf(ExpectTags));
+  if Pos(Char(Tag), StringOf(ExpectTags)) = 0 then raise UnexpectedTag(Tag, string(StringOf(ExpectTags)));
   Result := Tag;
 end;
 
 function THproseReader.ReadByte: Byte;
 begin
+  Result := 0;
   FStream.ReadBuffer(Result, 1);
 end;
 
@@ -644,7 +646,7 @@ begin
     while (FStream.Read(C, 1) = 1) and (C <> Tag) do BS.Write(C, 1);
     Bytes := BS.Bytes;
     SetLength(Bytes, BS.Size);
-    Result := StringOf(Bytes);
+    Result := string(StringOf(Bytes));
   finally
     BS.Free;
   end;
@@ -691,7 +693,7 @@ begin
       I := FStream.Read(C, 1);
     end;
   while (I = 1) and (C <> Tag) do begin
-    Result := Result * 10 + Int64(C - Byte('0')) * S;
+    Result := Result * 10 + (Int64(C) - Byte('0')) * S;
     I := FStream.Read(C, 1);
   end;
 end;
@@ -977,7 +979,7 @@ var
 begin
   SetLength(Bytes, 38);
   FStream.ReadBuffer(Bytes[0], 38);
-  Result := StringOf(Bytes);
+  Result := string(StringOf(Bytes));
   FRefer.SetRef(Result);
 end;
 
@@ -1277,7 +1279,7 @@ begin
   Supports(Instance, IID, Result);
   FRefer.SetRef(Result);
   for I := 0 to Count - 1 do begin
-    PropInfo := GetPropInfo(AClass, ReadString);
+    PropInfo := GetPropInfo(AClass, string(ReadString));
     if Assigned(PropInfo) then
       HproseCommon.SetPropValue(Instance, PropInfo,
                    Unserialize(PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF}))
@@ -1295,7 +1297,7 @@ begin
   Result := AClass.Create;
   FRefer.SetRef(ObjToVar(Result));
   for I := 0 to Count - 1 do begin
-    PropInfo := GetPropInfo(AClass, ReadString);
+    PropInfo := GetPropInfo(AClass, string(ReadString));
     if Assigned(PropInfo) then
       HproseCommon.SetPropValue(Result, PropInfo,
                    Unserialize(PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF}))
@@ -1317,7 +1319,7 @@ var
   AClass: TClass;
   Key: Variant;
 begin
-  Name := ReadStringAsWideString;
+  Name := string(ReadStringAsWideString);
   Count := ReadInt(HproseTagOpenbrace);
   AttrNames := TArrayList.Create(Count, False) as IList;
   for I := 0 to Count - 1 do AttrNames[I] := ReadString;
@@ -1507,7 +1509,7 @@ begin
     htFalse: Result := 0;
     htTrue: Result := 1;
     htUTF8Char: Result := StrToInt(string(ReadUTF8CharWithoutTag));
-    htString: Result := StrToInt(ReadStringWithoutTag);
+    htString: Result := StrToInt(string(ReadStringWithoutTag));
   else
     raise CastError(TagToString(Tag), 'Integer');
   end;
@@ -1538,7 +1540,7 @@ begin
     htFalse: Result := 0;
     htTrue: Result := 1;
     htUTF8Char: Result := StrToInt64(string(ReadUTF8CharWithoutTag));
-    htString: Result := StrToInt64(ReadStringWithoutTag);
+    htString: Result := StrToInt64(string(ReadStringWithoutTag));
   else
     raise CastError(TagToString(Tag), 'Int64');
   end;
@@ -1571,10 +1573,10 @@ begin
     htTrue: Result := 1;
 {$IFDEF FPC}
     htUTF8Char: Result := StrToQWord(string(ReadUTF8CharWithoutTag));
-    htString: Result := StrToQWord(ReadStringWithoutTag);
+    htString: Result := StrToQWord(string(ReadStringWithoutTag));
 {$ELSE}
     htUTF8Char: Result := StrToInt64(string(ReadUTF8CharWithoutTag));
-    htString: Result := StrToInt64(ReadStringWithoutTag);
+    htString: Result := StrToInt64(string(ReadStringWithoutTag));
 {$ENDIF}
   else
     raise CastError(TagToString(Tag), 'UInt64');
@@ -1609,7 +1611,7 @@ begin
     htNaN: Result := NaN;
     htInfinity: Result := ReadInfinityWithoutTag;
     htUTF8Char: Result := StrToFloat(string(ReadUTF8CharWithoutTag));
-    htString: Result := StrToFloat(ReadStringWithoutTag);
+    htString: Result := StrToFloat(string(ReadStringWithoutTag));
   else
     raise CastError(TagToString(Tag), 'Extended');
   end;
@@ -1640,7 +1642,7 @@ begin
     htFalse: Result := 0;
     htTrue: Result := 1;
     htUTF8Char: Result := StrToCurr(string(ReadUTF8CharWithoutTag));
-    htString: Result := StrToCurr(ReadStringWithoutTag);
+    htString: Result := StrToCurr(string(ReadStringWithoutTag));
   else
     raise CastError(TagToString(Tag), 'Currency');
   end;
@@ -1665,7 +1667,7 @@ begin
     htTrue: Result := True;
     htInfinity: begin ReadInfinityWithoutTag; Result := True; end;
     htUTF8Char: Result := StrToBool(string(ReadUTF8CharWithoutTag));
-    htString: Result := StrToBool(ReadStringWithoutTag);
+    htString: Result := StrToBool(string(ReadStringWithoutTag));
   else
     raise CastError(TagToString(Tag), 'Boolean');
   end;
@@ -1684,7 +1686,7 @@ begin
     htDouble: Result := TimeStampToDateTime(MSecsToTimeStamp(Trunc(ReadDoubleWithoutTag)));
     htDate: Result := ReadDateWithoutTag;
     htTime: Result := ReadTimeWithoutTag;
-    htString: Result := StrToDateTime(ReadStringWithoutTag);
+    htString: Result := StrToDateTime(string(ReadStringWithoutTag));
     htRef: Result := ReadRef;
   else
     raise CastError(TagToString(Tag), 'TDateTime');
@@ -1721,6 +1723,22 @@ begin
   Tag := 0;
   FStream.ReadBuffer(Tag, 1);
   case Tag of
+{$IFNDEF NEXTGEN}
+    Byte('0')..Byte('9'): Result := WideString(Char(Tag));
+    htInteger,
+    htLong,
+    htDouble: Result := WideString(ReadUntil(HproseTagSemicolon));
+    htNull,
+    htEmpty: Result := '';
+    htFalse: Result := 'False';
+    htTrue: Result := 'True';
+    htNaN: Result := WideString(FloatToStr(NaN));
+    htInfinity: Result := WideString(FloatToStr(ReadInfinityWithoutTag));
+    htDate: Result := WideString(DateTimeToStr(ReadDateWithoutTag));
+    htTime: Result := WideString(DateTimeToStr(ReadTimeWithoutTag));
+    htUTF8Char: Result := WideString(ReadUTF8CharWithoutTag);
+    htGuid: Result := WideString(ReadGuidWithoutTag);
+{$ELSE}
     Byte('0')..Byte('9'): Result := string(Char(Tag));
     htInteger,
     htLong,
@@ -1734,9 +1752,10 @@ begin
     htDate: Result := DateTimeToStr(ReadDateWithoutTag);
     htTime: Result := DateTimeToStr(ReadTimeWithoutTag);
     htUTF8Char: Result := string(ReadUTF8CharWithoutTag);
+    htGuid: Result := ReadGuidWithoutTag;
+{$ENDIF}
     htString: Result := ReadStringWithoutTag;
     htBytes: Result := StringOf(ReadBytesWithoutTag);
-    htGuid: Result := ReadGuidWithoutTag;
     htRef: Result := ReadRef;
   else
     raise CastError(TagToString(Tag), 'String');
@@ -1770,7 +1789,7 @@ begin
   case Tag of
     htNull,
     htEmpty: Result := '';
-    htString: Result := GuidToString(StringToGuid(ReadStringWithoutTag));
+    htString: Result := GuidToString(StringToGuid(string(ReadStringWithoutTag)));
     htGuid: Result := ReadGuidWithoutTag;
     htRef: Result := ReadRef;
   else
@@ -2463,9 +2482,9 @@ var
   TypeName: string;
   AClass: TClass;
 begin
+  Result := Unassigned;
   if not Assigned(Info) then Result := Unserialize
   else begin
-    Result := Unassigned;
     TypeName := GetTypeName(Info);
     if TypeName = 'Boolean' then
       Result := ReadBoolean
@@ -3625,7 +3644,7 @@ begin
   FStream.WriteBuffer(HproseTagList, 1);
   if Count > 0 then WriteRawBytes(BytesOf(IntToStr(Count)));
   FStream.WriteBuffer(HproseTagOpenbrace, 1);
-  for I := 0 to Count - 1 do WriteStringWithRef(SS[I]);
+  for I := 0 to Count - 1 do WriteStringWithRef(WideString(SS[I]));
   FStream.WriteBuffer(HproseTagClosebrace, 1);
 end;
 

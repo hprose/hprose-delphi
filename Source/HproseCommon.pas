@@ -2987,6 +2987,7 @@ var
   OldIndices, NewIndices: THashItemDynArray;
   Item, Next: PHashItem;
 begin
+  OldIndices := nil;
   if (NewCapacity < 0) or (NewCapacity > MaxListSize) then
     raise EHashBucketError.CreateResFmt(@SListCapacityError, [NewCapacity]);
   if FCapacity = NewCapacity then Exit;
