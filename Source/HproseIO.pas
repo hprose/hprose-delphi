@@ -1735,6 +1735,7 @@ begin
     htTime: Result := DateTimeToStr(ReadTimeWithoutTag);
     htUTF8Char: Result := string(ReadUTF8CharWithoutTag);
     htString: Result := ReadStringWithoutTag;
+    htBytes: Result := StringOf(ReadBytesWithoutTag);
     htGuid: Result := ReadGuidWithoutTag;
     htRef: Result := ReadRef;
   else
@@ -1751,6 +1752,7 @@ begin
   case Tag of
     htNull,
     htEmpty: Result := Null;
+    htString: Result := BytesOf(ReadStringWithoutTag);
     htBytes: Result := ReadBytesWithoutTag;
     htList: Result := ReadDynArrayWithoutTag(varByte);
     htRef: Result := ReadRef;
@@ -1785,6 +1787,7 @@ begin
   case Tag of
     htNull,
     htEmpty: Result := Null;
+    htString: Result := BytesOf(ReadStringWithoutTag);
     htBytes: Result := ReadBytesWithoutTag;
     htList: Result := ReadDynArrayWithoutTag(varType);
     htRef: Result := ReadRef;
@@ -1803,6 +1806,7 @@ begin
   case Tag of
     htNull,
     htEmpty: Result := Null;
+    htString: Result := Variant(BytesOf(ReadStringWithoutTag));
     htBytes: Result := ReadBytesWithoutTag;
     htList: begin
       Count := ReadInt(HproseTagOpenbrace);
@@ -1811,6 +1815,7 @@ begin
       for I := 0 to Count - 1 do Result[I] := Unserialize;
       CheckTag(HproseTagClosebrace);
     end;
+    htRef: Result := ReadRef;
   else
     raise CastError(TagToString(Tag), 'TVariants');
   end;
@@ -1987,6 +1992,7 @@ begin
   case Tag of
     htNull,
     htEmpty: Pointer(DynArray) := nil;
+    htString: DynArrayFromVariant(Pointer(DynArray), BytesOf(ReadStringWithoutTag), Info);
     htBytes: DynArrayFromVariant(Pointer(DynArray), ReadBytesWithoutTag, Info);
     htList: ReadArray(Info, DynArray);
     htRef: begin

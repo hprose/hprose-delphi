@@ -13,3 +13,5 @@ Lazarus/HproseLnet.pas
 *.ico
 *.identcache
 *.rsj
+
+*.~pas
