@@ -14,7 +14,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: Nov 15, 2016                             *
+ * LastModified: Nov 21, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -200,7 +200,8 @@ type
     function GetFullName(const AName: string): string;
     procedure SetURI(const AValue: string);
 {$IFDEF SUPPORTS_GENERICS}
-    function VariantTo<T>(const AValue: Variant): T;
+    procedure VarToT(Info: PTypeInfo; const Src: Variant; out Dst);
+    function VarTo<T>(const AValue: Variant): T;
 {$ENDIF}
   protected
     procedure InitURI(const AValue: string); virtual;
@@ -1097,8 +1098,11 @@ begin
   Context := TClientContext.Create(Self, ASettings);
   Handler := FHandlers.InvokeHandler^.Handler;
   Next := FHandlers.InvokeHandler^.Next;
-  Result := Handler(FullName, Args, Context, Next);
-  FreeAndNil(Context);
+  try
+    Result := Handler(FullName, Args, Context, Next);
+  finally
+    FreeAndNil(Context);
+  end;
 end;
 
 // Asynchronous invoke
@@ -1139,8 +1143,88 @@ begin
 end;
 
 {$IFDEF SUPPORTS_GENERICS}
-function THproseClient.VariantTo<T>(const AValue: Variant): T;
+
+procedure THproseClient.VarToT(Info: PTypeInfo; const Src: Variant; out Dst);
+var
+  TypeData: PTypeData;
+  TypeName: string;
+  AClass: TClass;
 begin
+  TypeName := GetTypeName(Info);
+  if TypeName = 'Boolean' then
+    Boolean(Dst) := TVarData(Src).VBoolean
+  else if (TypeName = 'TDateTime') or
+          (TypeName = 'TDate') or
+          (TypeName = 'TTime') then
+    TDateTime(Dst) := VarToDateTime(Src)
+  else if TypeName = 'UInt64' then
+    UInt64(Dst) := TVarData(Src).VUInt64
+  else begin
+    TypeData := GetTypeData(Info);
+    case Info^.Kind of
+      tkInteger, tkEnumeration, tkSet:
+        case TypeData^.OrdType of
+          otSByte:
+            ShortInt(Dst) := TVarData(Src).VShortInt;
+          otUByte:
+            Byte(Dst) := TVarData(Src).VByte;
+          otSWord:
+            SmallInt(Dst) := TVarData(Src).VSmallInt;
+          otUWord:
+            Word(Dst) := TVarData(Src).VWord;
+          otSLong:
+            Integer(Dst) := TVarData(Src).VInteger;
+          otULong:
+            LongWord(Dst) := TVarData(Src).VLongWord;
+        end;
+{$IFNDEF NEXTGEN}
+      tkChar:
+        AnsiChar(Dst) := AnsiChar(VarToStr(Src)[1]);
+      tkWChar:
+        WideChar(Dst) := WideChar(VarToWideStr(Src)[1]);
+{$ENDIF}
+      tkFloat:
+        case TypeData^.FloatType of
+          ftSingle:
+            Single(Dst) := TVarData(Src).VSingle;
+          ftDouble:
+            Double(Dst) := TVarData(Src).VDouble;
+          ftExtended:
+            Extended(Dst) := Extended(Src);
+          ftComp:
+            Comp(Dst) := Comp(Src);
+          ftCurr:
+            Currency(Dst) := TVarData(Src).VCurrency;
+        end;
+{$IFNDEF NEXTGEN}
+        tkString:
+          ShortString(Dst) := ShortString(VarToStr(Src));
+        tkLString:
+          AnsiString(Dst) := AnsiString(VarToStr(Src));
+        tkWString:
+          WideString(Dst) := VarToWideStr(Src);
+{$ENDIF}
+{$IFDEF SUPPORTS_UNICODE}
+        tkUString:
+          UnicodeString(Dst) := UnicodeString(TVarData(Src).VUString);
+{$ENDIF}
+        tkInt64:
+          Int64(Dst) := TVarData(Src).VInt64;
+        tkInterface:
+          VarToIntf(Src, TypeData^.Guid, Dst);
+        tkDynArray:
+          DynArrayFromVariant(Pointer(Dst), Src, Info);
+        tkClass: begin
+          AClass := TypeData^.ClassType;
+          VarToObj(Src, AClass, Dst);
+        end;
+    end;
+  end;
+end;
+
+function THproseClient.VarTo<T>(const AValue: Variant): T;
+begin
+  VarToT(TypeInfo(T), AValue, Result);
 end;
 
 // Synchronous invoke
@@ -1168,12 +1252,19 @@ var
   Next: PNextInvokeHandler;
 begin
   FullName := GetFullName(AName);
-  ASettings.ResultType := TypeInfo(T);
-  Context := TClientContext.Create(Self, ASettings);
+  if ASettings = nil then
+    Context := TClientContext.Create(Self, TInvokeSettings.Create(['ResultType', TypeInfo(T)]))
+  else begin
+    ASettings.ResultType := TypeInfo(T);
+    Context := TClientContext.Create(Self, ASettings);
+  end;
   Handler := FHandlers.InvokeHandler^.Handler;
   Next := FHandlers.InvokeHandler^.Next;
-  Result := Self.VariantTo<T>(Handler(FullName, Args, Context, Next));
-  FreeAndNil(Context);
+  try
+    Result := Self.VarTo<T>(Handler(FullName, Args, Context, Next));
+  finally
+    FreeAndNil(Context);
+  end;
 end;
 
 procedure THproseClient.Invoke<T>(const AName: string;
