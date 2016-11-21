@@ -14,7 +14,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: Nov 14, 2016                             *
+ * LastModified: Nov 21, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -1785,6 +1785,7 @@ begin
   case Tag of
     htNull,
     htEmpty: Result := Null;
+    htBytes: Result := ReadBytesWithoutTag;
     htList: Result := ReadDynArrayWithoutTag(varType);
     htRef: Result := ReadRef;
   else
@@ -1802,6 +1803,7 @@ begin
   case Tag of
     htNull,
     htEmpty: Result := Null;
+    htBytes: Result := ReadBytesWithoutTag;
     htList: begin
       Count := ReadInt(HproseTagOpenbrace);
       SetLength(Result, Count);
@@ -1985,6 +1987,7 @@ begin
   case Tag of
     htNull,
     htEmpty: Pointer(DynArray) := nil;
+    htBytes: DynArrayFromVariant(Pointer(DynArray), ReadBytesWithoutTag, Info);
     htList: ReadArray(Info, DynArray);
     htRef: begin
       Pointer(DynArray) := Pointer(NativeInt(ReadRef));
