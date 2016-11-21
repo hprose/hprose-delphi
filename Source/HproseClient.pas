@@ -850,7 +850,7 @@ begin
   HproseWriter := THproseWriter.Create(OutStream, Settings.Simple);
   try
     OutStream.Write(HproseTagCall, 1);
-    HproseWriter.WriteString(AName);
+    HproseWriter.WriteString(WideString(AName));
     if (Length(Args) > 0) or Settings.ByRef then begin
       HproseWriter.Reset;
       HproseWriter.WriteArray(Args);
@@ -884,7 +884,7 @@ begin
     raise Exception.Create('unexpected EOF');
   N := Length(Data);
   if Data[N - 1] <> HproseTagEnd then
-    raise Exception.Create('Wrong Response: ' + #13#10 + StringOf(Data));
+    raise Exception.Create('Wrong Response: ' + #13#10 + string(StringOf(Data)));
   Result := Null;
   if Settings.Mode = RawWithEndTag then Result := Data
   else if Settings.Mode = Raw then begin
@@ -910,9 +910,9 @@ begin
         end
       end
       else if ATag = HproseTagError then
-        raise Exception.Create(HproseReader.ReadString());
+        raise Exception.Create(string(HproseReader.ReadString()));
       if ATag <> HproseTagEnd then
-        raise Exception.Create('Wrong Response: ' + #13#10 + StringOf(Data));
+        raise Exception.Create('Wrong Response: ' + #13#10 + string(StringOf(Data)));
     finally
       HproseReader.Free;
       InStream.Free;
