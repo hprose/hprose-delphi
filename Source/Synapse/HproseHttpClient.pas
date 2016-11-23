@@ -75,7 +75,7 @@ type
     FProxyUser: string;
     FProxyPass: string;
     FUserAgent: string;
-    FConnectionTimeout： Integer; 
+    FConnectionTimeout: Integer;
   protected
     function SendAndReceive(const Data: TBytes;
       const Context: TClientContext): TBytes; override;
@@ -573,7 +573,7 @@ begin
   FProxyUser := '';
   FProxyPass := '';
   FUserAgent := 'Hprose Http Client for Delphi (Synapse)';
-  FConnectionTimeout ：= 10000；
+  FConnectionTimeout := 10000;
 end;
 
 destructor THproseHttpClient.Destroy;
