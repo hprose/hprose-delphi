@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Nov 14, 2016                             *
+ * LastModified: Nov 23, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -768,6 +768,8 @@ operator :=(const Source : TObject) Dest : Variant; inline;
 {$ENDIF}
 
 function VarEquals(const Left, Right: Variant): Boolean;
+function VarRef(const Value: Variant): Variant;
+function VarUnref(const Value: Variant): Variant;
 
 function GetPropValue(Instance: TObject; PropInfo: PPropInfo): Variant; overload;
 function GetPropValue(Instance: TObject; const Name: string): Variant; overload;
@@ -1206,7 +1208,7 @@ begin
   Result := True;
   try
     P := FindVarData(Value);
-    if P^.VType = varObject then begin
+    if (P^.VType = varObject) and (TObject(P^.VPointer) is AClass) then begin
       Obj := TObject(P^.VPointer) as AClass;
       Result := Assigned(Obj) or not Assigned(P^.VPointer);
     end
@@ -1821,6 +1823,58 @@ begin
       end
     else
       Result := False;
+  end;
+end;
+
+function VarRef(const Value: Variant): Variant;
+var
+  VType: TVarType;
+begin
+  if VarIsByRef(Value) then
+    Result := Value
+  else if VarIsArray(Value, False) then
+    Result := VarArrayRef(Value)
+  else begin
+    VarClear(Result);
+    VType := VarType(Value);
+    if VType in [varSmallint, varInteger, varSingle, varDouble,
+                 varCurrency, varDate, varOleStr, varDispatch,
+                 varError, varBoolean, varUnknown, varShortInt,
+                 varByte ,varWord, varLongWord, varInt64
+                 {$IFDEF DELPHI2009_UP}, varUInt64{$ENDIF}] then begin
+      TVarData(Result).VType := VType or varByRef;
+      TVarData(Result).VPointer := @TVarData(Value).VPointer;
+    end
+{$IFDEF DELPHI6}
+    else if VType <> varVariant then begin
+      TVarData(Result).VType := VType or varByRef;
+      TVarData(Result).VPointer := @TVarData(Value).VPointer;
+    end
+{$ENDIF}
+    else begin
+      TVarData(Result).VType := varByRef or varVariant;
+      TVarData(Result).VPointer := @TVarData(Value);
+    end;
+  end;
+end;
+
+function VarUnref(const Value: Variant): Variant;
+var
+  P: PVarData;
+begin
+  if not VarIsByRef(Value) then
+    Result := Value
+  else begin
+    VarClear(Result);
+    P := FindVarData(Value);
+    if (P^.VType and varByRef) = 0 then begin
+      TVarData(Result).VType := P^.VType;
+      TVarData(Result).VInt64 := P^.VInt64;
+    end
+    else begin
+      TVarData(Result).VType := P^.VType and (not varByRef);
+      TVarData(Result).VInt64 := Int64(P^.VPointer^);
+    end;
   end;
 end;
 

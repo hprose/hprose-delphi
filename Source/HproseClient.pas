@@ -14,7 +14,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: Nov 21, 2016                             *
+ * LastModified: Nov 23, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -416,6 +416,13 @@ begin
   FNext := Next;
 end;
 
+procedure ByValue(var Args: TVariants);
+var
+  I: Integer;
+begin
+  for I := 0 to Length(Args) - 1 do Args[I] := VarUnref(Args[I]); 
+end;
+
 { TAsyncInvokeThread }
 
 procedure TAsyncInvokeThread.Execute;
@@ -455,6 +462,7 @@ begin
   FClient := Client;
   FName := AName;
   FArgs := Args;
+  ByValue(FArgs);
   FCallback1 := Callback;
   FSettings := ASettings;
   FError := nil;
@@ -469,6 +477,7 @@ begin
   FClient := Client;
   FName := AName;
   FArgs := Args;
+  ByValue(FArgs);
   FCallback := Callback;
   FSettings := ASettings;
   FError := nil;
@@ -507,6 +516,7 @@ begin
   FClient := Client;
   FName := AName;
   FArgs := Args;
+  ByValue(FArgs);
   FCallback := Callback;
   FSettings := ASettings;
   FError := nil;
@@ -527,6 +537,7 @@ begin
   FClient := Client;
   FName := AName;
   FArgs := Args;
+  ByValue(FArgs);
   FCallback := Callback;
   FSettings := ASettings;
   FError := nil;
