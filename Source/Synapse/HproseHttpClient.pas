@@ -14,7 +14,7 @@
  *                                                        *
  * hprose synapse http client unit for delphi.            *
  *                                                        *
- * LastModified: Nov 14, 2016                             *
+ * LastModified: Nov 23, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -526,6 +526,7 @@ begin
   HttpSend.ProxyUser := FProxyUser;
   HttpSend.ProxyPass := FProxyPass;
   HttpSend.UserAgent := FUserAgent;
+  HttpSend.Sock.ConnectionTimeout := Context.Settings.Timeout;
   HttpSend.Timeout := Context.Settings.Timeout;
   HttpSend.Protocol := '1.1';
   HttpSend.MimeType := 'application/hprose';
