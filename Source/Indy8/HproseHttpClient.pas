@@ -14,7 +14,7 @@
  *                                                        *
  * hprose indy http client unit for delphi.               *
  *                                                        *
- * LastModified: Nov 14, 2016                             *
+ * LastModified: Nov 23, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -43,6 +43,7 @@ type
     FUserAgent: string;
     FKeepAlive: Boolean;
     FKeepAliveTimeout: Integer;
+    FConnectionTimeout: Integer;
   protected
     function SendAndReceive(const Data: TBytes;
       const Context: TClientContext): TBytes; override;
@@ -83,6 +84,9 @@ type
 
     {:Password for user authorization.}
     property Password: string read FPassword write FPassword;
+
+    {:Define timeout for ConnectionTimeout in milliseconds! Can't work in Indy8}
+    property ConnectionTimeout: Integer read FConnectionTimeout write FConnectionTimeout;
   end;
 
 procedure Register;
@@ -212,6 +216,7 @@ begin
   FProxyUser := '';
   FProxyPass := '';
   FUserAgent := 'Hprose Http Client for Delphi (Indy8)';
+  FConnectionTimeout := 10000;
 end;
 
 destructor THproseHttpClient.Destroy;

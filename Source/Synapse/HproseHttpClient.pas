@@ -69,12 +69,13 @@ type
     FPara: string;
     FHeaders: THeaderList;
     FKeepAlive: Boolean;
-    FKeepAliveTimeout: integer;
+    FKeepAliveTimeout: Integer;
     FProxyHost: string;
     FProxyPort: Integer;
     FProxyUser: string;
     FProxyPass: string;
     FUserAgent: string;
+    FConnectionTimeout： Integer; 
   protected
     function SendAndReceive(const Data: TBytes;
       const Context: TClientContext): TBytes; override;
@@ -92,7 +93,7 @@ type
     property KeepAlive: Boolean read FKeepAlive write FKeepAlive;
 
     {:Define timeout for keepalives in seconds! Default value is 300.}
-    property KeepAliveTimeout: integer read FKeepAliveTimeout write FKeepAliveTimeout;
+    property KeepAliveTimeout: Integer read FKeepAliveTimeout write FKeepAliveTimeout;
 
     {:Address of proxy server (IP address or domain name).}
     property ProxyHost: string read FProxyHost write FProxyHost;
@@ -115,6 +116,9 @@ type
 
     {:Password for user authorization.}
     property Password: string read FPassword write FPassword;
+
+    {:Define timeout for ConnectionTimeout in milliseconds! Default value is 10000.}
+    property ConnectionTimeout: Integer read FConnectionTimeout write FConnectionTimeout;
   end;
 
 procedure Register;
@@ -526,7 +530,7 @@ begin
   HttpSend.ProxyUser := FProxyUser;
   HttpSend.ProxyPass := FProxyPass;
   HttpSend.UserAgent := FUserAgent;
-  HttpSend.Sock.ConnectionTimeout := Context.Settings.Timeout;
+  HttpSend.Sock.ConnectionTimeout := FConnectionTimeout;
   HttpSend.Timeout := Context.Settings.Timeout;
   HttpSend.Protocol := '1.1';
   HttpSend.MimeType := 'application/hprose';
@@ -569,6 +573,7 @@ begin
   FProxyUser := '';
   FProxyPass := '';
   FUserAgent := 'Hprose Http Client for Delphi (Synapse)';
+  FConnectionTimeout ：= 10000；
 end;
 
 destructor THproseHttpClient.Destroy;
