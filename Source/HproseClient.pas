@@ -200,6 +200,7 @@ type
       const Context: TClientContext): Variant;
     function GetFullName(const AName: string): string;
     procedure SetURI(const AValue: string);
+    procedure ByValue(var Arguments: TVariants);
 {$IFDEF SUPPORTS_GENERICS}
     procedure VarToT(Info: PTypeInfo; const Src: Variant; out Dst);
     function VarTo<T>(const AValue: Variant): T;
@@ -416,13 +417,6 @@ begin
   FNext := Next;
 end;
 
-procedure ByValue(var Args: TVariants);
-var
-  I: Integer;
-begin
-  for I := 0 to Length(Args) - 1 do Args[I] := VarUnref(Args[I]); 
-end;
-
 { TAsyncInvokeThread }
 
 procedure TAsyncInvokeThread.Execute;
@@ -462,7 +456,7 @@ begin
   FClient := Client;
   FName := AName;
   FArgs := Args;
-  ByValue(FArgs);
+  Client.ByValue(FArgs);
   FCallback1 := Callback;
   FSettings := ASettings;
   FError := nil;
@@ -477,7 +471,7 @@ begin
   FClient := Client;
   FName := AName;
   FArgs := Args;
-  ByValue(FArgs);
+  Client.ByValue(FArgs);
   FCallback := Callback;
   FSettings := ASettings;
   FError := nil;
@@ -516,7 +510,7 @@ begin
   FClient := Client;
   FName := AName;
   FArgs := Args;
-  ByValue(FArgs);
+  Client.ByValue(FArgs);
   FCallback := Callback;
   FSettings := ASettings;
   FError := nil;
@@ -537,7 +531,7 @@ begin
   FClient := Client;
   FName := AName;
   FArgs := Args;
-  ByValue(FArgs);
+  Client.ByValue(FArgs);
   FCallback := Callback;
   FSettings := ASettings;
   FError := nil;
@@ -831,6 +825,13 @@ begin
   FIndex := 0;
   FFailround := 0;
   InitURI(FURIList[0]);
+end;
+
+procedure THproseClient.ByValue(var Arguments: TVariants);
+var
+  I: Integer;
+begin
+  for I := 0 to Length(Arguments) - 1 do Arguments[I] := VarUnref(Arguments[I]);
 end;
 
 procedure THproseClient.SetURI(const AValue: string);
