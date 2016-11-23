@@ -301,8 +301,6 @@ type
     procedure Execute; override;
     procedure DoCallback; virtual; abstract;
     procedure DoError;
-  public
-    destructor Destroy; override;
   end;
 
   TAsyncInvokeThread1<T> = class(TAsyncInvokeThread<T>)
@@ -394,7 +392,6 @@ type
     constructor Create(Client: THproseClient; const AName: string;
       const Args: TVariants; Callback: THproseCallback;
       const ASettings: IInvokeSettings); overload;
-    destructor Destroy; override;
   end;
 
 { TOnewayThread }
@@ -428,7 +425,7 @@ begin
     Synchronize({$IFDEF FPC}@{$ENDIF}DoCallback);
   except
     on E: Exception do begin
-      FError := Exception.CreateHelp(E.Message, E.HelpContext);
+      FError := E;
       Synchronize({$IFDEF FPC}@{$ENDIF}DoError);
     end;
   end;
@@ -477,12 +474,6 @@ begin
   FError := nil;
 end;
 
-destructor TAsyncInvokeThread.Destroy;
-begin
-  if Assigned(FError) then FreeAndNil(FError);
-  inherited;
-end;
-
 {$IFDEF SUPPORTS_GENERICS}
 { TAsyncInvokeThread<T> }
 
@@ -493,7 +484,7 @@ begin
     Synchronize({$IFDEF FPC}@{$ENDIF}DoCallback);
   except
     on E: Exception do begin
-      FError := Exception.CreateHelp(E.Message, E.HelpContext);
+      FError := E;
       Synchronize({$IFDEF FPC}@{$ENDIF}DoError);
     end;
   end;
@@ -505,12 +496,6 @@ begin
     FSettings.OnError(FName, FError)
   else if Assigned(FClient.FOnError) then
     FClient.FOnError(FName, FError);
-end;
-
-destructor TAsyncInvokeThread<T>.Destroy;
-begin
-  if Assigned(FError) then FreeAndNil(FError);
-  inherited;
 end;
 
 constructor TAsyncInvokeThread1<T>.Create(Client: THproseClient;
@@ -984,7 +969,7 @@ begin
   except
     on E: Exception do begin
       Result := RetrySendRequest(Request, TClientContext(Context));
-      if not Assigned(Result) then raise E;
+      if not Assigned(Result) then raise;
     end;
   end;
 end;
