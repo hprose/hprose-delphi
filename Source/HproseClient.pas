@@ -164,6 +164,7 @@ type
     property Retried: Integer read FRetried write FRetried;
   end;
 
+
   { THproseClient }
 
   THproseClient = class(TComponent, IInvokeableVarObject)
@@ -209,6 +210,7 @@ type
       const Context: TClientContext): TBytes; virtual; abstract;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     class function New(const AURI: string; const ANameSpace: string = ''): Variant; overload;
     class function New(const AURIList: array of string; const ANameSpace: string = ''): Variant; overload;
     function UseService(const AURI: string = ''; const ANameSpace: string = ''): Variant; overload;
@@ -299,6 +301,8 @@ type
     procedure Execute; override;
     procedure DoCallback; virtual; abstract;
     procedure DoError;
+  public
+    destructor Destroy; override;
   end;
 
   TAsyncInvokeThread1<T> = class(TAsyncInvokeThread<T>)
@@ -390,6 +394,7 @@ type
     constructor Create(Client: THproseClient; const AName: string;
       const Args: TVariants; Callback: THproseCallback;
       const ASettings: IInvokeSettings); overload;
+    destructor Destroy; override;
   end;
 
 { TOnewayThread }
@@ -423,7 +428,7 @@ begin
     Synchronize({$IFDEF FPC}@{$ENDIF}DoCallback);
   except
     on E: Exception do begin
-      FError := E;
+      FError := Exception.CreateHelp(E.Message, E.HelpContext);
       Synchronize({$IFDEF FPC}@{$ENDIF}DoError);
     end;
   end;
@@ -438,7 +443,7 @@ end;
 
 procedure TAsyncInvokeThread.DoError;
 begin
-  if Assigned(FSettings.OnError) then
+  if Assigned(FSettings) and Assigned(FSettings.OnError) then
     FSettings.OnError(FName, FError)
   else if Assigned(FClient.FOnError) then
     FClient.FOnError(FName, FError);
@@ -472,6 +477,12 @@ begin
   FError := nil;
 end;
 
+destructor TAsyncInvokeThread.Destroy;
+begin
+  if Assigned(FError) then FreeAndNil(FError);
+  inherited;
+end;
+
 {$IFDEF SUPPORTS_GENERICS}
 { TAsyncInvokeThread<T> }
 
@@ -482,7 +493,7 @@ begin
     Synchronize({$IFDEF FPC}@{$ENDIF}DoCallback);
   except
     on E: Exception do begin
-      FError := E;
+      FError := Exception.CreateHelp(E.Message, E.HelpContext);
       Synchronize({$IFDEF FPC}@{$ENDIF}DoError);
     end;
   end;
@@ -490,10 +501,16 @@ end;
 
 procedure TAsyncInvokeThread<T>.DoError;
 begin
-  if Assigned(FSettings.OnError) then
+  if Assigned(FSettings) and Assigned(FSettings.OnError) then
     FSettings.OnError(FName, FError)
   else if Assigned(FClient.FOnError) then
     FClient.FOnError(FName, FError);
+end;
+
+destructor TAsyncInvokeThread<T>.Destroy;
+begin
+  if Assigned(FError) then FreeAndNil(FError);
+  inherited;
 end;
 
 constructor TAsyncInvokeThread1<T>.Create(Client: THproseClient;
@@ -776,6 +793,13 @@ begin
   FHandlers := THandlerManager.Create({$IFDEF FPC}@{$ENDIF}InvokeHandler,
     {$IFDEF FPC}@{$ENDIF}BeforeFilterHandler,
     {$IFDEF FPC}@{$ENDIF}AfterFilterHandler);
+end;
+
+destructor THproseClient.Destroy;
+begin
+  FreeAndNil(FFilters);
+  FreeAndNil(FHandlers);
+  inherited Destroy;
 end;
 
 class function THproseClient.New(const AURI: string; const ANameSpace: string): Variant;
