@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Nov 23, 2016                             *
+ * LastModified: Nov 27, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -1175,7 +1175,8 @@ begin
     if P^.VType = varObject then begin
       Result := TObject(P^.VPointer);
     end
-    else if P^.VType <> varNull then Error(reInvalidCast);
+    else if (P^.VType <> varNull) and (P^.VType <> varEmpty) then
+      Error(reInvalidCast);
   except
     Error(reInvalidCast);
   end;
@@ -1192,7 +1193,8 @@ begin
       Result := TObject(P^.VPointer);
       if not (Result is AClass) then Error(reInvalidCast);
     end
-    else if P^.VType <> varNull then Error(reInvalidCast);
+    else if (P^.VType <> varNull) and (P^.VType <> varEmpty) then
+      Error(reInvalidCast);
   except
     Error(reInvalidCast);
   end;
@@ -1212,7 +1214,7 @@ begin
       Obj := TObject(P^.VPointer) as AClass;
       Result := Assigned(Obj) or not Assigned(P^.VPointer);
     end
-    else if P^.VType <> varNull then
+    else if (P^.VType <> varNull) and (P^.VType <> varEmpty) then
       Result := False;
   except
     Result := False;
@@ -1240,7 +1242,7 @@ begin
     P := FindVarData(Value);
     if P^.VType = varObject then
       Result := TObject(P^.VPointer) is AClass
-    else if P^.VType <> varNull then
+    else if (P^.VType <> varNull) and (P^.VType <> varEmpty) then
       Result := False;
   except
     Result := False;
@@ -1256,7 +1258,9 @@ end;
 
 function VarToList(const Value: Variant): IList;
 begin
-  if FindVarData(Value)^.VType = varUnknown then
+  if VarIsEmpty(Value) or VarIsNull(Value) then
+    Result := nil
+  else if FindVarData(Value)^.VType = varUnknown then
     Supports(IInterface(Value), IList, Result)
   else if VarIsObj(Value, TAbstractList) then
     VarToObj(Value, TAbstractList, Result)
@@ -1273,7 +1277,9 @@ end;
 
 function VarToMap(const Value: Variant): IMap;
 begin
-  if FindVarData(Value)^.VType = varUnknown then
+  if VarIsEmpty(Value) or VarIsNull(Value) then
+    Result := nil
+  else if FindVarData(Value)^.VType = varUnknown then
     Supports(IInterface(Value), IMap, Result)
   else if VarIsObj(Value, TAbstractMap) then
     VarToObj(Value, TAbstractMap, Result)
@@ -1282,19 +1288,21 @@ begin
 end;
 
 function VarIsIntf(const Value: Variant): Boolean;
+var
+  VType: TVarType;
 begin
-  Result := (FindVarData(Value)^.VType = varUnknown);
+  VType := FindVarData(Value)^.VType;
+  Result := (VType = varUnknown) or (VType = varNull) or (VType = varEmpty);
 end;
 
 function VarIsIntf(const Value: Variant; const IID: TGUID): Boolean;
 begin
-  Result := (FindVarData(Value)^.VType = varUnknown) and
-            Supports(IInterface(Value), IID);
+  Result := VarIsIntf(Value) and Supports(IInterface(Value), IID);
 end;
 
 function VarToIntf(const Value: Variant; const IID: TGUID; out AIntf): Boolean;
 begin
-  if FindVarData(Value)^.VType = varUnknown then
+  if VarIsIntf(Value) then
     Result := Supports(IInterface(Value), IID, AIntf)
   else
     Result := false;
