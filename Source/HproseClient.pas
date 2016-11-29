@@ -14,7 +14,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: Nov 29, 2016                             *
+ * LastModified: Nov 23, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -1020,7 +1020,11 @@ begin
   HproseWriter := THproseWriter.Create(OutStream, Settings.Simple);
   try
     OutStream.Write(HproseTagCall, 1);
+{$IFDEF NEXTGEN}
+    HproseWriter.WriteString(AName);
+{$ELSE}
     HproseWriter.WriteString(WideString(AName));
+{$ENDIF}
     if (Length(Args) > 0) or Settings.ByRef then begin
       HproseWriter.Reset;
       HproseWriter.WriteArray(Args);
@@ -1243,8 +1247,11 @@ end;
 // Synchronous invoke
 function THproseClient.Invoke(const AName: string;
   const ASettings: IInvokeSettings): Variant;
+var
+  Arguments: TVariants;
 begin
-  Result := Invoke(AName, [], ASettings);
+  Arguments := nil;
+  Result := Invoke(AName, Arguments, ASettings);
 end;
 
 function THproseClient.Invoke(const AName: string; const Args: array of const;
@@ -1278,8 +1285,11 @@ end;
 // Asynchronous invoke
 procedure THproseClient.Invoke(const AName: string;
   Callback: THproseCallback1; const ASettings: IInvokeSettings);
+var
+  Arguments: TVariants;
 begin
-  Invoke(AName, [], Callback, ASettings);
+  Arguments := nil;
+  Invoke(AName, Arguments, Callback, ASettings);
 end;
 
 procedure THproseClient.Invoke(const AName: string; const Args: array of const;
@@ -1400,8 +1410,11 @@ end;
 // Synchronous invoke
 function THproseClient.Invoke<T>(const AName: string;
    const ASettings: IInvokeSettings): T;
+var
+  Arguments: TVariants;
 begin
-  Result := Self.Invoke<T>(AName, [], ASettings);
+  Arguments := nil;
+  Result := Self.Invoke<T>(AName, Arguments, ASettings);
 end;
 
 function THproseClient.Invoke<T>(const AName: string;
@@ -1439,8 +1452,11 @@ end;
 
 procedure THproseClient.Invoke<T>(const AName: string;
   Callback: THproseCallback1<T>; const ASettings: IInvokeSettings);
+var
+  Arguments: TVariants;
 begin
-  Self.Invoke<T>(AName, [], Callback, ASettings);
+  Arguments := nil;
+  Self.Invoke<T>(AName, Arguments, Callback, ASettings);
 end;
 
 procedure THproseClient.Invoke<T>(const AName: string;

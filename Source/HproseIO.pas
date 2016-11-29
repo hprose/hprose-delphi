@@ -14,7 +14,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: Nov 21, 2016                             *
+ * LastModified: Nov 29, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -3644,7 +3644,12 @@ begin
   FStream.WriteBuffer(HproseTagList, 1);
   if Count > 0 then WriteRawBytes(BytesOf(IntToStr(Count)));
   FStream.WriteBuffer(HproseTagOpenbrace, 1);
-  for I := 0 to Count - 1 do WriteStringWithRef(WideString(SS[I]));
+  for I := 0 to Count - 1 do
+{$IFDEF NEXTGEN}
+    WriteStringWithRef(SS[I]);
+{$ELSE}
+    WriteStringWithRef(WideString(SS[I]));
+{$ENDIF}
   FStream.WriteBuffer(HproseTagClosebrace, 1);
 end;
 
