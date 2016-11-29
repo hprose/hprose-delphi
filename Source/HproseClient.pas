@@ -14,7 +14,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: Nov 23, 2016                             *
+ * LastModified: Nov 29, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -36,16 +36,13 @@ type
   THproseCallback1 = reference to procedure(Result: Variant);
   TOnError = reference to procedure(const Name: string; const Error: Exception);
   TOnFailswitch = reference to procedure(const Client: THproseClient);
+  THproseCallback<T> = reference to procedure(Result: T; var Args: TVariants);
+  THproseCallback1<T> = reference to procedure(Result: T);
 {$ELSE}
   THproseCallback = procedure(Result: Variant; var Args: TVariants) of object;
   THproseCallback1 = procedure(Result: Variant) of object;
   TOnError = procedure(const Name: string; const Error: Exception) of object;
   TOnFailswitch = procedure(const Client: THproseClient) of object;
-{$ENDIF}
-
-{$IFDEF SUPPORTS_GENERICS}
-  THproseCallback<T> = reference to procedure(Result: T; var Args: TVariants);
-  THproseCallback1<T> = reference to procedure(Result: T);
 {$ENDIF}
 
   { IInvokeSettings }
@@ -164,6 +161,35 @@ type
     property Retried: Integer read FRetried write FRetried;
   end;
 
+  { TClientTopic }
+
+  TClientTopic = class(TThread)
+  private
+    FClient: THproseClient;
+    FName: string;
+    FId: string;
+    FCallback: THproseCallback1;
+    FSettings: IInvokeSettings;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(Client: THproseClient; const AName, AId: string;
+      Callback: THproseCallback1; const ASettings: IInvokeSettings);
+  end;
+
+  { TTopicManager }
+
+  TTopicManager = class
+  private
+    FAllTopics: IMap;
+    function GetTopic(const Topic, Id: string): TClientTopic;
+    procedure CreateTopic(const Topic: string);
+    procedure DeleteTopic(const Topic, Id: string);
+  public
+    constructor Create;
+    function IsSubscribed(const Topic: string): Boolean;
+    function SubscribedList(): TStringArray;
+  end;
 
   { THproseClient }
 
@@ -181,6 +207,8 @@ type
     FRetry: Integer;
     FTimeout: Integer;
     FUserData: ICaseInsensitiveHashMap;
+    FId: string;
+    FTopicManager: TTopicManager;
     function InvokeHandler(const AName: String;
                           var Args: TVariants;
                       const Context: TContext;
@@ -201,7 +229,7 @@ type
     function GetFullName(const AName: string): string;
     procedure SetURI(const AValue: string);
     procedure ByValue(var Arguments: TVariants);
-{$IFDEF SUPPORTS_GENERICS}
+{$IFDEF SUPPORTS_ANONYMOUS_METHOD}
     procedure VarToT(Info: PTypeInfo; const Src: Variant; out Dst);
     function VarTo<T>(const AValue: Variant): T;
 {$ENDIF}
@@ -248,7 +276,7 @@ type
     // IInvokeableVarObject method
     function Invoke(const AName: string;
       const Arguments: TVarDataArray): Variant; overload;
-{$IFDEF SUPPORTS_GENERICS}
+{$IFDEF SUPPORTS_ANONYMOUS_METHOD}
     // Synchronous invoke
     function Invoke<T>(const AName: string;
       const ASettings: IInvokeSettings = nil): T; overload;
@@ -273,6 +301,20 @@ type
       Callback: THproseCallback<T>;
       const ASettings: IInvokeSettings = nil); overload;
 {$ENDIF}
+    function AutoId: string;
+    procedure Subscribe(const AName: string; AId: string;
+      Callback: THproseCallback1; ASettings: IInvokeSettings = nil); overload;
+    procedure Subscribe(const AName: string;
+      Callback: THproseCallback1; ASettings: IInvokeSettings = nil); overload;
+{$IFDEF SUPPORTS_ANONYMOUS_METHOD}
+    procedure Subscribe<T>(const AName: string; AId: string;
+      Callback: THproseCallback1<T>; ASettings: IInvokeSettings = nil); overload;
+    procedure Subscribe<T>(const AName: string;
+      Callback: THproseCallback1<T>; ASettings: IInvokeSettings = nil); overload;
+{$ENDIF}
+    procedure Unsubscribe(const AName: string; AId: string = '');
+    function IsSubscribed(const Topic: string): Boolean;
+    function SubscribedList(): TStringArray;
   published
     property URI: string read FURI write SetURI;
     property URIList: TStringArray read FURIList;
@@ -282,12 +324,13 @@ type
     property Filters: TFilterList read FFilters;
     property NameSpace: string read FNameSpace write FNameSpace;
     property UserData: ICaseInsensitiveHashMap read FUserData write FUserData;
+    property Id: string read FId;
     property OnFailswitch: TOnFailswitch read FOnFailswitch write FOnFailswitch;
     // This event OnError only for asynchronous invoke
     property OnError: TOnError read FOnError write FOnError;
   end;
 
-{$IFDEF SUPPORTS_GENERICS}
+{$IFDEF SUPPORTS_ANONYMOUS_METHOD}
 // The following classes are private classes, but they can't be moved to the
 // implementation section because of E2506.
 
@@ -395,6 +438,112 @@ type
       const ASettings: IInvokeSettings); overload;
   end;
 
+{ TClientTopic }
+
+procedure TClientTopic.Execute;
+var
+  ResultType: PTypeInfo;
+  Result: Variant;
+begin
+  ResultType := FSettings.ResultType;
+  FSettings.ResultType := nil;
+  while FClient.FTopicManager.GetTopic(FName, FId) = Self do begin
+    try
+      Result := FClient.Invoke(FName, [FId], FSettings);
+      if not VarIsNull(Result) then
+        FCallback(HproseUnserialize(HproseSerialize(Result), ResultType));
+    except
+    end;
+  end;
+end;
+
+constructor TClientTopic.Create(Client: THproseClient; const AName,
+  AId: string; Callback: THproseCallback1; const ASettings: IInvokeSettings);
+begin
+  inherited Create(True);
+  FreeOnTerminate := True;
+  FClient := Client;
+  FName := AName;
+  FId := AId;
+  FCallback := Callback;
+  FSettings := ASettings;
+end;
+
+{ TTopicManager }
+
+function TTopicManager.GetTopic(const Topic, Id: string): TClientTopic;
+var
+  Topics: IMap;
+begin
+  Result := nil;
+  FAllTopics.BeginRead;
+  try
+    Topics := VarToMap(FAllTopics[Topic]);
+    if Topics <> nil then VarToObj(Topics[Id], TClientTopic, Result);
+  finally
+    FAllTopics.EndRead;
+  end;
+end;
+
+procedure TTopicManager.CreateTopic(const Topic: string);
+begin
+  FAllTopics.BeginWrite;
+  try
+    if not FAllTopics.ContainsKey(Topic) then
+      FAllTopics[Topic] := THashMap.Create as IMap;
+  finally
+    FAllTopics.EndWrite;
+  end;
+end;
+
+procedure TTopicManager.DeleteTopic(const Topic, Id: string);
+var
+  Topics: IMap;
+begin
+  FAllTopics.BeginWrite;
+  try
+    if Id = '' then FAllTopics.Delete(Topic)
+    else begin
+      Topics := VarToMap(FAllTopics[Topic]);
+      if Assigned(Topics) then begin
+        Topics.Delete(Id);
+        if Topics.Count = 0 then FAllTopics.Delete(Topic);
+      end;
+    end;
+  finally
+    FAllTopics.EndWrite;
+  end;
+end;
+
+constructor TTopicManager.Create;
+begin
+  FAllTopics := THashMap.Create(False, True);
+end;
+
+function TTopicManager.IsSubscribed(const Topic: string): Boolean;
+begin
+  FAllTopics.BeginRead;
+  try
+    Result := FAllTopics.ContainsKey(Topic);
+  finally
+    FAllTopics.EndRead;
+  end;
+end;
+
+function TTopicManager.SubscribedList: TStringArray;
+var
+  I, N: Integer;
+begin
+  FAllTopics.BeginRead;
+  try
+    N := FAllTopics.Count;
+    SetLength(Result, N);
+    for I := 0 to N - 1 do Result[I] := VarToStr(FAllTopics.Keys[I]);
+  finally
+    FAllTopics.EndRead;
+  end;
+end;
+
 { TOnewayThread }
 
 procedure TOnewayThread.Execute;
@@ -477,7 +626,7 @@ begin
   FError := nil;
 end;
 
-{$IFDEF SUPPORTS_GENERICS}
+{$IFDEF SUPPORTS_ANONYMOUS_METHOD}
 { TAsyncInvokeThread<T> }
 
 procedure TAsyncInvokeThread<T>.Execute;
@@ -1163,7 +1312,7 @@ begin
   TAsyncInvokeThread.Create(Self, AName, Args, Callback, ASettings);
 end;
 
-{$IFDEF SUPPORTS_GENERICS}
+{$IFDEF SUPPORTS_ANONYMOUS_METHOD}
 
 procedure THproseClient.VarToT(Info: PTypeInfo; const Src: Variant; out Dst);
 var
@@ -1327,5 +1476,110 @@ begin
 end;
 
 {$ENDIF}
+
+var
+  AutoIdSettings: IInvokeSettings;
+
+function THproseClient.AutoId: string;
+begin
+  FTopicManager.FAllTopics.BeginRead;
+  try
+    if FId <> '' then begin
+      Result := FId;
+      Exit;
+    end;
+  finally
+    FTopicManager.FAllTopics.EndRead;
+  end;
+  FTopicManager.FAllTopics.BeginWrite;
+  try
+    if FId = '' then
+      FId := VarToStr(Invoke('#', AutoIdSettings));
+    Result := FId
+  finally
+    FTopicManager.FAllTopics.EndWrite;
+  end;
+end;
+
+procedure THproseClient.Subscribe(const AName: string; AId: string;
+  Callback: THproseCallback1; ASettings: IInvokeSettings);
+var
+  Topics: IMap;
+  Topic: TClientTopic;
+begin
+  if AId = '' then AId := AutoId;
+  FTopicManager.CreateTopic(AName);
+  Topic := FTopicManager.GetTopic(AName, AId);
+  if not Assigned(Topic) then begin
+    if not Assigned(ASettings) then ASettings := TInvokeSettings.Create();
+    ASettings.ByRef := False;
+    ASettings.Idempotent := True;
+    ASettings.Mode := Normal;
+    ASettings.Oneway := False;
+    ASettings.Simple := true;
+    Topic := TClientTopic.Create(Self, AName, AId, Callback, ASettings);
+    FTopicManager.FAllTopics.BeginWrite;
+    try
+      Topics := VarToMap(FTopicManager.FAllTopics[AName]);
+      Topics[AId] := ObjToVar(Topic);
+    finally
+      FTopicManager.FAllTopics.EndWrite;
+    end;
+{$IF DEFINED(DELPHI2010_UP) OR DEFINED(FPC) }
+    Topic.Start;
+{$ELSE}
+    Topic.Resume;
+{$IFEND}
+  end;
+end;
+
+procedure THproseClient.Subscribe(const AName: string;
+  Callback: THproseCallback1; ASettings: IInvokeSettings);
+begin
+  Subscribe(AName, AutoId(), Callback, ASettings);
+end;
+
+{$IFDEF SUPPORTS_ANONYMOUS_METHOD}
+
+procedure THproseClient.Subscribe<T>(const AName: string; AId: string;
+  Callback: THproseCallback1<T>; ASettings: IInvokeSettings = nil);
+begin
+  if not Assigned(ASettings) then ASettings := TInvokeSettings.Create();
+  ASettings.ResultType := TypeInfo(T);
+  Subscribe(AName, AId, procedure(Result: Variant) begin
+    Callback(VarTo<T>(Result));
+  end, ASettings);
+end;
+
+procedure THproseClient.Subscribe<T>(const AName: string;
+  Callback: THproseCallback1<T>; ASettings: IInvokeSettings = nil);
+begin
+  Self.Subscribe<T>(AName, AutoId(), Callback, ASettings);
+end;
+
+{$ENDIF}
+
+procedure THproseClient.Unsubscribe(const AName: string; AId: string);
+begin
+  if AId = '' then AId := FId;
+  FTopicManager.DeleteTopic(AName, AId);
+end;
+
+function THproseClient.IsSubscribed(const Topic: string): Boolean;
+begin
+  Result := FTopicManager.IsSubscribed(Topic);
+end;
+
+function THproseClient.SubscribedList: TStringArray;
+begin
+  Result := FTopicManager.SubscribedList();
+end;
+
+initialization
+  AutoIdSettings := TInvokeSettings.Create([
+  'Simple',     True,
+  'Idempotent', True,
+  'Failswitch', True,
+  'ResultType', TypeInfo(string)]);
 
 end.
