@@ -255,6 +255,15 @@ begin
   inherited;
 end;
 
+procedure ValidateServerCertificateCallback(
+  const Sender: TObject;
+  const ARequest: TURLRequest;
+  const Certificate: TCertificate;
+  var Accepted: Boolean);
+begin
+  Accepted := True;
+end;
+
 function THproseHttpClient.SendAndReceive(const Data: TBytes;
   const Context: TClientContext): TBytes;
 var
@@ -274,6 +283,7 @@ begin
   HttpClient.ResponseTimeout := Context.Settings.Timeout;
   HttpClient.UserAgent := FUserAgent;
   HttpClient.HandleRedirects := True;
+  HttpClient.ValidateServerCertificateCallback := ValidateServerCertificateCallback;
   if FProxyHost <> '' then begin
     HttpClient.ProxySettings := TProxySettings.Create(FProxyHost, FProxyPort, FProxyUser, FProxyPass);
   end;
