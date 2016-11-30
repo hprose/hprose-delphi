@@ -121,7 +121,7 @@ end;
 
 {$ENDIF}
 
-{$IFDEF CPUARM32}
+{$IFDEF CPUARM}
 
 function InterlockedAdd(var Addend: Integer; Increment: Integer): Integer;
 begin
