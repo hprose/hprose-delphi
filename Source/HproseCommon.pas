@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Nov 30, 2016                             *
+ * LastModified: Dec 1, 2016                              *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -761,6 +761,8 @@ function VarIsIntf(const Value: Variant): Boolean; overload;
 function VarIsIntf(const Value: Variant; const IID: TGUID): Boolean; overload;
 function VarToIntf(const Value: Variant; const IID: TGUID; out AIntf): Boolean;
 function IntfToObj(const Intf: IInterface): TInterfacedObject;
+function VarToBytes(const Value: Variant): TBytes;
+function BytesToVar(const Value: TBytes): Variant;
 
 {$IFDEF FPC}
 operator :=(const Source : Variant) Dest : TObject; inline;
@@ -1335,6 +1337,26 @@ begin
     end;
 {$ENDIF}
   end;
+end;
+
+function VarToBytes(const Value: Variant): TBytes;
+var
+  Count: Integer;
+begin
+  Count := VarArrayHighBound(Value, 1) - VarArrayLowBound(Value, 1) + 1;
+  SetLength(Result, Count);
+  Move(VarArrayLock(Value)^, Result, Count);
+  VarArrayUnLock(Value);
+end;
+
+function BytesToVar(const Value: TBytes): Variant;
+var
+  Count: Integer;
+begin
+  Count := Length(Value);
+  Result := VarArrayCreate([0, Count - 1], varByte);
+  Move(Value, VarArrayLock(Result)^, Count);
+  VarArrayUnlock(Result);
 end;
 
 {$IFDEF FPC}
