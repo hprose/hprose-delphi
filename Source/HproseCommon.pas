@@ -767,6 +767,7 @@ function BytesToVar(const Value: TBytes): Variant;
 {$IFDEF FPC}
 operator :=(const Source : Variant) Dest : TObject; inline;
 operator :=(const Source : TObject) Dest : Variant; inline;
+operator :=(const Source : TBytes) Dest : Variant; inline;
 {$ENDIF}
 
 function VarEquals(const Left, Right: Variant): Boolean;
@@ -1368,6 +1369,11 @@ end;
 operator :=(const Source : TObject) Dest : Variant; inline;
 begin
   Dest := ObjToVar(Source);
+end;
+
+operator :=(const Source : TBytes) Dest : Variant; inline;
+begin
+  Dest := BytesToVar(Source);
 end;
 {$ENDIF}
 
