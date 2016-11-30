@@ -1,0 +1,42 @@
+package HproseXE8;
+
+{$R *.res}
+{$R 'Hprose.dcr'}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO ON}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION ON}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES OFF}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DESCRIPTION 'Hprose for Delphi XE8+'}
+{$IMPLICITBUILD OFF}
+
+requires
+  rtl,
+  IndyCore,
+  IndyProtocols,
+  IndySystem;
+
+contains
+  ObjAutoX in '..\Source\ObjAutoX.pas',
+  HproseCommon in '..\Source\HproseCommon.pas',
+  HproseIO in '..\Source\HproseIO.pas',
+  HproseClient in '..\Source\HproseClient.pas',
+  HproseHttpClient in '..\Source\XE8\HproseHttpClient.pas';
+
+end.
