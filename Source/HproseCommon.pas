@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Nov 27, 2016                             *
+ * LastModified: Nov 30, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -655,7 +655,7 @@ type
   private
     FBytes: TBytes;
   protected
-    function Realloc(var NewCapacity: Longint): Pointer; override;
+    function Realloc(var NewCapacity: Integer): Pointer; override;
   public
     constructor Create(const ABytes: TBytes); overload;
     property Bytes: TBytes read FBytes;
@@ -676,10 +676,10 @@ type
   public
     constructor Create(ACapacity: Integer = 255); overload;
     constructor Create(const AString: string); overload;
-    function ReadString(Count: Longint): string;
+    function ReadString(Count: Integer): string;
     procedure WriteString(const AString: string);
     procedure InsertString(const AString: string);
-    function Seek(Offset: Longint; Origin: Word): Longint;
+    function Seek(Offset: Integer; Origin: Word): Integer;
     function ToString: string; {$IFDEF DELPHI2009_UP}override;{$ENDIF}{$IFDEF FPC}override;{$ENDIF}
     property Position: Integer read FPosition write SetPosition;
     property Length: Integer read FLength;
@@ -4090,7 +4090,7 @@ begin
   Capacity := Size;
 end;
 
-function TBytesStream.Realloc(var NewCapacity: Longint): Pointer;
+function TBytesStream.Realloc(var NewCapacity: Integer): Pointer;
 begin
   if (NewCapacity > 0) and (NewCapacity <> Size) then
     NewCapacity := (NewCapacity + (MemoryDelta - 1)) and not (MemoryDelta - 1);
@@ -4171,7 +4171,7 @@ begin
   end;
 end;
 
-function TStringBuffer.Seek(Offset: Integer; Origin: Word): Longint;
+function TStringBuffer.Seek(Offset: Integer; Origin: Word): Integer;
 begin
   case Origin of
     soFromBeginning: FPosition := Offset;
