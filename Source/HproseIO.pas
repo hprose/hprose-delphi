@@ -14,7 +14,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: Nov 29, 2016                             *
+ * LastModified: Dec 1, 2016                              *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -371,8 +371,8 @@ type
   PShortIntArray = ^TShortIntArray;
   TShortIntArray = array[0..MaxInt div Sizeof(ShortInt) - 1] of ShortInt;
 
-  PLongWordArray = ^TLongWordArray;
-  TLongWordArray = array[0..MaxInt div Sizeof(LongWord) - 1] of LongWord;
+  PCardinalArray = ^TCardinalArray;
+  TCardinalArray = array[0..MaxInt div Sizeof(Cardinal) - 1] of Cardinal;
 
   PSingleArray = ^TSingleArray;
   TSingleArray = array[0..MaxInt div Sizeof(Single) - 1] of Single;
@@ -441,7 +441,7 @@ const
 type
   TB1 = Byte;
   TB2 = Word;
-  TB4 = LongWord;
+  TB4 = Cardinal;
   TB8 = UInt64;
 
 function IsSmartObject(const Name: string): Boolean; inline;
@@ -815,7 +815,7 @@ end;
 
 function THproseReader.ReadUTF8CharWithoutTag: WideChar;
 var
-  C, C2, C3: LongWord;
+  C, C2, C3: Cardinal;
 begin
   C := ReadByte;
   case C shr 4 of
@@ -843,7 +843,7 @@ end;
 function THproseReader.ReadStringAsWideString: WideString;
 var
   Count, I: Integer;
-  C, C2, C3, C4: LongWord;
+  C, C2, C3, C4: Cardinal;
 begin
   Count := ReadInt(HproseTagQuote);
   SetLength(Result, Count);
@@ -896,7 +896,7 @@ end;
 function THproseReader.ReadStringAsWideString: string;
 var
   Count, I: Integer;
-  C, C2, C3, C4: LongWord;
+  C, C2, C3, C4: Cardinal;
   Chars: TCharArray;
 begin
   Count := ReadInt(HproseTagQuote);
@@ -1063,13 +1063,13 @@ end;
 
 function THproseReader.ReadLongWordArray(Count: Integer): Variant;
 var
-  P: PLongWordArray;
+  P: PCardinalArray;
   I, N: Integer;
 begin
   Result := VarArrayCreate([0, Count - 1], varLongWord);
   N := FRefer.SetRef(Null);
   P := VarArrayLock(Result);
-  for I := 0 to Count - 1 do P^[I] := LongWord(ReadInt64);
+  for I := 0 to Count - 1 do P^[I] := Cardinal(ReadInt64);
   VarArrayUnlock(Result);
   FRefer.SetRef(N, Result);
 end;
@@ -2366,7 +2366,7 @@ begin
           otSLong:
             Integer(Value) := ReadInteger;
           otULong:
-            LongWord(Value) := LongWord(ReadInt64);
+            Cardinal(Value) := Cardinal(ReadInt64);
         end;
 {$IFNDEF NEXTGEN}
       tkChar:
@@ -2512,7 +2512,7 @@ begin
             otSLong:
               Result := ReadInteger;
             otULong:
-              Result := LongWord(ReadInt64);
+              Result := Cardinal(ReadInt64);
           end;
 {$IFNDEF NEXTGEN}
         tkChar:
@@ -3416,7 +3416,7 @@ end;
 
 procedure THproseWriter.WriteLongWordArray(var P; Count: Integer);
 var
-  AP: PLongWordArray absolute P;
+  AP: PCardinalArray absolute P;
   I: Integer;
 begin
   for I := 0 to Count - 1 do WriteLong(AP^[I]);
@@ -3728,7 +3728,7 @@ begin
           otSWord: WriteInteger(SmallInt(Value));
           otUWord: WriteInteger(Word(Value));
           otSLong: WriteInteger(Integer(Value));
-          otULong: WriteLong(UIntToStr(LongWord(Value)));
+          otULong: WriteLong(UIntToStr(Cardinal(Value)));
         end;
       tkWChar: WriteUTF8Char(WideChar(Value));
       tkFloat:

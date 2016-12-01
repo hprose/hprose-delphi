@@ -1975,8 +1975,8 @@ begin
         varSmallInt: Result := htInteger or (PSmallInt(P^.VPointer)^ and $FFFF);
         varInteger:  Result := htInteger or (PInteger(P^.VPointer)^
                                and $0FFFFFFF);
-        varLongWord: Result := htInt64 or (PLongWord(P^.VPointer)^ and $0FFFFFFF)
-                               xor (not (PLongWord(P^.VPointer)^ shr 3)
+        varLongWord: Result := htInt64 or (PCardinal(P^.VPointer)^ and $0FFFFFFF)
+                               xor (not (PCardinal(P^.VPointer)^ shr 3)
                                and $10000000);
         varInt64:    Result := htInt64 or (PInt64(P^.VPointer)^ and $0FFFFFFF)
                                xor (not (PInt64(P^.VPointer)^ shr 3)

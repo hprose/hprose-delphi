@@ -14,7 +14,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: Nov 23, 2016                             *
+ * LastModified: Dec 1, 2016                              *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -1355,7 +1355,7 @@ begin
           otSLong:
             Integer(Dst) := TVarData(Src).VInteger;
           otULong:
-            LongWord(Dst) := TVarData(Src).VLongWord;
+            Cardinal(Dst) := TVarData(Src).VLongWord;
         end;
 {$IFNDEF NEXTGEN}
       tkChar:
