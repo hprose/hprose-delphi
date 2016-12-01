@@ -1346,7 +1346,7 @@ var
 begin
   Count := VarArrayHighBound(Value, 1) - VarArrayLowBound(Value, 1) + 1;
   SetLength(Result, Count);
-  Move(VarArrayLock(Value)^, Result, Count);
+  Move(VarArrayLock(Value)^, Result[0], Count);
   VarArrayUnLock(Value);
 end;
 
@@ -1356,7 +1356,7 @@ var
 begin
   Count := Length(Value);
   Result := VarArrayCreate([0, Count - 1], varByte);
-  Move(Value, VarArrayLock(Result)^, Count);
+  Move(Value[0], VarArrayLock(Result)^, Count);
   VarArrayUnlock(Result);
 end;
 
