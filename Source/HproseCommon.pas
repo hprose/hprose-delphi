@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Dec 1, 2016                              *
+ * LastModified: Dec 6, 2016                              *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -153,6 +153,8 @@ type
     FLock: TCriticalSection;
     FReadWriteLock: TMultiReadExclusiveWriteSynchronizer;
   protected
+    procedure Grow; overload; virtual; abstract;
+    procedure Grow(N: Integer); overload; virtual; abstract;
     function Get(Index: Integer): Variant; virtual; abstract;
     procedure Put(Index: Integer; const Value: Variant); virtual; abstract;
     function GetCapacity: Integer; virtual; abstract;
@@ -185,12 +187,12 @@ type
     {$ENDIF}
     destructor Destroy; override;
     function Add(const Value: Variant): Integer; virtual; abstract;
-    procedure AddAll(const AList: IImmutableList); overload; virtual; abstract;
-    procedure AddAll(const Container: Variant); overload; virtual; abstract;
-    procedure AddAll(const ConstArray: array of const); overload; virtual; abstract;
+    procedure AddAll(const AList: IImmutableList); overload; virtual;
+    procedure AddAll(const Container: Variant); overload; virtual;
+    procedure AddAll(const ConstArray: array of const); overload; virtual;
     procedure Assign(const Source: IImmutableList); virtual;
     procedure Clear; virtual; abstract;
-    function Contains(const Value: Variant): Boolean; virtual; abstract;
+    function Contains(const Value: Variant): Boolean; virtual;
     function Delete(Index: Integer): Variant; virtual; abstract;
     procedure DeleteRange(Index, Count: Integer); virtual; abstract;
     procedure Exchange(Index1, Index2: Integer); virtual; abstract;
@@ -248,8 +250,8 @@ type
     FList: TVariants;
   protected
     function Get(Index: Integer): Variant; override;
-    procedure Grow; overload; virtual;
-    procedure Grow(N: Integer); overload; virtual;
+    procedure Grow; overload; override;
+    procedure Grow(N: Integer); overload; override;
     procedure ShiftRight(Index, N: Integer);
     procedure ShiftLeft(Index, N: Integer);
     procedure Put(Index: Integer; const Value: Variant); override;
@@ -263,11 +265,7 @@ type
     constructor Create(ACapacity: Integer = 4; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); overload; override;
     function Add(const Value: Variant): Integer; override;
-    procedure AddAll(const AList: IImmutableList); overload; override;
-    procedure AddAll(const Container: Variant); overload; override;
-    procedure AddAll(const ConstArray: array of const); overload; override;
     procedure Clear; override;
-    function Contains(const Value: Variant): Boolean; override;
     function Delete(Index: Integer): Variant; override;
     procedure DeleteRange(Index, ACount: Integer); override;
     procedure Exchange(Index1, Index2: Integer); override;
@@ -516,10 +514,10 @@ type
     function Get(const AKey: Variant): Variant; overload; virtual; abstract;
     function Get(const AKey: Variant; out AValue: Variant): Boolean; overload; virtual; abstract;
     procedure Put(const AKey, AValue: Variant); overload; virtual; abstract;
-    procedure Put(const AList: IImmutableList); overload; virtual; abstract;
-    procedure Put(const AMap: IMap); overload; virtual; abstract;
-    procedure Put(const Container: Variant); overload; virtual; abstract;
-    procedure Put(const ConstArray: array of const); overload; virtual; abstract;
+    procedure Put(const AList: IImmutableList); overload; virtual;
+    procedure Put(const AMap: IMap); overload; virtual;
+    procedure Put(const Container: Variant); overload; virtual;
+    procedure Put(const ConstArray: array of const); overload; virtual;
     function Add(const AKey, AValue: Variant): Boolean; virtual; abstract;
     procedure Clear; virtual; abstract;
     function ContainsKey(const AKey: Variant): Boolean; virtual; abstract;
@@ -543,10 +541,10 @@ type
     procedure EndRead;
     function BeginWrite: Boolean;
     procedure EndWrite;
-    procedure PutAll(const AList: IImmutableList); overload; virtual; abstract;
-    procedure PutAll(const AMap: IMap); overload; virtual; abstract;
-    procedure PutAll(const Container: Variant); overload; virtual; abstract;
-    procedure PutAll(const ConstArray: array of const); overload; virtual; abstract;
+    procedure PutAll(const AList: IImmutableList); overload; virtual;
+    procedure PutAll(const AMap: IMap); overload; virtual;
+    procedure PutAll(const Container: Variant); overload; virtual;
+    procedure PutAll(const ConstArray: array of const); overload; virtual;
     function ToList(ListClass: TListClass; Sync: Boolean = True;
       ReadWriteSync: Boolean = False): IList; virtual; abstract;
     function ToArrayList(Sync: Boolean = True;
@@ -594,19 +592,11 @@ type
     function Get(const AKey: Variant): Variant; overload; override;
     function Get(const AKey: Variant; out AValue: Variant): Boolean; overload; override;
     procedure Put(const AKey, AValue: Variant); overload; override;
-    procedure Put(const AList: IImmutableList); overload; override;
-    procedure Put(const AMap: IMap); overload; override;
-    procedure Put(const Container: Variant); overload; override;
-    procedure Put(const ConstArray: array of const); overload; override;
     function Add(const AKey, AValue: Variant): Boolean; override;
     procedure Clear; override;
     function ContainsKey(const AKey: Variant): Boolean; override;
     function ContainsValue(const AValue: Variant): Boolean; override;
     function Delete(const AKey: Variant): Variant; override;
-    procedure PutAll(const AList: IImmutableList); overload; override;
-    procedure PutAll(const AMap: IMap); overload; override;
-    procedure PutAll(const Container: Variant); overload; override;
-    procedure PutAll(const ConstArray: array of const); overload; override;
     function ToList(ListClass: TListClass; Sync: Boolean = True;
       ReadWriteSync: Boolean = False): IList; override;
     function ToArrayList(Sync: Boolean = True;
@@ -2400,6 +2390,39 @@ begin
   FReadWriteLock.EndWrite;
 end;
 
+procedure TAbstractList.AddAll(const AList: IImmutableList);
+var
+  I: Integer;
+begin
+  Grow(AList.Count);
+  for I := 0 to AList.Count - 1 do Add(AList[I]);
+end;
+
+procedure TAbstractList.AddAll(const Container: Variant);
+var
+  I, N, Low, High: Integer;
+begin
+  if VarIsList(Container) then begin
+    AddAll(VarToList(Container));
+  end
+  else if VarIsArray(Container) then begin
+    N := Length(Container);
+    Grow(N);
+    Low := VarArrayLowBound(Container, 1);
+    High := Low + N - 1;
+    for I := Low to High do Add(Container[I]);
+  end;
+end;
+
+procedure TAbstractList.AddAll(const ConstArray: array of const);
+var
+  I, N: Integer;
+begin
+  N := Length(ConstArray);
+  Grow(N);
+  for I := 0 to N - 1 do Add(VarRecToVar(ConstArray[I]));
+end;
+
 procedure TAbstractList.Assign(const Source: IImmutableList);
 var
   I: Integer;
@@ -2407,6 +2430,11 @@ begin
   Clear;
   Capacity := Source.Capacity;
   for I := 0 to Source.Count - 1 do Add(Source[I]);
+end;
+
+function TAbstractList.Contains(const Value: Variant): Boolean;
+begin
+  Result := IndexOf(Value) > -1;
 end;
 
 function TAbstractList.GetEnumerator: IListEnumerator;
@@ -2580,51 +2608,12 @@ begin
   Inc(FCount);
 end;
 
-procedure TArrayList.AddAll(const AList: IImmutableList);
-var
-  I: Integer;
-begin
-  Grow(AList.Count);
-  for I := 0 to AList.Count - 1 do Add(AList[I]);
-end;
-
-procedure TArrayList.AddAll(const Container: Variant);
-var
-  I, N, Low, High: Integer;
-begin
-  if VarIsList(Container) then begin
-    AddAll(VarToList(Container));
-  end
-  else if VarIsArray(Container) then begin
-    N := Length(Container);
-    Grow(N);
-    Low := VarArrayLowBound(Container, 1);
-    High := Low + N - 1;
-    for I := Low to High do Add(Container[I]);
-  end;
-end;
-
-procedure TArrayList.AddAll(const ConstArray: array of const);
-var
-  I, N: Integer;
-begin
-  N := Length(ConstArray);
-  Grow(N);
-  for I := 0 to N - 1 do Add(VarRecToVar(ConstArray[I]));
-end;
-
 procedure TArrayList.Clear;
 begin
   SetLength(FList, 0);
   FCount := 0;
   FCapacity := 0;
 end;
-
-function TArrayList.Contains(const Value: Variant): Boolean;
-begin
-  Result := IndexOf(Value) > -1;
-end;
-
 
 constructor TArrayList.Create(ACapacity: Integer; Sync: Boolean;
   ReadWriteSync: Boolean);
@@ -3599,6 +3588,100 @@ begin
   FReadWriteLock.EndWrite;
 end;
 
+
+procedure TAbstractMap.Put(const AList: IImmutableList);
+var
+  I, N: Integer;
+begin
+  N := AList.Count;
+  if Odd(N) then raise EArrayListError.Create('The Count of Alist must be even.');
+  I := 0;
+  while I < N do begin
+      Put(AList[I], AList[I + 1]);
+      Inc(I, 2);
+  end;
+end;
+
+procedure TAbstractMap.Put(const AMap: IMap);
+begin
+  PutAll(AMap);
+end;
+
+procedure TAbstractMap.Put(const Container: Variant);
+var
+  I, N: Integer;
+begin
+  if VarIsList(Container) then
+    Put(VarToList(Container))
+  else if VarIsMap(Container) then
+    PutAll(VarToMap(Container))
+  else if VarIsArray(Container) then begin
+    if Odd(Length(Container)) then raise EArrayListError.Create('The array length must be even.');
+    I := VarArrayLowBound(Container, 1);
+    N := VarArrayHighBound(Container, 1);
+    while I < N do begin
+      Put(Container[I], Container[I + 1]);
+      Inc(I, 2);
+    end;
+  end;
+end;
+
+procedure TAbstractMap.Put(const ConstArray: array of const);
+var
+  I, N: Integer;
+begin
+  N := Length(ConstArray);
+  if Odd(N) then raise EArrayListError.Create('The array length must be even.');
+  I := 0;
+  while I < N do begin
+      Put(VarRecToVar(ConstArray[I]), VarRecToVar(ConstArray[I + 1]));
+      Inc(I, 2);
+  end;
+end;
+
+
+procedure TAbstractMap.PutAll(const AList: IImmutableList);
+var
+  I: Integer;
+begin
+  for I := 0 to AList.Count - 1 do
+    Put(I, AList[I]);
+end;
+
+procedure TAbstractMap.PutAll(const AMap: IMap);
+var
+  I: Integer;
+  K, V: IImmutableList;
+begin
+  K := AMap.Keys;
+  V := AMap.Values;
+  for I := 0 to AMap.Count - 1 do
+    Put(K[I], V[I]);
+end;
+
+procedure TAbstractMap.PutAll(const Container: Variant);
+var
+  I: Integer;
+begin
+  if VarIsList(Container) then
+    PutAll(VarToList(Container))
+  else if VarIsMap(Container) then
+    PutAll(VarToMap(Container))
+  else if VarIsArray(Container) then begin
+    for I := VarArrayLowBound(Container, 1) to
+             VarArrayHighBound(Container, 1) do
+      Put(I, Container[I]);
+  end;
+end;
+
+procedure TAbstractMap.PutAll(const ConstArray: array of const);
+var
+  I: Integer;
+begin
+  for I := 0 to Length(ConstArray) - 1 do
+      Put(I, VarRecToVar(ConstArray[I]));
+end;
+
 function TAbstractMap.Join(const ItemGlue: string; const KeyValueGlue: string;
   const LeftPad: string; const RightPad: string): string;
 var
@@ -3699,56 +3782,6 @@ begin
   Result := Index > -1;
 end;
 
-procedure THashMap.Put(const AList: IImmutableList);
-var
-  I, N: Integer;
-begin
-  N := AList.Count;
-  if Odd(N) then raise EArrayListError.Create('The Count of Alist must be even.');
-  I := 0;
-  while I < N do begin
-      Put(AList[I], AList[I + 1]);
-      Inc(I, 2);
-  end;
-end;
-
-procedure THashMap.Put(const AMap: IMap);
-begin
-  PutAll(AMap);
-end;
-
-procedure THashMap.Put(const Container: Variant);
-var
-  I, N: Integer;
-begin
-  if VarIsList(Container) then
-    Put(VarToList(Container))
-  else if VarIsMap(Container) then
-    PutAll(VarToMap(Container))
-  else if VarIsArray(Container) then begin
-    if Odd(Length(Container)) then raise EArrayListError.Create('The array length must be even.');
-    I := VarArrayLowBound(Container, 1);
-    N := VarArrayHighBound(Container, 1);
-    while I < N do begin
-      Put(Container[I], Container[I + 1]);
-      Inc(I, 2);
-    end;
-  end;
-end;
-
-procedure THashMap.Put(const ConstArray: array of const);
-var
-  I, N: Integer;
-begin
-  N := Length(ConstArray);
-  if Odd(N) then raise EArrayListError.Create('The array length must be even.');
-  I := 0;
-  while I < N do begin
-      Put(VarRecToVar(ConstArray[I]), VarRecToVar(ConstArray[I + 1]));
-      Inc(I, 2);
-  end;
-end;
-
 function THashMap.Add(const AKey, AValue: Variant): Boolean;
 var
   Index: Integer;
@@ -3807,48 +3840,6 @@ procedure THashMap.InitData(AKeys, AValues: IList);
 begin
   FKeys := AKeys;
   FValues := AValues;
-end;
-
-procedure THashMap.PutAll(const AList: IImmutableList);
-var
-  I: Integer;
-begin
-  for I := 0 to AList.Count - 1 do
-    Put(I, AList[I]);
-end;
-
-procedure THashMap.PutAll(const AMap: IMap);
-var
-  I: Integer;
-  K, V: IImmutableList;
-begin
-  K := AMap.Keys;
-  V := AMap.Values;
-  for I := 0 to AMap.Count - 1 do
-    Put(K[I], V[I]);
-end;
-
-procedure THashMap.PutAll(const Container: Variant);
-var
-  I: Integer;
-begin
-  if VarIsList(Container) then
-    PutAll(VarToList(Container))
-  else if VarIsMap(Container) then
-    PutAll(VarToMap(Container))
-  else if VarIsArray(Container) then begin
-    for I := VarArrayLowBound(Container, 1) to
-             VarArrayHighBound(Container, 1) do
-      Put(I, Container[I]);
-  end;
-end;
-
-procedure THashMap.PutAll(const ConstArray: array of const);
-var
-  I: Integer;
-begin
-  for I := 0 to Length(ConstArray) - 1 do
-      Put(I, VarRecToVar(ConstArray[I]));
 end;
 
 procedure THashMap.Put(const AKey, AValue: Variant);
