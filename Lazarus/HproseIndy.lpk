@@ -3,6 +3,7 @@
   <Package Version="4">
     <PathDelim Value="\"/>
     <Name Value="HproseIndy"/>
+    <Type Value="RunAndDesignTime"/>
     <Author Value="Ma Bingyao(mabingyao@gmail.com)"/>
     <CompilerOptions>
       <Version Value="11"/>
@@ -22,7 +23,7 @@
     <Description Value="Hprose with Indy"/>
     <License Value="The MIT License (MIT)
 
-Copyright (c) 2008-2014 http://hprose.com
+Copyright (c) 2008-2016 http://hprose.com
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the &quot;Software&quot;), to deal in
@@ -41,7 +42,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 "/>
-    <Version Major="1" Minor="4"/>
+    <Version Major="2"/>
     <Files Count="7">
       <Item1>
         <Filename Value="Hprose.lrs"/>
@@ -73,7 +74,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         <UnitName Value="HproseHttpClient"/>
       </Item7>
     </Files>
-    <Type Value="RunAndDesignTime"/>
     <RequiredPkgs Count="3">
       <Item1>
         <PackageName Value="indylaz"/>
