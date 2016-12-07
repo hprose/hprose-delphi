@@ -14,7 +14,7 @@
  *                                                        *
  * hprose indy http client unit for delphi.               *
  *                                                        *
- * LastModified: Nov 23, 2016                             *
+ * LastModified: Dec 6, 2016                              *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -27,15 +27,13 @@ uses Classes, HproseCommon, HproseClient, IdHeaderList, IdURI, SysUtils;
 
 type
 
-  THeaderList = TIdHeaderList;
-
   THproseHttpClient = class(THproseClient)
   private
     FHttpPool: IList;
     FIdURI: TIdURI;
     FUserName: string;
     FPassword: string;
-    FHeaders: THeaderList;
+    FHeaders: IMap;
     FProxyHost: string;
     FProxyPort: Integer;
     FProxyUser: string;
@@ -55,7 +53,7 @@ type
     {:Before HTTP operation you may define any non-standard headers for HTTP
      request, except of: 'Expect: 100-continue', 'Content-Length', 'Content-Type',
      'Connection', 'Authorization', 'Proxy-Authorization' and 'Host' headers.}
-    property Headers: THeaderList read FHeaders;
+    property Headers: IMap read FHeaders;
 
     {:If @true (default value is @false), keepalives in HTTP protocol 1.1 is enabled.}
     property KeepAlive: Boolean read FKeepAlive write FKeepAlive;
@@ -98,18 +96,16 @@ uses IdGlobal, IdHttp, Variants;
 var
   cookieManager: IMap;
 
-procedure SetCookie(Header: TStringList; const Host: string);
+procedure SetCookie(Header: IMap; const Host: string);
 var
   I, Pos: Integer;
   Name, Value, CookieString, Path: string;
   Cookie: IMap;
 begin
   for I := 0 to Header.Count - 1 do begin
-    Value := Header.Strings[I];
-    Pos := AnsiPos(':', Value);
-    Name := LowerCase(Copy(Value, 1, Pos - 1));
+    Name := LowerCase(Header.Keys[I]);
     if (Name = 'set-cookie') or (Name = 'set-cookie2') then begin
-      Value := Trim(Copy(Value, Pos + 1, MaxInt));
+      Value := Header.Values[I];
       Pos := AnsiPos(';', Value);
       CookieString := Copy(Value, 1, Pos - 1);
       Value := Copy(Value, Pos + 1, MaxInt);
@@ -206,7 +202,7 @@ begin
   inherited Create(AOwner);
   FHttpPool := TArrayList.Create(10);
   FIdURI := nil;
-  FHeaders := THeaderList.Create;
+  FHeaders := TCaseInsensitiveHashMap.Create;
   FUserName := '';
   FPassword := '';
   FKeepAlive := True;
@@ -230,7 +226,6 @@ begin
   finally
     FHttpPool.Unlock;
   end;
-  FreeAndNil(FHeaders);
   FreeAndNil(FIdURI);
   inherited;
 end;
@@ -249,6 +244,10 @@ var
   IdHttp: TIdHttp;
   Cookie: string;
   OutStream, InStream: TBytesStream;
+  Header, HttpHeader: IMap;
+  ExtraHeaders: TIdHeaderList;
+  I: Integer;
+  Key: string;
 begin
   FHttpPool.Lock;
   try
@@ -266,9 +265,10 @@ begin
     IdHttp.Request.ProxyUsername := FProxyUser;
     IdHttp.Request.ProxyPassword := FProxyPass;
   end;
+  ExtraHeaders := IdHttp.Request.ExtraHeaders;
   if KeepAlive then begin
     IdHttp.Request.Connection := 'keep-alive';
-    FHeaders.Values['Keep-Alive'] := IntToStr(FKeepAliveTimeout);
+    ExtraHeaders.Values['Keep-Alive'] := IntToStr(FKeepAliveTimeout);
   end
   else IdHttp.Request.Connection := 'close';
   if FUserName <> '' then begin
@@ -277,16 +277,29 @@ begin
   end;
   IdHttp.Request.ContentType := 'application/hprose';
   IdHttp.ProtocolVersion := pv1_1;
-  IdHttp.Request.ExtraHeaders := FHeaders;
+  Header := TCaseInsensitiveHashMap.Create;
+  Header.PutAll(FHeaders);
+  HttpHeader := VarToMap(Context['httpHeader']);
+  if (Assigned(HttpHeader)) then
+    Header.PutAll(HttpHeader);
+  for I := 0 to Header.Count - 1 do
+    ExtraHeaders.Values[Header.Keys[I]] := Header.Values[I];
   Cookie := GetCookie(FIdURI.Host,
                       FIdURI.Path,
                       LowerCase(FIdURI.Protocol) = 'https');
-  if Cookie <> '' then IdHttp.Request.ExtraHeaders.Values['Cookie'] := Cookie;
+  if Cookie <> '' then ExtraHeaders.Values['Cookie'] := Cookie;
   OutStream := TBytesStream.Create(Data);
   InStream := TBytesStream.Create;
   try
     IdHttp.DoRequest(hmPost, URI, OutStream, InStream);
-    SetCookie(IdHttp.Response.ExtraHeaders, FIdURI.Host);
+    HttpHeader.Clear();
+    ExtraHeaders := IdHttp.Response.ExtraHeaders;
+    for I := 0 to ExtraHeaders.Count - 1 do begin
+      Key := ExtraHeaders.Names[I];
+      HttpHeader.Put(Key, ExtraHeaders.Values[Key]);
+    end;
+    Context['httpHeader'] := HttpHeader;
+    SetCookie(HttpHeader, FIdURI.Host);
     Result := InStream.Bytes;
     SetLength(Result, InStream.Size);
   finally

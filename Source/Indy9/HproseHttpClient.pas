@@ -14,7 +14,7 @@
  *                                                        *
  * hprose indy http client unit for delphi.               *
  *                                                        *
- * LastModified: Nov 23, 2016                             *
+ * LastModified: Dec 7, 2016                              *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -27,14 +27,12 @@ uses Classes, HproseCommon, HproseClient, IdHeaderList, SysUtils;
 
 type
 
-  THeaderList = TIdHeaderList;
-
   THproseHttpClient = class(THproseClient)
   private
     FHttpPool: IList;
     FUserName: string;
     FPassword: string;
-    FHeaders: THeaderList;
+    FHeaders: IMap;
     FProxyHost: string;
     FProxyPort: Integer;
     FProxyUser: string;
@@ -53,7 +51,7 @@ type
     {:Before HTTP operation you may define any non-standard headers for HTTP
      request, except of: 'Expect: 100-continue', 'Content-Length', 'Content-Type',
      'Connection', 'Authorization', 'Proxy-Authorization' and 'Host' headers.}
-    property Headers: THeaderList read FHeaders;
+    property Headers: IMap read FHeaders;
 
     {:If @true (default value is @false), keepalives in HTTP protocol 1.1 is enabled.}
     property KeepAlive: Boolean read FKeepAlive write FKeepAlive;
@@ -102,7 +100,7 @@ constructor THproseHttpClient.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FHttpPool := TArrayList.Create(10);
-  FHeaders := THeaderList.Create;
+  FHeaders := TCaseInsensitiveHashMap.Create;
   FUserName := '';
   FPassword := '';
   FKeepAlive := True;
@@ -126,7 +124,6 @@ begin
   finally
     FHttpPool.Unlock;
   end;
-  FreeAndNil(FHeaders);
   inherited;
 end;
 
@@ -135,13 +132,22 @@ function THproseHttpClient.SendAndReceive(const Data: TBytes;
 var
   IdHttp: TIdHttp;
   OutStream, InStream: TBytesStream;
+  Header, HttpHeader: IMap;
+  CustomHeaders, RawHeaders: TIdHeaderList;
+  I: Integer;
+  Key: string;
 begin
   FHttpPool.Lock;
   try
     if FHttpPool.Count > 0 then
       IdHttp := TIdHttp(VarToObj(FHttpPool.Delete(FHttpPool.Count - 1)))
-    else
+    else begin
       IdHttp := TIdHttp.Create(nil);
+      IdHttp.AllowCookies := True;
+      IdHttp.CookieManager := CookieManager;
+      IdHTTP.HTTPOptions := IdHTTP.HTTPOptions + [hoKeepOrigProtocol];
+      IdHttp.ProtocolVersion := pv1_1;
+    end;
   finally
     FHttpPool.Unlock;
   end;
@@ -153,9 +159,10 @@ begin
     IdHttp.ProxyParams.ProxyUsername := FProxyUser;
     IdHttp.ProxyParams.ProxyPassword := FProxyPass;
   end;
+  CustomHeaders := IdHttp.Request.CustomHeaders;
   if KeepAlive then begin
     IdHttp.Request.Connection := 'keep-alive';
-    FHeaders.Values['Keep-Alive'] := IntToStr(FKeepAliveTimeout);
+    CustomHeaders.Values['Keep-Alive'] := IntToStr(FKeepAliveTimeout);
   end
   else IdHttp.Request.Connection := 'close';
   if FUserName <> '' then begin
@@ -164,15 +171,24 @@ begin
     IdHttp.Request.Password := FPassword;
   end;
   IdHttp.Request.ContentType := 'application/hprose';
-  IdHttp.AllowCookies := True;
-  IdHttp.CookieManager := CookieManager;
-  IdHTTP.HTTPOptions := IdHTTP.HTTPOptions + [hoKeepOrigProtocol];
-  IdHttp.ProtocolVersion := pv1_1;
-  IdHttp.Request.CustomHeaders := FHeaders;
+  Header := TCaseInsensitiveHashMap.Create;
+  Header.PutAll(FHeaders);
+  HttpHeader := VarToMap(Context['httpHeader']);
+  if (Assigned(HttpHeader)) then
+    Header.PutAll(HttpHeader);
+  for I := 0 to Header.Count - 1 do
+    CustomHeaders.Values[Header.Keys[I]] := Header.Values[I];
   OutStream := TBytesStream.Create(Data);
   InStream := TBytesStream.Create;
   try
     IdHttp.DoRequest(hmPost, URI, OutStream, InStream);
+    HttpHeader.Clear();
+    RawHeaders := IdHttp.Response.RawHeaders;
+    for I := 0 to RawHeaders.Count - 1 do begin
+      Key := RawHeaders.Names[I];
+      HttpHeader.Put(Key, RawHeaders.Values[Key]);
+    end;
+    Context['httpHeader'] := HttpHeader;
     Result := InStream.Bytes;
     SetLength(Result, InStream.Size);
   finally

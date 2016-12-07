@@ -14,7 +14,7 @@
  *                                                        *
  * hprose http client unit for delphi.                    *
  *                                                        *
- * LastModified: Nov 30, 2016                             *
+ * LastModified: Dec 7, 2016                              *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -26,23 +26,12 @@ interface
 uses Classes, HproseCommon, HproseClient, IdHeaderList, SysUtils, System.Net.HttpClient, System.Net.URLClient;
 
 type
-  THeaderList = class
-  private
-    FHeaders: TNetHeaders;
-    function GetValue(const Name: string): string;
-    procedure SetValue(const Name, Value: string);
-  public
-    constructor Create;
-    property Values[const Name: string]: string read GetValue write SetValue;
-    property Headers: TNetHeaders read FHeaders;
-  end;
-
   THproseHttpClient = class(THproseClient)
   private
     FHttpPool: IList;
     FUserName: string;
     FPassword: string;
-    FHeaders: THeaderList;
+    FHeaders: IMap;
     FProxyHost: string;
     FProxyPort: Integer;
     FProxyUser: string;
@@ -61,7 +50,7 @@ type
     {:Before HTTP operation you may define any non-standard headers for HTTP
      request, except of: 'Expect: 100-continue', 'Content-Length', 'Content-Type',
      'Connection', 'Authorization', 'Proxy-Authorization' and 'Host' headers.}
-    property Headers: THeaderList read FHeaders;
+    property Headers: IMap read FHeaders;
 
     {:If @true (default value is @false), keepalives in HTTP protocol 1.1 is enabled.}
     property KeepAlive: Boolean read FKeepAlive write FKeepAlive;
@@ -99,122 +88,6 @@ procedure Register;
 
 implementation
 
-const
-
-  Base64EncodeChars: array[0..63] of Char = (
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-    'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-    'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
-    'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
-    'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
-    'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
-    'w', 'x', 'y', 'z', '0', '1', '2', '3',
-    '4', '5', '6', '7', '8', '9', '+', '/');
-
-function Base64Encode(const Data: TBytes): string;
-var
-  R, Len, I, J, L : Longint;
-  C : LongWord;
-begin
-  Result := '';
-  Len := Length(Data);
-  if Len = 0 then Exit;
-  R := Len mod 3;
-  Dec(Len, R);
-  L := (Len div 3) * 4;
-  if (R > 0) then Inc(L, 4);
-  SetLength(Result, L);
-  I := 0;
-  J := 1;
-  while (I < Len) do begin
-    C := Data[I];
-    Inc(I);
-    C := (C shl 8) or Data[I];
-    Inc(I);
-    C := (C shl 8) or Data[I];
-    Inc(I);
-    Result[J] := Base64EncodeChars[C shr 18];
-    Inc(J);
-    Result[J] := Base64EncodeChars[(C shr 12) and $3F];
-    Inc(J);
-    Result[J] := Base64EncodeChars[(C shr 6) and $3F];
-    Inc(J);
-    Result[J] := Base64EncodeChars[C and $3F];
-    Inc(J);
-  end;
-  if (R = 1) then begin
-    C := Data[I];
-    Result[J] := Base64EncodeChars[C shr 2];
-    Inc(J);
-    Result[J] := Base64EncodeChars[(C and $03) shl 4];
-    Inc(J);
-    Result[J] := '=';
-    Inc(J);
-    Result[J] := '=';
-  end
-  else if (R = 2) then begin
-    C := Data[I];
-    Inc(I);
-    C := (C shl 8) or Data[I];
-    Result[J] := Base64EncodeChars[C shr 10];
-    Inc(J);
-    Result[J] := Base64EncodeChars[(C shr 4) and $3F];
-    Inc(J);
-    Result[J] := Base64EncodeChars[(C and $0F) shl 2];
-    Inc(J);
-    Result[J] := '=';
-  end;
-end;
-
-{ THeaderList }
-
-constructor THeaderList.Create;
-begin
-  inherited Create;
-  FHeaders := nil;
-end;
-
-function THeaderList.GetValue(const Name: string): string;
-var
-  I: Integer;
-  Header: TNetHeader;
-begin
-  Result := '';
-  for I := Length(FHeaders) - 1 downto 0 do begin
-    Header := FHeaders[I];
-    if Header.Name = Name then begin
-      Result := Header.Value;
-      break
-    end;
-  end;
-end;
-
-procedure THeaderList.SetValue(const Name, Value: string);
-var
-  I, J, N: Integer;
-  Header: TNetHeader;
-begin
-  N := Length(FHeaders) - 1;
-  for I := N downto 0 do begin
-    Header := FHeaders[I];
-    if Header.Name = Name then begin
-      if Value <> '' then
-        Header.Value := Value
-      else begin
-        for J := N downto I + 1 do begin
-          FHeaders[J - 1] := FHeaders[J];
-        end;
-        SetLength(FHeaders, N);
-      end;
-      exit;
-    end;
-  end;
-  if Value <> '' then begin
-    SetLength(FHeaders, N + 2);
-    FHeaders[N + 1] := TNetHeader.Create(Name, Value);
-  end;
-end;
-
 var
   CookieManager: TCookieManager = nil;
 
@@ -224,7 +97,7 @@ constructor THproseHttpClient.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FHttpPool := TArrayList.Create(10);
-  FHeaders := THeaderList.Create;
+  FHeaders := TCaseInsensitiveHashMap.Create;
   FUserName := '';
   FPassword := '';
   FKeepAlive := True;
@@ -233,7 +106,7 @@ begin
   FProxyPort := 8080;
   FProxyUser := '';
   FProxyPass := '';
-  FUserAgent := 'Hprose Http Client for Delphi';
+  FUserAgent := 'Hprose Http Client for Delphi XE8+';
   FConnectionTimeout := 10000;
 end;
 
@@ -251,7 +124,6 @@ begin
   finally
     FHttpPool.Unlock;
   end;
-  FreeAndNil(FHeaders);
   inherited;
 end;
 
@@ -268,48 +140,67 @@ function THproseHttpClient.SendAndReceive(const Data: TBytes;
   const Context: TClientContext): TBytes;
 var
   HttpClient: THTTPClient;
-  OutStream, InStream: TBytesStream;
+  ContentStream: TBytesStream;
+  Header, HttpHeader: IMap;
+  Request: IHTTPRequest;
+  ResponseHeader: TNetHeaders;
+  I: Integer;
 begin
   FHttpPool.Lock;
   try
     if FHttpPool.Count > 0 then
       HttpClient := THttpClient(VarToObj(FHttpPool.Delete(FHttpPool.Count - 1)))
-    else
+    else begin
       HttpClient := THttpClient.Create();
+      HttpClient.AllowCookies := True;
+      HttpClient.CookieManager := CookieManager;
+      HttpClient.HandleRedirects := True;
+      HttpClient.ValidateServerCertificateCallback := ValidateServerCertificateCallback;
+      HttpClient.ContentType := 'application/hprose';
+    end;
   finally
     FHttpPool.Unlock;
   end;
   HttpClient.ConnectionTimeout := FConnectionTimeout;
   HttpClient.ResponseTimeout := Context.Settings.Timeout;
-  HttpClient.UserAgent := FUserAgent;
-  HttpClient.HandleRedirects := True;
-  HttpClient.ValidateServerCertificateCallback := ValidateServerCertificateCallback;
   if FProxyHost <> '' then begin
     HttpClient.ProxySettings := TProxySettings.Create(FProxyHost, FProxyPort, FProxyUser, FProxyPass);
   end;
+  Request := HttpClient.GetRequest('POST', URI);
+  Header := TCaseInsensitiveHashMap.Create;
+  Header.PutAll(FHeaders);
+  HttpHeader := VarToMap(Context['httpHeader']);
+  if (Assigned(HttpHeader)) then
+    Header.PutAll(HttpHeader);
+  for I := 0 to Header.Count - 1 do
+    Request.AddHeader(Header.Keys[I], Header.Values[I]);
+  Request.UserAgent := FUserAgent;
   if KeepAlive then begin
-    HttpClient.CustomHeaders['Connection'] := 'keep-alive';
-    FHeaders.Values['Keep-Alive'] := IntToStr(FKeepAliveTimeout);
+    Request.HeaderValue['Connection'] := 'keep-alive';
+    Request.HeaderValue['Keep-Alive'] := IntToStr(FKeepAliveTimeout);
   end
   else begin
-    HttpClient.CustomHeaders['Connection'] := 'close';
-    FHeaders.Values['Keep-Alive'] := '';
+    Request.HeaderValue['Connection'] := 'close';
   end;
   if FUserName <> '' then begin
-    FHeaders.Values['Authorization'] := Base64Encode(BytesOf(FUserName + ':' + FPassword));
+    Request.SetCredential(FUserName, FPassword);
   end;
-  HttpClient.ContentType := 'application/hprose';
-  HttpClient.AllowCookies := True;
-  HttpClient.CookieManager := CookieManager;
-  OutStream := TBytesStream.Create(Data);
-  InStream := TBytesStream.Create;
+  Request.SourceStream := TBytesStream.Create(Data);
+  Request.SourceStream.Position := 0;
+  ContentStream := TBytesStream.Create;
   try
-    HttpClient.Post(URI, OutStream, InStream, FHeaders.Headers);
-    Result := InStream.Bytes;
-    SetLength(Result, InStream.Size);
+    ResponseHeader := HttpClient.Execute(Request, ContentStream).GetHeaders();
+    HttpHeader.Clear();
+    for I := 0 to Length(ResponseHeader) - 1 do begin
+      HttpHeader.Put(ResponseHeader[I].Name, ResponseHeader[I].Value);
+    end;
+    Context['httpHeader'] := HttpHeader;
+    Result := ContentStream.Bytes;
+    SetLength(Result, ContentStream.Size);
   finally
-    OutStream.Free;
-    InStream.Free;
+    Request.SourceStream.Free;
+    Request.SourceStream := nil;
+    ContentStream.Free;
   end;
   FHttpPool.Lock;
   try
