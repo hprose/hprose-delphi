@@ -14,7 +14,7 @@
  *                                                        *
  * hprose indy http client unit for delphi.               *
  *                                                        *
- * LastModified: Dec 7, 2016                             *
+ * LastModified: Dec 9, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -179,7 +179,9 @@ begin
   Header.PutAll(FHeaders);
   HttpHeader := VarToMap(Context['httpHeader']);
   if (Assigned(HttpHeader)) then
-    Header.PutAll(HttpHeader);
+    Header.PutAll(HttpHeader)
+  else
+    HttpHeader := TCaseInsensitiveHashMap.Create;
   for I := 0 to Header.Count - 1 do
     CustomHeaders.Values[Header.Keys[I]] := Header.Values[I];
   OutStream := TBytesStream.Create(Data);
