@@ -304,7 +304,6 @@ begin
   finally
     FHttpPool.Unlock;
   end;
-  FreeAndNil(FHeaders);
   inherited;
 end;
 
