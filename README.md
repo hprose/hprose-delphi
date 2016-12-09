@@ -1,6 +1,9 @@
+<p align="center"><img src="http://hprose.com/banner.@2x.png" alt="Hprose" title="Hprose" width="650" height="200" /></p>
+
 # Hprose for Delphi/Lazarus
 
 [![Join the chat at https://gitter.im/hprose/hprose-delphi](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/hprose/hprose-delphi?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Supported Delphi versions: delphi6-delphi10.1](https://img.shields.io/badge/delphi-6~10.1-blue.svg) ![Supported FreePascal versions: freepascal2-freepascal3](https://img.shields.io/badge/freepascal-2~3-blue.svg)](https://github.com/hprose/hprose-delphi) [![GitHub release](https://img.shields.io/github/release/hprose/hprose-delphi.svg)](https://github.com/hprose/hprose-delphi/releases)
 
 *Hprose* is a High Performance Remote Object Service Engine.
 
