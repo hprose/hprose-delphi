@@ -250,7 +250,8 @@ begin
   if (HttpSend.HTTPMethod('POST', URI)) then begin
     HttpHeader.Clear();
     for I := 0 to HttpSend.Headers.Count - 1 do begin
-      HttpSend.Headers.GetNameValue(I, K, V);
+      K := HttpSend.Headers.Names[I];
+      V := HttpSend.Headers.Values[K];
       HttpHeader.Put(K, V);
     end;
     Context['httpHeader'] := HttpHeader;
