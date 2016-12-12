@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Dec 6, 2016                              *
+ * LastModified: Dec 13, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -2271,14 +2271,16 @@ constructor TAbstractList.Create(const Container: Variant; Sync: Boolean;
   ReadWriteSync: Boolean);
 var
   AList: IList;
+  N: Integer;
 begin
   if VarIsList(Container) then begin
     AList := VarToList(Container);
     Create(AList, Sync, ReadWriteSync);
   end
   else if VarIsArray(Container) then begin
-    Create(Length(Container), Sync, ReadWriteSync);
-    Add(Container);
+    N := VarArrayHighBound(Container, 1) - VarArrayLowBound(Container, 1) + 1;
+    Create(N, Sync, ReadWriteSync);
+    AddAll(Container);
   end;
 end;
 
@@ -2406,10 +2408,10 @@ begin
     AddAll(VarToList(Container));
   end
   else if VarIsArray(Container) then begin
-    N := Length(Container);
-    Grow(N);
     Low := VarArrayLowBound(Container, 1);
-    High := Low + N - 1;
+    High := VarArrayHighBound(Container, 1);
+    N := High - Low + 1;
+    Grow(N);
     for I := Low to High do Add(Container[I]);
   end;
 end;
