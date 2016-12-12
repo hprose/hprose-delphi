@@ -15,3 +15,5 @@ Lazarus/HproseLnet.pas
 *.rsj
 
 *.~pas
+
+Test/HproseTest.exe
