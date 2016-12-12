@@ -18,7 +18,12 @@ uses
   Forms,
   TestFramework,
   GUITestRunner,
-  TextTestRunner;
+  TextTestRunner,
+  ArrayListTestCases in 'ArrayListTestCases.pas',
+  HproseClient in '..\Source\HproseClient.pas',
+  HproseCommon in '..\Source\HproseCommon.pas',
+  HproseIO in '..\Source\HproseIO.pas',
+  ObjAutoX in '..\Source\ObjAutoX.pas';
 
 {$R *.RES}
 
