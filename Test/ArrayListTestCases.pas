@@ -21,7 +21,7 @@ procedure TTestCaseArrayList.TestCreate;
 var
   L: IArrayList;
 begin
-  L := TArrayList.Create([1, 2, 3]);
+  L := ArrayList([1, 2, 3]);
   Check(L[0] = 1);
   Check(L[1] = 2);
   Check(L[2] = 3);
@@ -46,7 +46,7 @@ procedure TTestCaseArrayList.TestAdd;
 var
   L: IArrayList;
 begin
-  L := TArrayList.Create([1, 2, 3]);
+  L := ArrayList([1, 2, 3]);
   L.Add('Hello');
   L.Add(3.14);
   L.Add(True);
