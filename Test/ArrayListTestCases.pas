@@ -48,8 +48,16 @@ var
 begin
   L := TArrayList.Create([1, 2, 3]);
   L.Add('Hello');
-  Check(L.Count = 4);
+  L.Add(3.14);
+  L.Add(True);
+  L.Add(ArrayList(['a', 'b', 'c']));
+  Check(L.Count = 7);
   Check(L[3] = 'Hello');
+  Check(L[4] = 3.14);
+  Check(L[5] = True);
+  Check(L[6].Get(0) = 'a');
+  Check(L[6].Get(1) = 'b');
+  Check(L[6].Get(2) = 'c');
 end;
 
 initialization
