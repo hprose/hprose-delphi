@@ -14,7 +14,7 @@
  *                                                        *
  * ObjAutoX unit for delphi.                              *
  *                                                        *
- * LastModified: Oct 30, 2016                             *
+ * LastModified: Nov 13, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -420,7 +420,7 @@ begin
       Inc(PCardinal(MethodInfo));
       {$ELSE}
       Count := PWord(MethodInfo)^;
-      Inc(PWord(MethodInfo));
+      Inc(NativeUInt(MethodInfo), 2);
       {$ENDIF}
       while Count > 0 do begin
         Result[I] := MethodInfo;
@@ -428,7 +428,7 @@ begin
         {$IFDEF FPC}
         Inc(MethodInfo);
         {$ELSE}
-        Inc(PByte(MethodInfo), MethodInfo^.Len);
+        Inc(NativeUInt(MethodInfo), MethodInfo^.Len);
         {$ENDIF}
         Dec(Count);
       end;
@@ -464,7 +464,7 @@ begin
       Inc(PCardinal(Result));
       {$ELSE}
       Count := PWord(Result)^;
-      Inc(PWord(Result));
+      Inc(NativeUInt(Result), 2);
       {$ENDIF}
       while Count > 0 do
       begin
@@ -473,7 +473,7 @@ begin
         {$IFDEF FPC}
         Inc(Result);
         {$ELSE}
-        Inc(PByte(Result), Result^.Len);
+        Inc(NativeUInt(Result), Result^.Len);
         {$ENDIF}
         Dec(Count);
       end;
