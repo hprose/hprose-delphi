@@ -1,4 +1,4 @@
-{                    
+{
 /**********************************************************\
 |                                                          |
 |                          hprose                          |
@@ -148,6 +148,9 @@ type
 
   { TAbstractList }
 
+{$IFDEF DELPHI7_UP}
+  {$METHODINFO ON}
+{$ENDIF}
   TAbstractList = class(TInterfacedObject, IList)
   private
     FLock: TCriticalSection;
@@ -155,8 +158,6 @@ type
   protected
     procedure Grow; overload; virtual; abstract;
     procedure Grow(N: Integer); overload; virtual; abstract;
-    function Get(Index: Integer): Variant; virtual; abstract;
-    procedure Put(Index: Integer; const Value: Variant); virtual; abstract;
     function GetCapacity: Integer; virtual; abstract;
     function GetCount: Integer; virtual; abstract;
     procedure SetCapacity(NewCapacity: Integer); virtual; abstract;
@@ -196,6 +197,8 @@ type
     function Delete(Index: Integer): Variant; virtual; abstract;
     procedure DeleteRange(Index, Count: Integer); virtual; abstract;
     procedure Exchange(Index1, Index2: Integer); virtual; abstract;
+    function Get(Index: Integer): Variant; virtual; abstract;
+    procedure Put(Index: Integer; const Value: Variant); virtual; abstract;
     function GetEnumerator: IListEnumerator; virtual;
     function IndexOf(const Value: Variant): Integer; virtual; abstract;
     function LastIndexOf(const Value: Variant): Integer; virtual; abstract;
@@ -234,6 +237,9 @@ type
     property Capacity: Integer read GetCapacity write SetCapacity;
     property Count: Integer read GetCount write SetCount;
   end;
+{$IFDEF DELPHI7_UP}
+  {$METHODINFO OFF}
+{$ENDIF}
 
   TListClass = class of TAbstractList;
 
@@ -249,12 +255,10 @@ type
     FCapacity: Integer;
     FList: TVariants;
   protected
-    function Get(Index: Integer): Variant; override;
     procedure Grow; overload; override;
     procedure Grow(N: Integer); overload; override;
     procedure ShiftRight(Index, N: Integer);
     procedure ShiftLeft(Index, N: Integer);
-    procedure Put(Index: Integer; const Value: Variant); override;
     function GetCapacity: Integer; override;
     function GetCount: Integer; override;
     procedure SetCapacity(NewCapacity: Integer); override;
@@ -269,6 +273,8 @@ type
     function Delete(Index: Integer): Variant; override;
     procedure DeleteRange(Index, ACount: Integer); override;
     procedure Exchange(Index1, Index2: Integer); override;
+    function Get(Index: Integer): Variant; override;
+    procedure Put(Index: Integer; const Value: Variant); override;
     function IndexOf(const Value: Variant): Integer; override;
     function LastIndexOf(const Value: Variant): Integer; override;
     procedure Insert(Index: Integer; const Value: Variant); override;
@@ -338,7 +344,6 @@ type
     procedure DeleteHash(Index, N: Integer);
     procedure InsertHash(Index, N: Integer);
     function HashOf(const Value: Variant): Integer; virtual;
-    procedure Put(Index: Integer; const Value: Variant); override;
   public
     constructor Create(ACapacity: Integer = 4; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); overload; override;
@@ -354,6 +359,7 @@ type
     function Delete(Index: Integer): Variant; override;
     procedure DeleteRange(Index, ACount: Integer); override;
     procedure Exchange(Index1, Index2: Integer); override;
+    procedure Put(Index: Integer; const Value: Variant); override;
     function IndexOf(const Value: Variant): Integer; override;
     function LastIndexOf(const Value: Variant): Integer; override;
     procedure Insert(Index: Integer; const Value: Variant); override;
@@ -467,6 +473,9 @@ type
 
   { TAbstractMap }
 
+{$IFDEF DELPHI7_UP}
+  {$METHODINFO ON}
+{$ENDIF}
   TAbstractMap = class(TInterfacedObject, IMap)
   private
     FLock: TCriticalSection;
@@ -478,7 +487,6 @@ type
     function GetCount: Integer; virtual; abstract;
     function GetKeys: IImmutableList; virtual; abstract;
     function GetValues: IImmutableList; virtual; abstract;
-    function GetKey(const AValue: Variant): Variant; virtual; abstract;
     function CompareKey(const Entry1, Entry2: TMapEntry): Integer; virtual; abstract;
     function CompareValue(const Entry1, Entry2: TMapEntry): Integer; virtual; abstract;
   public
@@ -513,6 +521,7 @@ type
     destructor Destroy; override;
     function Get(const AKey: Variant): Variant; overload; virtual; abstract;
     function Get(const AKey: Variant; out AValue: Variant): Boolean; overload; virtual; abstract;
+    function GetKey(const AValue: Variant): Variant; virtual; abstract;
     procedure Put(const AKey, AValue: Variant); overload; virtual; abstract;
     procedure Put(const AList: IImmutableList); overload; virtual;
     procedure Put(const AMap: IMap); overload; virtual;
@@ -559,6 +568,9 @@ type
     property Keys: IImmutableList read GetKeys;
     property Values: IImmutableList read GetValues;
   end;
+{$IFDEF DELPHI7_UP}
+  {$METHODINFO OFF}
+{$ENDIF}
 
   TMapClass = class of TAbstractMap;
   { function ContainsValue is an O(n) operation in THashMap,
@@ -581,7 +593,6 @@ type
     function GetCount: Integer; override;
     function GetKeys: IImmutableList; override;
     function GetValues: IImmutableList; override;
-    function GetKey(const AValue: Variant): Variant; override;
     procedure InitData(AKeys, AValues: IList);
     function CompareKey(const Entry1, Entry2: TMapEntry): Integer; override;
     function CompareValue(const Entry1, Entry2: TMapEntry): Integer; override;
@@ -591,6 +602,7 @@ type
     procedure Assign(const Source: IMap); override;
     function Get(const AKey: Variant): Variant; overload; override;
     function Get(const AKey: Variant; out AValue: Variant): Boolean; overload; override;
+    function GetKey(const AValue: Variant): Variant; override;
     procedure Put(const AKey, AValue: Variant); overload; override;
     function Add(const AKey, AValue: Variant): Boolean; override;
     procedure Clear; override;
@@ -680,7 +692,7 @@ type
   ['{496CD091-9C33-423A-BC4A-61AF16C74A75}']
     function Value: TObject;
   end;
-  
+
   TSmartObject = class(TInterfacedObject, ISmartObject)
   private
     FValue: TObject;
@@ -792,6 +804,16 @@ function GetClassAlias(const AClass: TClass): string;
 function GetClassByInterface(const IID: TGUID): TInterfacedClass;
 function HasRegisterWithInterface(const AClass: TInterfacedClass): Boolean;
 function GetInterfaceByClass(const AClass: TInterfacedClass): TGUID;
+
+function ArrayList(const Elements: array of const): IArrayList;
+function HashedList(const Elements: array of const): IHashedList;
+function CaseInsensitiveArrayList(const Elements: array of const): ICaseInsensitiveArrayList;
+function CaseInsensitiveHashedList(const Elements: array of const): ICaseInsensitiveHashedList;
+
+function HashMap(const Elements: array of const): IHashMap;
+function HashedMap(const Elements: array of const): IHashedMap;
+function CaseInsensitiveHashMap(const Elements: array of const): ICaseInsensitiveHashMap;
+function CaseInsensitiveHashedMap(const Elements: array of const): ICaseInsensitiveHashedMap;
 
 type
   TClassManager = class
@@ -4239,6 +4261,46 @@ begin
   if FPosition > FLength then FLength := FPosition;
 end;
 
+function ArrayList(const Elements: array of const): IArrayList;
+begin
+  Result := TArrayList.Create(Elements);
+end;
+
+function HashedList(const Elements: array of const): IHashedList;
+begin
+  Result := THashedList.Create(Elements);
+end;
+
+function CaseInsensitiveArrayList(const Elements: array of const): ICaseInsensitiveArrayList;
+begin
+  Result := TCaseInsensitiveArrayList.Create(Elements);
+end;
+
+function CaseInsensitiveHashedList(const Elements: array of const): ICaseInsensitiveHashedList;
+begin
+  Result := TCaseInsensitiveHashedList.Create(Elements);
+end;
+
+function HashMap(const Elements: array of const): IHashMap;
+begin
+  Result := THashMap.Create(Elements);
+end;
+
+function HashedMap(const Elements: array of const): IHashedMap;
+begin
+  Result := THashedMap.Create(Elements);
+end;
+
+function CaseInsensitiveHashMap(const Elements: array of const): ICaseInsensitiveHashMap;
+begin
+  Result := TCaseInsensitiveHashMap.Create(Elements);
+end;
+
+function CaseInsensitiveHashedMap(const Elements: array of const): ICaseInsensitiveHashedMap;
+begin
+  Result := TCaseInsensitiveHashedMap.Create(Elements);
+end;
+
 { TVarObjectType }
 
 {$IF DEFINED(FPC) AND (FPC_VERSION < 3.0)}
@@ -4389,9 +4451,10 @@ function TVarObjectType.GetInstance(const V: TVarData): TObject;
 begin
   Result := nil;
   try
-    if V.VType = varObject then begin
-      Result := TObject(V.VPointer);
-    end
+    if V.VType = varObject then
+      Result := TObject(V.VPointer)
+    else if V.VType = varUnknown then
+      Result := IntfToObj(IInterface(V.VUnknown))   
     else if V.VType <> varNull then Error(reInvalidCast);
   except
     Error(reInvalidCast);
@@ -4529,6 +4592,22 @@ function TVarObjectType.IsClear(const V: TVarData): Boolean;
 begin
   Result := not Assigned(V.VPointer);
 end;
+
+{$IFDEF DELPHI7_UP}
+var
+  OldVarDispProc: TVarDispProc;
+
+procedure IntfDispInvoke(Dest: PVariant; const Source: Variant;
+      CallDesc: PCallDesc; Params: Pointer); cdecl;
+begin
+  if TVarData(Source).VType=varUnknown then
+    VarObjectType.DispInvoke(PVarData(Dest), TVarData(Source), CallDesc, Params)
+  else if Assigned(OldVarDispProc) then
+    OldVarDispProc(Dest, Source, CallDesc, Params)
+  else
+    raise exception.Create('Variant method calls not supported');
+end;
+{$ENDIF}
 
 function ListSplit(ListClass: TListClass; Str: string;
   const Separator: string; Limit: Integer; TrimItem: Boolean;
@@ -5005,6 +5084,13 @@ begin
 end;
 
 initialization
+{$IFDEF DELPHI7_UP}
+  OldVarDispProc := Variants.VarDispProc;
+  Variants.VarDispProc := @IntfDispInvoke;
+{$ENDIF}
+  VarObjectType := TVarObjectType.Create;
+  varObject := VarObjectType.VarType;
+
   HproseClassMap := TCaseInsensitiveHashedMap.Create(False, True);
   HproseInterfaceMap := TCaseInsensitiveHashedMap.Create(False, True);
 
@@ -5085,10 +5171,10 @@ RegisterClass(TCaseInsensitiveArrayList, ICaseInsensitiveArrayList, '!CaseInsens
   RegisterClass(TCaseInsensitiveHashedMap, ICaseInsensitiveHashedMap, '!CaseInsensitiveHashedMap');
 {$ENDIF}
 
-  VarObjectType := TVarObjectType.Create;
-  varObject := VarObjectType.VarType;
-
 finalization
+{$IFDEF DELPHI7_UP}
+  Variants.VarDispProc := OldVarDispProc;
+{$ENDIF}
   FreeAndNil(VarObjectType);
 
 end.
