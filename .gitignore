@@ -17,3 +17,5 @@ Lazarus/HproseLnet.pas
 *.~pas
 
 Test/HproseTest.exe
+
+Test/dunit.ini
