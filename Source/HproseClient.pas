@@ -14,7 +14,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: Dec 1, 2016                              *
+ * LastModified: Dec 14, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -148,7 +148,7 @@ type
 
   { TClientContext }
 
-  TClientContext = class(TContext)
+  TClientContext = class(THproseContext)
   private
     FClient: THproseClient;
     FSettings: IInvokeSettings;
@@ -211,13 +211,13 @@ type
     FTopicManager: TTopicManager;
     function InvokeHandler(const AName: String;
                           var Args: TVariants;
-                      const Context: TContext;
+                      const Context: THproseContext;
                      Next: PNextInvokeHandler): Variant;
     function BeforeFilterHandler(var Request: TBytes;
-                             const Context: TContext;
+                             const Context: THproseContext;
                             Next: PNextFilterHandler): TBytes;
     function AfterFilterHandler(var Request: TBytes;
-                            const Context: TContext;
+                            const Context: THproseContext;
                           Next: PNextFilterHandler): TBytes;
     function RetrySendRequest(var Request: TBytes;
       const Context: TClientContext): TBytes;
@@ -403,13 +403,13 @@ type
   TOnewayThread = class(TThread)
   private
     FRequest: TBytes;
-    FContext: TContext;
+    FContext: THproseContext;
     FHandler: TFilterHandler;
     FNext: PNextFilterHandler;
   protected
     procedure Execute; override;
   public
-    constructor Create(const Request: TBytes; const Context: TContext;
+    constructor Create(const Request: TBytes; const Context: THproseContext;
       const Handler: TFilterHandler; const Next: PNextFilterHandler);
   end;
 
@@ -555,7 +555,7 @@ begin
 end;
 
 constructor TOnewayThread.Create(const Request: TBytes;
-  const Context: TContext; const Handler: TFilterHandler;
+  const Context: THproseContext; const Handler: TFilterHandler;
   const Next: PNextFilterHandler);
 begin
   inherited Create(False);
@@ -1095,7 +1095,7 @@ begin
 end;
 
 function THproseClient.InvokeHandler(const AName: String; var Args: TVariants;
-  const Context: TContext; Next: PNextInvokeHandler): Variant;
+  const Context: THproseContext; Next: PNextInvokeHandler): Variant;
 var
   Request, Response: TBytes;
   Handler: TFilterHandler;
@@ -1109,7 +1109,7 @@ begin
 end;
 
 function THproseClient.BeforeFilterHandler(var Request: TBytes;
-  const Context: TContext; Next: PNextFilterHandler): TBytes;
+  const Context: THproseContext; Next: PNextFilterHandler): TBytes;
 var
   Handler: TFilterHandler;
 begin
@@ -1127,7 +1127,7 @@ begin
 end;
 
 function THproseClient.AfterFilterHandler(var Request: TBytes;
-  const Context: TContext; Next: PNextFilterHandler): TBytes;
+  const Context: THproseContext; Next: PNextFilterHandler): TBytes;
 begin
   try
     Result := SendAndReceive(Request, TClientContext(Context));

@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Dec 13, 2016                             *
+ * LastModified: Dec 14, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -866,9 +866,9 @@ function ShuffleStringArray(const StringArray: array of string): TStringArray;
 
 type
 
-  { TContext }
+  { THproseContext }
 
-  TContext = class
+  THproseContext = class
   private
     FUserData: ICaseInsensitiveHashMap;
     function Get(Key: string): Variant;
@@ -881,14 +881,14 @@ type
 
   IFilter = interface
   ['{4AD7CCF2-1121-4CA4-92A7-5704C5956BA4}']
-    function InputFilter(var Data: TBytes; const Context: TContext): TBytes;
-    function OutputFilter(var Data: TBytes; const Context: TContext): TBytes;
+    function InputFilter(var Data: TBytes; const Context: THproseContext): TBytes;
+    function OutputFilter(var Data: TBytes; const Context: THproseContext): TBytes;
   end;
 
   TFilter = class(TInterfacedObject, IFilter)
   public
-    function InputFilter(var Data: TBytes; const Context: TContext): TBytes;  virtual; abstract;
-    function OutputFilter(var Data: TBytes; const Context: TContext): TBytes; virtual; abstract;
+    function InputFilter(var Data: TBytes; const Context: THproseContext): TBytes;  virtual; abstract;
+    function OutputFilter(var Data: TBytes; const Context: THproseContext): TBytes; virtual; abstract;
   end;
 
   { TFilterList }
@@ -902,8 +902,8 @@ type
     function GetCount: Integer;
     function Add(const Filter: IFilter): TFilterList;
     function Remove(const Filter: IFilter): TFilterList;
-    function InputFilter(var Data: TBytes; const Context: TContext): TBytes;
-    function OutputFilter(var Data: TBytes; const Context: TContext): TBytes;
+    function InputFilter(var Data: TBytes; const Context: THproseContext): TBytes;
+    function OutputFilter(var Data: TBytes; const Context: THproseContext): TBytes;
     property Filter[Index: Integer]: IFilter read Get; default;
     property Count: Integer read GetCount;
   end;
@@ -915,18 +915,18 @@ type
 {$IFDEF SUPPORTS_ANONYMOUS_METHOD}
   TInvokeHandler = reference to function(const AName: String;
                                          var Args: TVariants;
-                                     const Context: TContext;
+                                     const Context: THproseContext;
                                     Next: PNextInvokeHandler): Variant;
   TFilterHandler = reference to function(var Request: TBytes;
-                                     const Context: TContext;
+                                     const Context: THproseContext;
                                     Next: PNextFilterHandler): TBytes;
 {$ELSE}
   TInvokeHandler = function(const AName: String;
                             var Args: TVariants;
-                        const Context: TContext;
+                        const Context: THproseContext;
                        Next: PNextInvokeHandler): Variant of object;
   TFilterHandler = function(var Request: TBytes;
-                        const Context: TContext;
+                        const Context: THproseContext;
                        Next: PNextFilterHandler): TBytes of object;
 {$ENDIF}
 
@@ -1187,9 +1187,8 @@ begin
   Result := nil;
   try
     P := FindVarData(Value);
-    if P^.VType = varObject then begin
-      Result := TObject(P^.VPointer);
-    end
+    if P^.VType = varObject then
+      Result := TObject(P^.VPointer)
     else if (P^.VType <> varNull) and (P^.VType <> varEmpty) then
       Error(reInvalidCast);
   except
@@ -4902,19 +4901,19 @@ begin
 end;
 
 
-{ TContext }
+{ THproseContext }
 
-function TContext.Get(Key: string): Variant;
+function THproseContext.Get(Key: string): Variant;
 begin
   Result := FUserData[Key];
 end;
 
-procedure TContext.Put(Key: string; const Value: Variant);
+procedure THproseContext.Put(Key: string; const Value: Variant);
 begin
   FUserData[Key] := Value;
 end;
 
-constructor TContext.Create(const AUserData: IMap);
+constructor THproseContext.Create(const AUserData: IMap);
 begin
   FUserData := TCaseInsensitiveHashMap.Create(16, 0.75, False);
   if Assigned(AUserData) then FUserData.PutAll(AUserData);
@@ -4955,7 +4954,7 @@ begin
   Result := Self;
 end;
 
-function TFilterList.InputFilter(var Data: TBytes; const Context: TContext
+function TFilterList.InputFilter(var Data: TBytes; const Context: THproseContext
   ): TBytes;
 var
   I: Integer;
@@ -4968,7 +4967,7 @@ begin
   end;
 end;
 
-function TFilterList.OutputFilter(var Data: TBytes; const Context: TContext
+function TFilterList.OutputFilter(var Data: TBytes; const Context: THproseContext
   ): TBytes;
 var
   I: Integer;
