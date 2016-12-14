@@ -148,10 +148,8 @@ type
 
   { TAbstractList }
 
-{$IFDEF DELPHI7_UP}
-  {$METHODINFO ON}
-{$ENDIF}
-  TAbstractList = class(TInterfacedObject, IList)
+{$M+}
+  TAbstractList = class(TInterfacedObject, IList, IInvokeableVarObject)
   private
     FLock: TCriticalSection;
     FReadWriteLock: TMultiReadExclusiveWriteSynchronizer;
@@ -163,6 +161,7 @@ type
     procedure SetCapacity(NewCapacity: Integer); virtual; abstract;
     procedure SetCount(NewCount: Integer); virtual; abstract;
     function Compare(const Value1, Value2: Variant): Integer; virtual;
+    function Invoke(const Name: string; const Arguments: TVarDataArray): Variant; virtual;
   public
     constructor Create(ACapacity: Integer = 4; Sync: Boolean = True;
       ReadWriteSync: Boolean = False); overload; virtual; abstract;
@@ -234,12 +233,11 @@ type
     procedure Sort(CompareProc: TListCompareMethod); overload;
     procedure TrimExcess;
     property Item[Index: Integer]: Variant read Get write Put; default;
+  published
     property Capacity: Integer read GetCapacity write SetCapacity;
     property Count: Integer read GetCount write SetCount;
   end;
-{$IFDEF DELPHI7_UP}
-  {$METHODINFO OFF}
-{$ENDIF}
+{$M-}
 
   TListClass = class of TAbstractList;
 
@@ -284,9 +282,6 @@ type
     procedure Move(CurIndex, NewIndex: Integer); override;
     function ToArray: TVariants; overload; override;
     function ToArray(VarType: TVarType): Variant; overload; override;
-    property Item[Index: Integer]: Variant read Get write Put; default;
-    property Count: Integer read GetCount write SetCount;
-    property Capacity: Integer read GetCapacity write SetCapacity;
   end;
 
   PHashItem = ^THashItem;
@@ -473,10 +468,8 @@ type
 
   { TAbstractMap }
 
-{$IFDEF DELPHI7_UP}
-  {$METHODINFO ON}
-{$ENDIF}
-  TAbstractMap = class(TInterfacedObject, IMap)
+{$M+}
+  TAbstractMap = class(TInterfacedObject, IMap, IInvokeableVarObject)
   private
     FLock: TCriticalSection;
     FReadWriteLock: TMultiReadExclusiveWriteSynchronizer;
@@ -489,6 +482,7 @@ type
     function GetValues: IImmutableList; virtual; abstract;
     function CompareKey(const Entry1, Entry2: TMapEntry): Integer; virtual; abstract;
     function CompareValue(const Entry1, Entry2: TMapEntry): Integer; virtual; abstract;
+    function Invoke(const AName: string; const Arguments: TVarDataArray): Variant; virtual;
   public
     constructor Create(ACapacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); overload; virtual; abstract;
@@ -562,15 +556,14 @@ type
     procedure Sort(CompareProc: TMapCompareMethod); overload; virtual; abstract;
     procedure SortByValue; virtual; abstract;
     procedure TrimExcess; virtual; abstract;
-    property Count: Integer read GetCount;
     property Key[const AValue: Variant]: Variant read GetKey;
     property Value[const AKey: Variant]: Variant read GetValue write PutValue; default;
+  published
+    property Count: Integer read GetCount;
     property Keys: IImmutableList read GetKeys;
     property Values: IImmutableList read GetValues;
   end;
-{$IFDEF DELPHI7_UP}
-  {$METHODINFO OFF}
-{$ENDIF}
+{$M-}
 
   TMapClass = class of TAbstractMap;
   { function ContainsValue is an O(n) operation in THashMap,
@@ -1183,13 +1176,15 @@ end;
 function VarToObj(const Value: Variant): TObject;
 var
   P: PVarData;
+  VType: TVarType;
 begin
+  P := FindVarData(Value);
+  VType := P^.VType;
   Result := nil;
   try
-    P := FindVarData(Value);
-    if P^.VType = varObject then
+    if VType = varObject then
       Result := TObject(P^.VPointer)
-    else if (P^.VType <> varNull) and (P^.VType <> varEmpty) then
+    else if (VType <> varNull) and (VType <> varEmpty) then
       Error(reInvalidCast);
   except
     Error(reInvalidCast);
@@ -1199,15 +1194,17 @@ end;
 function VarToObj(const Value: Variant; AClass: TClass): TObject;
 var
   P: PVarData;
+  VType: TVarType;
 begin
+  P := FindVarData(Value);
+  VType := P^.VType;
   Result := nil;
   try
-    P := FindVarData(Value);
-    if P^.VType = varObject then begin
+    if VType = varObject then begin
       Result := TObject(P^.VPointer);
       if not (Result is AClass) then Error(reInvalidCast);
     end
-    else if (P^.VType <> varNull) and (P^.VType <> varEmpty) then
+    else if (VType <> varNull) and (VType <> varEmpty) then
       Error(reInvalidCast);
   except
     Error(reInvalidCast);
@@ -1219,16 +1216,18 @@ function VarToObj(const Value: Variant; AClass: TClass; out AObject):
 var
   Obj: TObject absolute AObject;
   P: PVarData;
+  VType: TVarType;
 begin
+  P := FindVarData(Value);
+  VType := P^.VType;
   Obj := nil;
   Result := True;
   try
-    P := FindVarData(Value);
-    if (P^.VType = varObject) and (TObject(P^.VPointer) is AClass) then begin
+    if (VType = varObject) and (TObject(P^.VPointer) is AClass) then begin
       Obj := TObject(P^.VPointer) as AClass;
       Result := Assigned(Obj) or not Assigned(P^.VPointer);
     end
-    else if (P^.VType <> varNull) and (P^.VType <> varEmpty) then
+    else if (VType <> varNull) and (VType <> varEmpty) then
       Result := False;
   except
     Result := False;
@@ -1250,13 +1249,15 @@ end;
 function VarIsObj(const Value: Variant; AClass: TClass): Boolean;
 var
   P: PVarData;
+  VType: TVarType;
 begin
+  P := FindVarData(Value);
+  VType := P^.VType;
   Result := True;
   try
-    P := FindVarData(Value);
-    if P^.VType = varObject then
+    if VType = varObject then
       Result := TObject(P^.VPointer) is AClass
-    else if (P^.VType <> varNull) and (P^.VType <> varEmpty) then
+    else if (VType <> varNull) and (VType <> varEmpty) then
       Result := False;
   except
     Result := False;
@@ -1264,18 +1265,26 @@ begin
 end;
 
 function VarIsList(const Value: Variant): Boolean;
+var
+  P: PVarData;
 begin
-  Result := (FindVarData(Value)^.VType = varUnknown) and
-            Supports(IInterface(Value), IList) or
+  P := FindVarData(Value);
+  Result := (P^.VType = varUnknown) and
+            Supports(IInterface(P^.VUnknown), IList) or
             VarIsObj(Value, TAbstractList);
 end;
 
 function VarToList(const Value: Variant): IList;
+var
+  P: PVarData;
+  VType: TVarType;
 begin
-  if VarIsEmpty(Value) or VarIsNull(Value) then
+  P := FindVarData(Value);
+  VType := P^.VType;
+  if (VType = varEmpty) or (VType = varNull) then
     Result := nil
-  else if FindVarData(Value)^.VType = varUnknown then
-    Supports(IInterface(Value), IList, Result)
+  else if VType = varUnknown then
+    Supports(IInterface(P^.VUnknown), IList, Result)
   else if VarIsObj(Value, TAbstractList) then
     VarToObj(Value, TAbstractList, Result)
   else
@@ -1283,18 +1292,26 @@ begin
 end;
 
 function VarIsMap(const Value: Variant): Boolean;
+var
+  P: PVarData;
 begin
-  Result := (FindVarData(Value)^.VType = varUnknown) and
-            Supports(IInterface(Value), IMap) or
+  P := FindVarData(Value);
+  Result := (P^.VType = varUnknown) and
+            Supports(IInterface(P^.VUnknown), IMap) or
             VarIsObj(Value, TAbstractMap);
 end;
 
 function VarToMap(const Value: Variant): IMap;
+var
+  P: PVarData;
+  VType: TVarType;
 begin
-  if VarIsEmpty(Value) or VarIsNull(Value) then
+  P := FindVarData(Value);
+  VType := P^.VType;
+  if (VType = varEmpty) or (VType = varNull) then
     Result := nil
-  else if FindVarData(Value)^.VType = varUnknown then
-    Supports(IInterface(Value), IMap, Result)
+  else if VType = varUnknown then
+    Supports(IInterface(P^.VUnknown), IMap, Result)
   else if VarIsObj(Value, TAbstractMap) then
     VarToObj(Value, TAbstractMap, Result)
   else
@@ -1310,16 +1327,33 @@ begin
 end;
 
 function VarIsIntf(const Value: Variant; const IID: TGUID): Boolean;
+var
+  P: PVarData;
+  VType: TVarType;
 begin
-  Result := VarIsIntf(Value) and Supports(IInterface(Value), IID);
+  P := FindVarData(Value);
+  VType := P^.VType;
+  if (VType = varNull) or (VType = varEmpty) then
+    Result := True
+  else if VType = varUnknown then
+    Result := Supports(IInterface(P^.VUnknown), IID)
+  else
+    Result := False;
 end;
 
 function VarToIntf(const Value: Variant; const IID: TGUID; out AIntf): Boolean;
+var
+  P: PVarData;
+  VType: TVarType;
 begin
-  if VarIsIntf(Value) then
-    Result := Supports(IInterface(Value), IID, AIntf)
+  P := FindVarData(Value);
+  VType := P^.VType;
+  if (VType = varNull) or (VType = varEmpty) then
+    Result := Supports(nil, IID, AIntf)
+  else if VType = varUnknown then
+    Result := Supports(IInterface(P^.VUnknown), IID, AIntf)
   else
-    Result := false;
+    Result := False;
 end;
 
 {$IFNDEF DELPHI2010_UP}
@@ -2381,6 +2415,97 @@ procedure TAbstractList.InitReadWriteLock;
 begin
   if not Assigned(FReadWriteLock) then
     FReadWriteLock := TMultiReadExclusiveWriteSynchronizer.Create;
+end;
+
+function TAbstractList.Invoke(const Name: string;
+  const Arguments: TVarDataArray): Variant;
+var
+  LList: IImmutableList;
+  Args: TVariants;
+begin
+  Result := Unassigned;
+  Args := TVariants(Arguments);
+  if SameText(Name, 'Add') then
+    Result := Add(Args[0])
+  else if SameText(Name, 'AddAll') then
+    AddAll(Args[0])
+  else if SameText(Name, 'Assign') then begin
+    if VarToIntf(Args[0], IImmutableList, LList) then
+      Assign(LList);
+  end
+  else if SameText(Name, 'Clear') then
+    Clear
+  else if SameText(Name, 'Contains') then
+    Result := Contains(Args[0])
+  else if SameText(Name, 'Delete') then
+    Result := Delete(Args[0])
+  else if SameText(Name, 'DeleteRange') then
+    DeleteRange(Args[0], Args[1])
+  else if SameText(Name, 'Exchange') then
+    Exchange(Args[0], Args[1])
+  else if SameText(Name, 'Get') then
+    Result := Get(Args[0])
+  else if SameText(Name, 'Put') then
+    Put(Args[0], Args[1])
+  else if SameText(Name, 'GetEnumerator') then
+    Result := GetEnumerator()
+  else if SameText(Name, 'IndexOf') then
+    Result := IndexOf(Args[0])
+  else if SameText(Name, 'LastIndexOf') then
+    Result := LastIndexOf(Args[0])
+  else if SameText(Name, 'Insert') then
+    Insert(Args[0], Args[1])
+  else if SameText(Name, 'InsertRange') then
+    InsertRange(Args[0], Args[1])
+  else if SameText(Name, 'Join') then
+    case Length(Args) of
+      0: Result := Join();
+      1: Result := Join(Args[0]);
+      2: Result := Join(Args[0], Args[1]);
+      3: Result := Join(Args[0], Args[1], Args[3]);
+    end
+  else if SameText(Name, 'InitLock') then
+    InitLock
+  else if SameText(Name, 'InitReadWriteLock') then
+    InitReadWriteLock
+  else if SameText(Name, 'Lock') then
+    Lock
+  else if SameText(Name, 'Unlock') then
+    Unlock
+  else if SameText(Name, 'BeginRead') then
+    BeginRead
+  else if SameText(Name, 'EndRead') then
+    EndRead
+  else if SameText(Name, 'BeginWrite') then
+    Result := BeginWrite()
+  else if SameText(Name, 'EndWrite') then
+    EndWrite
+  else if SameText(Name, 'Move') then
+    Move(Args[0], Args[1])
+  else if SameText(Name, 'Remove') then
+    case Length(Args) of
+      1: Result := Remove(Args[0]);
+      2: Result := Remove(Args[0], TDirection(Args[1]));
+    end
+  else if SameText(Name, 'ToArray') then
+    case Length(Args) of
+      0: Result := ToArray();
+      1: Result := ToArray(TVarType(Args[0]));
+    end
+  else if SameText(Name, 'First') then
+    Result := First()
+  else if SameText(Name, 'Last') then
+    Result := Last()
+  else if SameText(Name, 'Pack') then
+    Pack
+  else if SameText(Name, 'Reverse') then
+    Reverse
+  else if SameText(Name, 'Sort') then
+    Sort
+  else if SameText(Name, 'TrimExcess') then
+    TrimExcess
+  else
+    raise EVariantDispatchError.Create('Variant method "' + Name + '" has not found');
 end;
 
 procedure TAbstractList.Lock;
@@ -3581,6 +3706,12 @@ begin
     FReadWriteLock := TMultiReadExclusiveWriteSynchronizer.Create;
 end;
 
+function TAbstractMap.Invoke(const AName: string;
+  const Arguments: TVarDataArray): Variant;
+begin
+
+end;
+
 procedure TAbstractMap.Lock;
 begin
   FLock.Acquire;
@@ -4477,7 +4608,7 @@ begin
   end;
   Obj := GetInstance(V);
   Result := True;
-  if AnsiSameText(Name, 'Free') and (Length(Arguments) = 0) then
+  if SameText(Name, 'Free') and (Length(Arguments) = 0) then
     Obj.Free
   else if Supports(Obj.ClassType, IInvokeableVarObject) then begin
     Supports(Obj, IInvokeableVarObject, Intf);
