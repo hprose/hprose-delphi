@@ -2505,7 +2505,7 @@ begin
   else if SameText(Name, 'TrimExcess') then
     TrimExcess
   else
-    raise EVariantDispatchError.Create('Variant method "' + Name + '" has not found');
+    raise Exception.Create('Variant method "' + Name + '" has not found');
 end;
 
 procedure TAbstractList.Lock;
@@ -4723,7 +4723,6 @@ begin
   Result := not Assigned(V.VPointer);
 end;
 
-{$IFDEF DELPHI7_UP}
 var
   OldVarDispProc: TVarDispProc;
 
@@ -4731,13 +4730,16 @@ procedure IntfDispInvoke(Dest: PVariant; const Source: Variant;
       CallDesc: PCallDesc; Params: Pointer); cdecl;
 begin
   if TVarData(Source).VType=varUnknown then
+{$IFDEF DELPHI6}
+    VarObjectType.DispInvoke(PVarData(Dest)^, TVarData(Source), CallDesc, Params)
+{$ELSE}
     VarObjectType.DispInvoke(PVarData(Dest), TVarData(Source), CallDesc, Params)
+{$ENDIF}
   else if Assigned(OldVarDispProc) then
     OldVarDispProc(Dest, Source, CallDesc, Params)
   else
     raise exception.Create('Variant method calls not supported');
 end;
-{$ENDIF}
 
 function ListSplit(ListClass: TListClass; Str: string;
   const Separator: string; Limit: Integer; TrimItem: Boolean;
@@ -5214,10 +5216,8 @@ begin
 end;
 
 initialization
-{$IFDEF DELPHI7_UP}
   OldVarDispProc := Variants.VarDispProc;
   Variants.VarDispProc := @IntfDispInvoke;
-{$ENDIF}
   VarObjectType := TVarObjectType.Create;
   varObject := VarObjectType.VarType;
 
@@ -5302,9 +5302,7 @@ RegisterClass(TCaseInsensitiveArrayList, ICaseInsensitiveArrayList, '!CaseInsens
 {$ENDIF}
 
 finalization
-{$IFDEF DELPHI7_UP}
   Variants.VarDispProc := OldVarDispProc;
-{$ENDIF}
   FreeAndNil(VarObjectType);
 
 end.
