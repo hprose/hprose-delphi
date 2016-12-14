@@ -2422,87 +2422,89 @@ function TAbstractList.Invoke(const Name: string;
 var
   LList: IImmutableList;
   Args: TVariants;
+  AName: string;
 begin
   Result := Unassigned;
   Args := TVariants(Arguments);
-  if SameText(Name, 'Add') then
+  AName := UpperCase(Name);
+  if SameStr(AName, 'ADD') then
     Result := Add(Args[0])
-  else if SameText(Name, 'AddAll') then
+  else if SameStr(AName, 'ADDALL') then
     AddAll(Args[0])
-  else if SameText(Name, 'Assign') then begin
+  else if SameStr(AName, 'ASSIGN') then begin
     if VarToIntf(Args[0], IImmutableList, LList) then
       Assign(LList);
   end
-  else if SameText(Name, 'Clear') then
+  else if SameStr(AName, 'CLEAR') then
     Clear
-  else if SameText(Name, 'Contains') then
+  else if SameStr(AName, 'CONTAINS') then
     Result := Contains(Args[0])
-  else if SameText(Name, 'Delete') then
+  else if SameStr(AName, 'DELETE') then
     Result := Delete(Args[0])
-  else if SameText(Name, 'DeleteRange') then
+  else if SameStr(AName, 'DELETERANGE') then
     DeleteRange(Args[0], Args[1])
-  else if SameText(Name, 'Exchange') then
+  else if SameStr(AName, 'EXCHANGE') then
     Exchange(Args[0], Args[1])
-  else if SameText(Name, 'Get') then
+  else if SameStr(AName, 'GET') then
     Result := Get(Args[0])
-  else if SameText(Name, 'Put') then
+  else if SameStr(AName, 'PUT') then
     Put(Args[0], Args[1])
-  else if SameText(Name, 'GetEnumerator') then
+  else if SameStr(AName, 'GETENUMERATOR') then
     Result := GetEnumerator()
-  else if SameText(Name, 'IndexOf') then
+  else if SameStr(AName, 'INDEXOF') then
     Result := IndexOf(Args[0])
-  else if SameText(Name, 'LastIndexOf') then
+  else if SameStr(AName, 'LASTINDEXOF') then
     Result := LastIndexOf(Args[0])
-  else if SameText(Name, 'Insert') then
+  else if SameStr(AName, 'INSERT') then
     Insert(Args[0], Args[1])
-  else if SameText(Name, 'InsertRange') then
+  else if SameStr(AName, 'INSERTRANGE') then
     InsertRange(Args[0], Args[1])
-  else if SameText(Name, 'Join') then
+  else if SameStr(AName, 'JOIN') then
     case Length(Args) of
       0: Result := Join();
       1: Result := Join(Args[0]);
       2: Result := Join(Args[0], Args[1]);
       3: Result := Join(Args[0], Args[1], Args[3]);
     end
-  else if SameText(Name, 'InitLock') then
+  else if SameStr(AName, 'INITLOCK') then
     InitLock
-  else if SameText(Name, 'InitReadWriteLock') then
+  else if SameStr(AName, 'INITREADWRITELOCK') then
     InitReadWriteLock
-  else if SameText(Name, 'Lock') then
+  else if SameStr(AName, 'LOCK') then
     Lock
-  else if SameText(Name, 'Unlock') then
+  else if SameStr(AName, 'UNLOCK') then
     Unlock
-  else if SameText(Name, 'BeginRead') then
+  else if SameStr(AName, 'BEGINREAD') then
     BeginRead
-  else if SameText(Name, 'EndRead') then
+  else if SameStr(AName, 'ENDREAD') then
     EndRead
-  else if SameText(Name, 'BeginWrite') then
+  else if SameStr(AName, 'BEGINWRITE') then
     Result := BeginWrite()
-  else if SameText(Name, 'EndWrite') then
+  else if SameStr(AName, 'ENDWRITE') then
     EndWrite
-  else if SameText(Name, 'Move') then
+  else if SameStr(AName, 'MOVE') then
     Move(Args[0], Args[1])
-  else if SameText(Name, 'Remove') then
+  else if SameStr(AName, 'REMOVE') then
     case Length(Args) of
       1: Result := Remove(Args[0]);
       2: Result := Remove(Args[0], TDirection(Args[1]));
     end
-  else if SameText(Name, 'ToArray') then
+  else if SameStr(AName, 'TOARRAY') then
     case Length(Args) of
       0: Result := ToArray();
       1: Result := ToArray(TVarType(Args[0]));
     end
-  else if SameText(Name, 'First') then
+  else if SameStr(AName, 'FIRST') then
     Result := First()
-  else if SameText(Name, 'Last') then
+  else if SameStr(AName, 'LAST') then
     Result := Last()
-  else if SameText(Name, 'Pack') then
+  else if SameStr(AName, 'PACK') then
     Pack
-  else if SameText(Name, 'Reverse') then
+  else if SameStr(AName, 'REVERSE') then
     Reverse
-  else if SameText(Name, 'Sort') then
+  else if SameStr(AName, 'SORT') then
     Sort
-  else if SameText(Name, 'TrimExcess') then
+  else if SameStr(AName, 'TRIMEXCESS') then
     TrimExcess
   else
     raise Exception.Create('Variant method "' + Name + '" has not found');
