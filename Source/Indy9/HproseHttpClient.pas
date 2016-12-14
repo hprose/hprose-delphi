@@ -14,7 +14,7 @@
  *                                                        *
  * hprose indy http client unit for delphi.               *
  *                                                        *
- * LastModified: Dec 9, 2016                              *
+ * LastModified: Dec 14, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -183,7 +183,7 @@ begin
   OutStream := TBytesStream.Create(Data);
   InStream := TBytesStream.Create;
   try
-    IdHttp.DoRequest(hmPost, URI, OutStream, InStream);
+    IdHttp.Post(URI, OutStream, InStream);
     HttpHeader.Clear();
     RawHeaders := IdHttp.Response.RawHeaders;
     for I := 0 to RawHeaders.Count - 1 do begin
