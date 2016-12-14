@@ -6,7 +6,7 @@ uses
   TestFrameWork;
 
 type
-  {$M+}
+
   TTestCaseArrayList = class(TTestCase)
   published
     procedure TestCreate;
