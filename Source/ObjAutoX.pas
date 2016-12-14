@@ -14,7 +14,7 @@
  *                                                        *
  * ObjAutoX unit for delphi.                              *
  *                                                        *
- * LastModified: Nov 13, 2016                             *
+ * LastModified: Dec 14, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -146,7 +146,7 @@ type
 
 function SamePropTypeName(const Name1, Name2: ShortString): Boolean;
 begin
-  Result := AnsiSameText(Name1, Name2);
+  Result := SameText(Name1, Name2);
 end;
 {$ENDIF}
 
