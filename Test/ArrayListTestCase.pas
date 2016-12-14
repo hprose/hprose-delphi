@@ -1,4 +1,4 @@
-unit ArrayListTestCases;
+unit ArrayListTestCase;
 
 interface
 
