@@ -891,18 +891,18 @@ begin
   if Odd(N) then raise EArrayListError.Create('The ASettings length must be even.');
   I := 0;
   while I < N do begin
-    Key := AnsiLowerCase(VarToStr(VarRecToVar(ASettings[I])));
+    Key := LowerCase(VarToStr(VarRecToVar(ASettings[I])));
     Value := VarRecToVar(ASettings[I + 1]);
-    if AnsiSameStr(Key, 'byref') then FByRef := Value
-    else if AnsiSameStr(Key, 'simple') then FSimple := Value
-    else if AnsiSameStr(Key, 'idempotent') then FIdempotent := Value
-    else if AnsiSameStr(Key, 'failswitch') then FFailswitch := Value
-    else if AnsiSameStr(Key, 'oneway') then FOneway := Value
-    else if AnsiSameStr(Key, 'retry') then FRetry := Value
-    else if AnsiSameStr(Key, 'timeout') then FTimeout := Value
-    else if AnsiSameStr(Key, 'mode') then FMode := TResultMode(Value)
-    else if AnsiSameStr(Key, 'resulttype') then FResultType := PTypeInfo(NativeInt(Value))
-    else if AnsiSameStr(Key, 'userdata') then FUserData.Put(Value);
+    if SameStr(Key, 'byref') then FByRef := Value
+    else if SameStr(Key, 'simple') then FSimple := Value
+    else if SameStr(Key, 'idempotent') then FIdempotent := Value
+    else if SameStr(Key, 'failswitch') then FFailswitch := Value
+    else if SameStr(Key, 'oneway') then FOneway := Value
+    else if SameStr(Key, 'retry') then FRetry := Value
+    else if SameStr(Key, 'timeout') then FTimeout := Value
+    else if SameStr(Key, 'mode') then FMode := TResultMode(Value)
+    else if SameStr(Key, 'resulttype') then FResultType := PTypeInfo(NativeInt(Value))
+    else if SameStr(Key, 'userdata') then FUserData.Put(Value);
     Inc(I, 2);
   end;
 end;
