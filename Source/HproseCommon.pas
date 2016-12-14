@@ -2427,84 +2427,84 @@ begin
   Result := Unassigned;
   Args := TVariants(Arguments);
   AName := UpperCase(Name);
-  if SameStr(AName, 'ADD') then
+  if AName = 'ADD' then
     Result := Add(Args[0])
-  else if SameStr(AName, 'ADDALL') then
+  else if AName = 'ADDALL' then
     AddAll(Args[0])
-  else if SameStr(AName, 'ASSIGN') then begin
+  else if AName = 'ASSIGN' then begin
     if VarToIntf(Args[0], IImmutableList, LList) then
       Assign(LList);
   end
-  else if SameStr(AName, 'CLEAR') then
+  else if AName = 'CLEAR' then
     Clear
-  else if SameStr(AName, 'CONTAINS') then
+  else if AName = 'CONTAINS' then
     Result := Contains(Args[0])
-  else if SameStr(AName, 'DELETE') then
+  else if AName = 'DELETE' then
     Result := Delete(Args[0])
-  else if SameStr(AName, 'DELETERANGE') then
+  else if AName = 'DELETERANGE' then
     DeleteRange(Args[0], Args[1])
-  else if SameStr(AName, 'EXCHANGE') then
+  else if AName = 'EXCHANGE' then
     Exchange(Args[0], Args[1])
-  else if SameStr(AName, 'GET') then
+  else if AName = 'GET' then
     Result := Get(Args[0])
-  else if SameStr(AName, 'PUT') then
+  else if AName = 'PUT' then
     Put(Args[0], Args[1])
-  else if SameStr(AName, 'GETENUMERATOR') then
+  else if AName = 'GETENUMERATOR' then
     Result := GetEnumerator()
-  else if SameStr(AName, 'INDEXOF') then
+  else if AName = 'INDEXOF' then
     Result := IndexOf(Args[0])
-  else if SameStr(AName, 'LASTINDEXOF') then
+  else if AName = 'LASTINDEXOF' then
     Result := LastIndexOf(Args[0])
-  else if SameStr(AName, 'INSERT') then
+  else if AName = 'INSERT' then
     Insert(Args[0], Args[1])
-  else if SameStr(AName, 'INSERTRANGE') then
+  else if AName = 'INSERTRANGE' then
     InsertRange(Args[0], Args[1])
-  else if SameStr(AName, 'JOIN') then
+  else if AName = 'JOIN' then
     case Length(Args) of
       0: Result := Join();
       1: Result := Join(Args[0]);
       2: Result := Join(Args[0], Args[1]);
       3: Result := Join(Args[0], Args[1], Args[3]);
     end
-  else if SameStr(AName, 'INITLOCK') then
+  else if AName = 'INITLOCK' then
     InitLock
-  else if SameStr(AName, 'INITREADWRITELOCK') then
+  else if AName = 'INITREADWRITELOCK' then
     InitReadWriteLock
-  else if SameStr(AName, 'LOCK') then
+  else if AName = 'LOCK' then
     Lock
-  else if SameStr(AName, 'UNLOCK') then
+  else if AName = 'UNLOCK' then
     Unlock
-  else if SameStr(AName, 'BEGINREAD') then
+  else if AName = 'BEGINREAD' then
     BeginRead
-  else if SameStr(AName, 'ENDREAD') then
+  else if AName = 'ENDREAD' then
     EndRead
-  else if SameStr(AName, 'BEGINWRITE') then
+  else if AName = 'BEGINWRITE' then
     Result := BeginWrite()
-  else if SameStr(AName, 'ENDWRITE') then
+  else if AName = 'ENDWRITE' then
     EndWrite
-  else if SameStr(AName, 'MOVE') then
+  else if AName = 'MOVE' then
     Move(Args[0], Args[1])
-  else if SameStr(AName, 'REMOVE') then
+  else if AName = 'REMOVE' then
     case Length(Args) of
       1: Result := Remove(Args[0]);
       2: Result := Remove(Args[0], TDirection(Args[1]));
     end
-  else if SameStr(AName, 'TOARRAY') then
+  else if AName = 'TOARRAY' then
     case Length(Args) of
       0: Result := ToArray();
       1: Result := ToArray(TVarType(Args[0]));
     end
-  else if SameStr(AName, 'FIRST') then
+  else if AName = 'FIRST' then
     Result := First()
-  else if SameStr(AName, 'LAST') then
+  else if AName = 'LAST' then
     Result := Last()
-  else if SameStr(AName, 'PACK') then
+  else if AName = 'PACK' then
     Pack
-  else if SameStr(AName, 'REVERSE') then
+  else if AName = 'REVERSE' then
     Reverse
-  else if SameStr(AName, 'SORT') then
+  else if AName = 'SORT' then
     Sort
-  else if SameStr(AName, 'TRIMEXCESS') then
+  else if AName = 'TRIMEXCESS' then
     TrimExcess
   else
     raise Exception.Create('Variant method "' + Name + '" has not found');

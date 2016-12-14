@@ -893,16 +893,16 @@ begin
   while I < N do begin
     Key := LowerCase(VarToStr(VarRecToVar(ASettings[I])));
     Value := VarRecToVar(ASettings[I + 1]);
-    if SameStr(Key, 'byref') then FByRef := Value
-    else if SameStr(Key, 'simple') then FSimple := Value
-    else if SameStr(Key, 'idempotent') then FIdempotent := Value
-    else if SameStr(Key, 'failswitch') then FFailswitch := Value
-    else if SameStr(Key, 'oneway') then FOneway := Value
-    else if SameStr(Key, 'retry') then FRetry := Value
-    else if SameStr(Key, 'timeout') then FTimeout := Value
-    else if SameStr(Key, 'mode') then FMode := TResultMode(Value)
-    else if SameStr(Key, 'resulttype') then FResultType := PTypeInfo(NativeInt(Value))
-    else if SameStr(Key, 'userdata') then FUserData.Put(Value);
+    if Key = 'byref' then FByRef := Value
+    else if Key = 'simple' then FSimple := Value
+    else if Key = 'idempotent' then FIdempotent := Value
+    else if Key = 'failswitch' then FFailswitch := Value
+    else if Key = 'oneway' then FOneway := Value
+    else if Key = 'retry' then FRetry := Value
+    else if Key = 'timeout' then FTimeout := Value
+    else if Key = 'mode' then FMode := TResultMode(Value)
+    else if Key = 'resulttype' then FResultType := PTypeInfo(NativeInt(Value))
+    else if Key = 'userdata' then FUserData.Put(Value);
     Inc(I, 2);
   end;
 end;
