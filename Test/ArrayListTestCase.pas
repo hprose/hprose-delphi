@@ -16,6 +16,9 @@ type
     procedure TestInsertRange;
     procedure TestMove;
     procedure TestExchange;
+    procedure TestContains;
+    procedure TestIndexOf;
+    procedure TestLastIndexOf;
   end;
 
 implementation
@@ -138,6 +141,34 @@ begin
   L.Exchange(2, 0);
   L2 := ArrayList([3.14, 'abc', 1, True]);
   for I := 0 to 6 do Check(L.Get(I) = L2[I]);
+end;
+
+procedure TTestCaseArrayList.TestContains;
+var
+  L: IList;
+begin
+  L := ArrayList([1, 'abc', 3.14, True, 'abc']);
+  Check(L.Contains('hello') = False);
+  Check(L.Contains('abc') = True);
+end;
+
+procedure TTestCaseArrayList.TestIndexOf;
+var
+  L: IList;
+begin
+  L := ArrayList([1, 'abc', 3.14, True, 'abc']);
+  Check(L.IndexOf(3.14) = 2);
+  Check(L.IndexOf(False) = -1);
+end;
+
+procedure TTestCaseArrayList.TestLastIndexOf;
+var
+  L: IList;
+begin
+  L := ArrayList([1, 'abc', 3.14, True, 'abc']);
+  Check(L.LastIndexOf('abc') = 4);
+  Check(L.LastIndexOf(1) = 0);
+  Check(L.LastIndexOf('hello') = -1);
 end;
 
 initialization
