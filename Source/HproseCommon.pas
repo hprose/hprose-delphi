@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Dec 14, 2016                             *
+ * LastModified: Dec 15, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -482,7 +482,7 @@ type
     function GetValues: IImmutableList; virtual; abstract;
     function CompareKey(const Entry1, Entry2: TMapEntry): Integer; virtual; abstract;
     function CompareValue(const Entry1, Entry2: TMapEntry): Integer; virtual; abstract;
-    function Invoke(const AName: string; const Arguments: TVarDataArray): Variant; virtual;
+    function Invoke(const Name: string; const Arguments: TVarDataArray): Variant; virtual;
   public
     constructor Create(ACapacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); overload; virtual; abstract;
@@ -2432,8 +2432,8 @@ begin
   else if AName = 'ADDALL' then
     AddAll(Args[0])
   else if AName = 'ASSIGN' then begin
-    if VarToIntf(Args[0], IImmutableList, LList) then
-      Assign(LList);
+    Result := VarToIntf(Args[0], IImmutableList, LList);
+    if Result then Assign(LList);
   end
   else if AName = 'CLEAR' then
     Clear
@@ -2464,7 +2464,7 @@ begin
       0: Result := Join();
       1: Result := Join(Args[0]);
       2: Result := Join(Args[0], Args[1]);
-      3: Result := Join(Args[0], Args[1], Args[3]);
+      3: Result := Join(Args[0], Args[1], Args[2]);
     end
   else if AName = 'INITLOCK' then
     InitLock
@@ -3708,10 +3708,88 @@ begin
     FReadWriteLock := TMultiReadExclusiveWriteSynchronizer.Create;
 end;
 
-function TAbstractMap.Invoke(const AName: string;
+function TAbstractMap.Invoke(const Name: string;
   const Arguments: TVarDataArray): Variant;
+var
+  LMap: IMap;
+  Args: TVariants;
+  AName: string;
 begin
-
+  Result := Unassigned;
+  Args := TVariants(Arguments);
+  AName := UpperCase(Name);
+  if AName = 'ADD' then
+    Result := Add(Args[0], Args[1])
+  else if AName = 'ASSIGN' then begin
+    Result := VarToIntf(Args[0], IMap, LMap);
+    if Result then Assign(LMap);
+  end
+  else if AName = 'CLEAR' then
+    Clear
+  else if AName = 'CONTAINSKEY' then
+    Result := ContainsKey(Args[0])
+  else if AName = 'CONTAINSVALUE' then
+    Result := ContainsValue(Args[0])
+  else if AName = 'DELETE' then
+    Result := Delete(Args[0])
+  else if AName = 'GET' then
+    Result := Get(Args[0])
+  else if AName = 'GETKEY' then
+    Result := GetKey(Args[0])
+  else if AName = 'PUT' then
+    case Length(Args) of
+      1: Put(Args[0]);
+      2: Put(Args[0], Args[1]);
+    end
+  else if AName = 'GETENUMERATOR' then
+    Result := GetEnumerator()
+  else if AName = 'JOIN' then
+    case Length(Args) of
+      0: Result := Join();
+      1: Result := Join(Args[0]);
+      2: Result := Join(Args[0], Args[1]);
+      3: Result := Join(Args[0], Args[1], Args[2]);
+      4: Result := Join(Args[0], Args[1], Args[2], Args[3]);
+    end
+  else if AName = 'INITLOCK' then
+    InitLock
+  else if AName = 'INITREADWRITELOCK' then
+    InitReadWriteLock
+  else if AName = 'LOCK' then
+    Lock
+  else if AName = 'UNLOCK' then
+    Unlock
+  else if AName = 'BEGINREAD' then
+    BeginRead
+  else if AName = 'ENDREAD' then
+    EndRead
+  else if AName = 'BEGINWRITE' then
+    Result := BeginWrite()
+  else if AName = 'ENDWRITE' then
+    EndWrite
+  else if AName = 'PUTALL' then
+    PutAll(Args[0])
+  else if AName = 'TOLIST' then
+    case Length(Args) of
+      0: Result := ToArrayList();
+      1: Result := ToList(TListClass(NativeInt(Args[0])));
+      2: Result := ToList(TListClass(NativeInt(Args[0])), Args[1]);
+      3: Result := ToList(TListClass(NativeInt(Args[0])), Args[1], Args[2]);
+    end
+  else if AName = 'ToArrayList' then
+    case Length(Args) of
+      0: Result := ToArrayList();
+      1: Result := ToArrayList(Args[1]);
+      2: Result := ToArrayList(Args[1], Args[2]);
+    end
+  else if AName = 'SORT' then
+    Sort
+  else if AName = 'SORTBYVALUE' then
+    SortByValue
+  else if AName = 'TRIMEXCESS' then
+    TrimExcess
+  else
+    raise Exception.Create('Variant method "' + Name + '" has not found');
 end;
 
 procedure TAbstractMap.Lock;
