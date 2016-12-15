@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Dec 15, 2016                             *
+ * LastModified: Dec 16, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -1271,6 +1271,8 @@ begin
   P := FindVarData(Value);
   Result := (P^.VType = varUnknown) and
             Supports(IInterface(P^.VUnknown), IList) or
+            (P^.VType = (varUnknown or varByRef)) and
+            Supports(IInterface(P^.VPointer^), IList) or
             VarIsObj(Value, TAbstractList);
 end;
 
@@ -1285,6 +1287,8 @@ begin
     Result := nil
   else if VType = varUnknown then
     Supports(IInterface(P^.VUnknown), IList, Result)
+  else if VType = (varUnknown or varByRef) then
+    Supports(IInterface(P^.VPointer^), IList, Result)
   else if VarIsObj(Value, TAbstractList) then
     VarToObj(Value, TAbstractList, Result)
   else
@@ -1298,6 +1302,8 @@ begin
   P := FindVarData(Value);
   Result := (P^.VType = varUnknown) and
             Supports(IInterface(P^.VUnknown), IMap) or
+            (P^.VType = (varUnknown or varByRef)) and
+            Supports(IInterface(P^.VPointer^), IMap) or
             VarIsObj(Value, TAbstractMap);
 end;
 
@@ -1312,6 +1318,8 @@ begin
     Result := nil
   else if VType = varUnknown then
     Supports(IInterface(P^.VUnknown), IMap, Result)
+  else if VType = (varUnknown or varByRef) then
+    Supports(IInterface(P^.VPointer^), IMap, Result)
   else if VarIsObj(Value, TAbstractMap) then
     VarToObj(Value, TAbstractMap, Result)
   else
@@ -1323,7 +1331,8 @@ var
   VType: TVarType;
 begin
   VType := FindVarData(Value)^.VType;
-  Result := (VType = varUnknown) or (VType = varNull) or (VType = varEmpty);
+  Result := (VType = varUnknown) or (VType = (varUnknown or varByRef)) or
+            (VType = varNull) or (VType = varEmpty);
 end;
 
 function VarIsIntf(const Value: Variant; const IID: TGUID): Boolean;
@@ -1337,6 +1346,8 @@ begin
     Result := True
   else if VType = varUnknown then
     Result := Supports(IInterface(P^.VUnknown), IID)
+  else if VType = (varUnknown or varByRef) then
+    Result := Supports(IInterface(P^.VPointer^), IID)
   else
     Result := False;
 end;
@@ -1345,6 +1356,7 @@ function VarToIntf(const Value: Variant; const IID: TGUID; out AIntf): Boolean;
 var
   P: PVarData;
   VType: TVarType;
+  Intf: IInterface;
 begin
   P := FindVarData(Value);
   VType := P^.VType;
@@ -1352,6 +1364,9 @@ begin
     Result := Supports(nil, IID, AIntf)
   else if VType = varUnknown then
     Result := Supports(IInterface(P^.VUnknown), IID, AIntf)
+  else if VType = (varUnknown or varByRef) then begin
+    Result := Supports(IInterface(P^.VPointer^), IID, AIntf)
+  end
   else
     Result := False;
 end;
@@ -2420,7 +2435,7 @@ end;
 function TAbstractList.Invoke(const Name: string;
   const Arguments: TVarDataArray): Variant;
 var
-  LList: IImmutableList;
+  LList: IList;
   Args: TVariants;
   AName: string;
 begin
@@ -2432,7 +2447,7 @@ begin
   else if AName = 'ADDALL' then
     AddAll(Args[0])
   else if AName = 'ASSIGN' then begin
-    Result := VarToIntf(Args[0], IImmutableList, LList);
+    Result := VarToIntf(Args[0], IList, LList);
     if Result then Assign(LList);
   end
   else if AName = 'CLEAR' then
