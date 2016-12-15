@@ -19,6 +19,8 @@ type
     procedure TestContains;
     procedure TestIndexOf;
     procedure TestLastIndexOf;
+    procedure TestDelete;
+    procedure TestRemove;
   end;
 
 implementation
@@ -169,6 +171,24 @@ begin
   Check(L.LastIndexOf('abc') = 4);
   Check(L.LastIndexOf(1) = 0);
   Check(L.LastIndexOf('hello') = -1);
+end;
+
+procedure TTestCaseArrayList.TestDelete;
+var
+  L: IList;
+begin
+  L := ArrayList([1, 'abc', 3.14, True]);
+  Check(L.Delete(2) = 3.14);
+  Check(L.Delete(2) = True);
+end;
+
+procedure TTestCaseArrayList.TestRemove;
+var
+  L: IList;
+begin
+  L := ArrayList([1, 'abc', 3.14, True]);
+  Check(L.Remove('abc') = 1);
+  Check(L.Remove(True) = 2);
 end;
 
 initialization
