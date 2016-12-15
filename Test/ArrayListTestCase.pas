@@ -22,6 +22,7 @@ type
     procedure TestDelete;
     procedure TestRemove;
     procedure TestClear;
+    procedure TestAssign;
   end;
 
 implementation
@@ -199,6 +200,18 @@ begin
   L := ArrayList([1, 'abc', 3.14, True]);
   L.Clear;
   Check(L.Count = 0);
+end;
+
+procedure TTestCaseArrayList.TestAssign;
+var
+  L: IImmutableList;
+  L2: Variant;
+  I: Integer;
+begin
+  L := ArrayList([1, 'abc', 3.14, True]);
+  L2 := ArrayList([1, 2, 3]);
+  Check(L2.Assign(L) = True);
+  for I := 0 to 3 do Check(L[I] = L2.Get(I));
 end;
 
 initialization
