@@ -21,6 +21,7 @@ type
     procedure TestLastIndexOf;
     procedure TestDelete;
     procedure TestRemove;
+    procedure TestClear;
   end;
 
 implementation
@@ -189,6 +190,15 @@ begin
   L := ArrayList([1, 'abc', 3.14, True]);
   Check(L.Remove('abc') = 1);
   Check(L.Remove(True) = 2);
+end;
+
+procedure TTestCaseArrayList.TestClear;
+var
+  L: IList;
+begin
+  L := ArrayList([1, 'abc', 3.14, True]);
+  L.Clear;
+  Check(L.Count = 0);
 end;
 
 initialization
