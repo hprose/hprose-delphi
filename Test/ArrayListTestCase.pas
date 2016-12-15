@@ -14,6 +14,7 @@ type
     procedure TestAddAll;
     procedure TestInsert;
     procedure TestInsertRange;
+    procedure TestMove;
   end;
 
 implementation
@@ -111,6 +112,18 @@ begin
   L.InsertRange(2, ArrayList([1, 2, 3]));
   L2 := ArrayList([1, 'abc', 3.14, True]);
   L2.InsertRange(2, [1, 2, 3]);
+  for I := 0 to 6 do Check(L.Get(I) = L2[I]);
+end;
+
+procedure TTestCaseArrayList.TestMove;
+var
+  L: Variant;
+  L2: IArrayList;
+  I: Integer;
+begin
+  L := ArrayList([1, 'abc', 3.14, True]);
+  L.Move(2, 0);
+  L2 := ArrayList([3.14, 1, 'abc', True]);
   for I := 0 to 6 do Check(L.Get(I) = L2[I]);
 end;
 
