@@ -34,6 +34,7 @@ type
     procedure TestItem;
     procedure TestPack;
     procedure TestReverse;
+    procedure TestSort;
   end;
 
 implementation
@@ -334,6 +335,15 @@ begin
   L := ArrayList([1, 'abc', 3.14, True]);
   L.Reverse;
   CheckEqualsList(L, ArrayList([True, 3.14, 'abc', 1]));
+end;
+
+procedure TTestCaseArrayList.TestSort;
+var
+  L: IList;
+begin
+  L := ArrayList([3, 5, 1, 2, 4, 9, 7, 6, 8]);
+  L.Sort;
+  CheckEqualsList(L, ArrayList([1, 2, 3, 4, 5, 6, 7, 8, 9]));
 end;
 
 initialization
