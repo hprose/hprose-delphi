@@ -319,14 +319,20 @@ end;
 procedure TTestCaseArrayList.TestPack;
 var
   L: IList;
+  N: Integer;
 begin
   L := ArrayList([1, 'abc', 3.14, True]);
   L[10] := 'test';
   Check(L.Count = 11);
   Check(L[10] = 'test');
+  N := L.Capacity;
   L.Pack;
   Check(L.Count = 5);
   Check(L[4] = 'test');
+  Check(L.Capacity = N);
+  L.TrimExcess;
+  Check(L.Capacity <> N);
+  Check(L.Count = L.Capacity);
 end;
 
 procedure TTestCaseArrayList.TestReverse;
