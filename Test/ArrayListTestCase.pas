@@ -31,9 +31,13 @@ type
 {$IFEND}
     procedure TestSplit;
     procedure TestJoin;
+    procedure TestItem;
+    procedure TestPack;
   end;
 
 implementation
+
+uses Variants;
 
 { TTestCaseArrayList }
 
@@ -292,7 +296,34 @@ begin
   S := 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday';
   L := TArrayList.Split(S);
   Check(L.Join('; ') = 'Monday; Tuesday; Wednesday; Thursday; Friday; Saturday; Sunday');
-  Check(L.Join('", "', '"', '"') = '"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"');
+  Check(L.Join('", "', '["', '"]') = '["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]');
+end;
+
+procedure TTestCaseArrayList.TestItem;
+var
+  L: IList;
+begin
+  L := ArrayList([1, 'abc', 3.14, True]);
+  L[10] := 'test';
+  Check(L[9] = Unassigned);
+  Check(L[10] = 'test');
+  L.Put(12, 'hello');
+  Check(L.Get(11) = Unassigned);
+  Check(L.Get(12) = 'hello');
+  Check(L.Get(-1) = Unassigned);
+end;
+
+procedure TTestCaseArrayList.TestPack;
+var
+  L: IList;
+begin
+  L := ArrayList([1, 'abc', 3.14, True]);
+  L[10] := 'test';
+  Check(L.Count = 11);
+  Check(L[10] = 'test');
+  L.Pack;
+  Check(L.Count = 5);
+  Check(L[4] = 'test');
 end;
 
 initialization
