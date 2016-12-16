@@ -23,6 +23,7 @@ type
     procedure TestRemove;
     procedure TestClear;
     procedure TestAssign;
+    procedure TestToArray;
   end;
 
 implementation
@@ -204,7 +205,7 @@ end;
 
 procedure TTestCaseArrayList.TestAssign;
 var
-  L: IImmutableList;
+  L: IList;
   L2: Variant;
   I: Integer;
 begin
@@ -212,6 +213,17 @@ begin
   L2 := ArrayList([1, 2, 3]);
   Check(L2.Assign(L) = True);
   for I := 0 to 3 do Check(L[I] = L2.Get(I));
+end;
+
+procedure TTestCaseArrayList.TestToArray;
+var
+  L: IList;
+  A: array of Integer;
+  I: Integer;
+begin
+  L := ArrayList([1, 3, 4, 5, 9]);
+  A := L.ToArray(varInteger);
+  for I := 0 to Length(A) - 1 do Check(L[I] = A[I]);
 end;
 
 initialization
