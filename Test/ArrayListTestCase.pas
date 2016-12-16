@@ -33,6 +33,7 @@ type
     procedure TestJoin;
     procedure TestItem;
     procedure TestPack;
+    procedure TestReverse;
   end;
 
 implementation
@@ -324,6 +325,15 @@ begin
   L.Pack;
   Check(L.Count = 5);
   Check(L[4] = 'test');
+end;
+
+procedure TTestCaseArrayList.TestReverse;
+var
+  L: IList;
+begin
+  L := ArrayList([1, 'abc', 3.14, True]);
+  L.Reverse;
+  CheckEqualsList(L, ArrayList([True, 3.14, 'abc', 1]));
 end;
 
 initialization
