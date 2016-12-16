@@ -207,8 +207,9 @@ procedure TTestCaseArrayList.TestRemove;
 var
   L: IList;
 begin
-  L := ArrayList([1, 'abc', 3.14, True]);
-  Check(L.Remove('abc') = 1);
+  L := ArrayList([1, 'abc', 3.14, True, 'abc']);
+  Check(L.Remove('abc', FromEnd) = 4);
+  Check(L.Remove('abc', FromBeginning) = 1);
   Check(L.Remove(True) = 2);
 end;
 
