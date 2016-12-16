@@ -24,6 +24,9 @@ type
     procedure TestClear;
     procedure TestAssign;
     procedure TestToArray;
+{$IF RTLVersion >= 17.00}  // Delphi 2005 or later
+    procedure TestForIn;
+{$IFEND}
   end;
 
 implementation
@@ -225,6 +228,20 @@ begin
   A := L.ToArray(varInteger);
   for I := 0 to Length(A) - 1 do Check(L[I] = A[I]);
 end;
+
+{$IF RTLVersion >= 17.00}  // Delphi 2005 or later
+procedure TTestCaseArrayList.TestForIn;
+var
+  L, L2: IList;
+  V: Variant;
+  I: Integer;
+begin
+  L := ArrayList([1, 'abc', 3.14, True]);
+  L2 := TArrayList.Create;
+  for V in L do L2.Add(V);
+  for I := 0 to L.Count - 1 do Check(L[I] = L2[I]);
+end;
+{$IFEND}
 
 initialization
   TestFramework.RegisterTest(TTestCaseArrayList.Suite);
