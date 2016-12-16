@@ -2766,7 +2766,7 @@ var
 begin
   if Count > 1 then begin
     Randomize;
-    for I := 0 to Count - 1 do Exchange(I, Random(Count));
+    for I := Count - 1 downto 0 do Exchange(I, Random(I + 1));
   end;
 end;
 
