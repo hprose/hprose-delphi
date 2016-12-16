@@ -30,6 +30,7 @@ type
     procedure TestForIn;
 {$IFEND}
     procedure TestSplit;
+    procedure TestJoin;
   end;
 
 implementation
@@ -242,7 +243,6 @@ procedure TTestCaseArrayList.TestForIn;
 var
   L, L2: IList;
   V: Variant;
-  I: Integer;
 begin
   L := ArrayList([1, 'abc', 3.14, True]);
   L2 := TArrayList.Create;
@@ -282,6 +282,17 @@ begin
     ArrayList(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']),
     'Split 5 failed'
   );
+end;
+
+procedure TTestCaseArrayList.TestJoin;
+var
+  S: String;
+  L: IList;
+begin
+  S := 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday';
+  L := TArrayList.Split(S);
+  Check(L.Join('; ') = 'Monday; Tuesday; Wednesday; Thursday; Friday; Saturday; Sunday');
+  Check(L.Join('", "', '"', '"') = '"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"');
 end;
 
 initialization
