@@ -14,7 +14,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: Dec 14, 2016                             *
+ * LastModified: Dec 16, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -201,7 +201,7 @@ type
     FFilters: TFilterList;
     FHandlers: THandlerManager;
     FURI: string;
-    FURIList: TStringArray;
+    FURIList: IList;
     FIndex: Integer;
     FFailround: Integer;
     FRetry: Integer;
@@ -228,7 +228,7 @@ type
       const Context: TClientContext): Variant;
     function GetFullName(const AName: string): string;
     procedure SetURI(const AValue: string);
-    //procedure ByValue(var Arguments: TVariants);
+    procedure SetURIList(const AURIList: IList);
 {$IFDEF SUPPORTS_ANONYMOUS_METHOD}
     procedure VarToT(Info: PTypeInfo; const Src: Variant; out Dst);
     function VarTo<T>(const AValue: Variant): T;
@@ -241,10 +241,9 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     class function New(const AURI: string; const ANameSpace: string = ''): Variant; overload;
-    class function New(const AURIList: array of string; const ANameSpace: string = ''): Variant; overload;
-    function UseService(const AURI: string = ''; const ANameSpace: string = ''): Variant; overload;
-    function UseService(const AURIList: array of string; const ANameSpace: string = ''): Variant; overload;
-    procedure SetURIList(const AURIList: array of string);
+    class function New(const AURIList: IList; const ANameSpace: string = ''): Variant; overload;
+    class function New(const AURIList: array of const; const ANameSpace: string = ''): Variant; overload;
+    function UseService(const ANameSpace: string = ''): Variant; overload;
     function AddFilter(const Filter: IFilter): THproseClient;
     function RemoveFilter(const Filter: IFilter): THproseClient;
     function AddInvokeHandler(const Handler: TInvokeHandler): THproseClient;
@@ -317,7 +316,7 @@ type
     function SubscribedList(): TStringArray;
   published
     property URI: string read FURI write SetURI;
-    property URIList: TStringArray read FURIList;
+    property URIList: IList read FURIList write SetURIList;
     property Failround: Integer read FFailround;
     property Retry: Integer read FRetry write FRetry;
     property Timeout: Integer read FTimeout write FTimeout;
@@ -373,10 +372,6 @@ implementation
 
 uses
   HproseIO;
-
-{$IFNDEF FPC}
-{$I InterlockedAPIs.inc}
-{$ENDIF}
 
 type
 
@@ -605,7 +600,6 @@ begin
   FClient := Client;
   FName := AName;
   FArgs := Args;
-  //Client.ByValue(FArgs);
   FCallback1 := Callback;
   FSettings := ASettings;
   FError := nil;
@@ -620,7 +614,6 @@ begin
   FClient := Client;
   FName := AName;
   FArgs := Args;
-  //Client.ByValue(FArgs);
   FCallback := Callback;
   FSettings := ASettings;
   FError := nil;
@@ -659,7 +652,6 @@ begin
   FClient := Client;
   FName := AName;
   FArgs := Args;
-  //Client.ByValue(FArgs);
   FCallback := Callback;
   FSettings := ASettings;
   FError := nil;
@@ -680,7 +672,6 @@ begin
   FClient := Client;
   FName := AName;
   FArgs := Args;
-  //Client.ByValue(FArgs);
   FCallback := Callback;
   FSettings := ASettings;
   FError := nil;
@@ -921,7 +912,7 @@ begin
   inherited Create(AOwner);
   FNameSpace := '';
   FURI := '';
-  FURIList := nil;
+  FURIList := TArrayList.Create;
   FIndex := 0;
   FFailround := 0;
   FOnError := nil;
@@ -941,60 +932,58 @@ begin
   inherited Destroy;
 end;
 
-class function THproseClient.New(const AURI: string; const ANameSpace: string): Variant;
-begin
-  Result := Self.Create(nil).UseService(AURI, ANameSpace);
-end;
-
-class function THproseClient.New(const AURIList: array of string;
+class function THproseClient.New(const AURI: string;
   const ANameSpace: string): Variant;
+var
+  Client: THproseClient;
 begin
-  Result := Self.Create(nil).UseService(AURIList, ANameSpace);
+  Client := Self.Create(nil);
+  Client.URI := AURI;
+  Result := Client.UseService(ANameSpace);
 end;
 
-function THproseClient.UseService(const AURI: string; const ANameSpace: string
-  ): Variant;
+class function THproseClient.New(const AURIList: IList;
+  const ANameSpace: string): Variant;
+var
+  Client: THproseClient;
+begin
+  Client := Self.Create(nil);
+  Client.URIList := AURIList;
+  Result := Client.UseService(ANameSpace);
+end;
+
+class function THproseClient.New(const AURIList: array of const;
+  const ANameSpace: string): Variant;
+var
+  Client: THproseClient;
+begin
+  Client := Self.Create(nil);
+  Client.URIList := ArrayList(AURIList);
+  Result := Client.UseService(ANameSpace);
+end;
+
+function THproseClient.UseService(const ANameSpace: string): Variant;
 begin
   FNameSpace := ANameSpace;
-  Self.URI := AURI;
   Result := ObjToVar(Self);
 end;
 
-function THproseClient.UseService(const AURIList: array of string;
-  const ANameSpace: string): Variant;
+procedure THproseClient.SetURIList(const AURIList: IList);
 begin
-  FNameSpace := ANameSpace;
-  SetURIList(AURIList);
-  Result := ObjToVar(Self);
-end;
-
-procedure THproseClient.SetURIList(const AURIList: array of string);
-begin
-  FURIList := ShuffleStringArray(AURIList);
+  FURIList.Assign(AURIList);
+  FURIList.Shuffle;
   FIndex := 0;
   FFailround := 0;
   InitURI(FURIList[0]);
 end;
 
-{
-procedure THproseClient.ByValue(var Arguments: TVariants);
-var
-  I: Integer;
-begin
-  for I := 0 to Length(Arguments) - 1 do Arguments[I] := VarUnref(Arguments[I]);
-end;
-}
-
 procedure THproseClient.SetURI(const AValue: string);
 begin
-  if AValue <> '' then
-    SetURIList([AValue])
-  else begin
-    FURIList := nil;
-    FIndex := 0;
-    FFailround := 0;
-    InitURI('');
-  end;
+  FURIList.Clear;
+  FURIList.Add(AValue);
+  FIndex := 0;
+  FFailround := 0;
+  InitURI(FURIList[0]);
 end;
 
 procedure THproseClient.InitURI(const AValue: string);
@@ -1152,7 +1141,7 @@ begin
   if Settings.Idempotent and (Context.Retried < Settings.Retry) then begin
     Context.Retried := Context.Retried + 1;
     Interval := Context.Retried * 500;
-    if Settings.Failswitch then Dec(Interval, (Length(FURIList) - 1) * 500);
+    if Settings.Failswitch then Dec(Interval, (FURIList.Count - 1) * 500);
     if Interval > 5000 then Interval := 5000;
     if Interval > 0 then Sleep(Interval);
     Result := AfterFilterHandler(Request, Context, nil);
@@ -1164,15 +1153,22 @@ procedure THproseClient.FailSwitch;
 var
   N: Integer;
 begin
-  N := Length(FURIList);
-  if N > 1 then begin
-    if InterlockedCompareExchange(FIndex, 0, N - 1) = 0 then begin
-      FURI := FURIList[0];
-      InterlockedIncrement(FFailround);
+  FURIList.Lock;
+  try
+    N := FURIList.Count;
+    if N > 1 then begin
+      if FIndex < N - 1 then
+        Inc(FIndex)
+      else begin
+        FIndex := 0;
+        Inc(FFailround);
+      end;
+      FURI := FURIList[FIndex];
     end
-    else FURI := FURIList[InterlockedIncrement(FIndex)];
-  end
-  else InterlockedIncrement(FFailround);
+    else Inc(FFailround);
+  finally
+    FURIList.Unlock;
+  end;
   if Assigned(FOnFailswitch) then FOnFailswitch(Self);
 end;
 
