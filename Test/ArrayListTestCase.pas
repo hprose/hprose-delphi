@@ -3,11 +3,13 @@ unit ArrayListTestCase;
 interface
 
 uses
-  TestFrameWork;
+  TestFrameWork, HproseCommon;
 
 type
 
   TTestCaseArrayList = class(TTestCase)
+  private
+    procedure CheckEqualsList(Expected: IList; Actual: IList; Msg: string = '');
   published
     procedure TestCreate;
     procedure TestAdd;
@@ -27,14 +29,20 @@ type
 {$IF RTLVersion >= 17.00}  // Delphi 2005 or later
     procedure TestForIn;
 {$IFEND}
+    procedure TestSplit;
   end;
 
 implementation
 
-uses
-  HproseCommon;
-
 { TTestCaseArrayList }
+
+procedure TTestCaseArrayList.CheckEqualsList(Expected: IList; Actual: IList; Msg: string);
+var
+  I: Integer;
+begin
+  Check(Expected.Count = Actual.Count, Msg);
+  for I := 0 to 6 do Check(Expected[I] = Actual[I], Msg);
+end;
 
 procedure TTestCaseArrayList.TestCreate;
 var
@@ -239,9 +247,42 @@ begin
   L := ArrayList([1, 'abc', 3.14, True]);
   L2 := TArrayList.Create;
   for V in L do L2.Add(V);
-  for I := 0 to L.Count - 1 do Check(L[I] = L2[I]);
+  CheckEqualsList(L, L2);
 end;
 {$IFEND}
+
+
+procedure TTestCaseArrayList.TestSplit;
+var
+  S: String;
+begin
+  S := 'Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday,';
+  CheckEqualsList(
+    TArrayList.Split(S),
+    ArrayList(['Monday', ' Tuesday', ' Wednesday', ' Thursday', ' Friday', ' Saturday', ' Sunday', '']),
+    'Split 1 failed'
+  );
+  CheckEqualsList(
+    TArrayList.Split(S, ', '),
+    ArrayList(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday,']),
+    'Split 2 failed'
+  );
+  CheckEqualsList(
+    TArrayList.Split(S, ',', 4),
+    ArrayList(['Monday', ' Tuesday', ' Wednesday', ' Thursday, Friday, Saturday, Sunday,']),
+    'Split 3 failed'
+  );
+  CheckEqualsList(
+    TArrayList.Split(S, ',', 0, true),
+    ArrayList(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', '']),
+    'Split 4 failed'
+  );
+  CheckEqualsList(
+    TArrayList.Split(S, ',', 0, true, true),
+    ArrayList(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']),
+    'Split 5 failed'
+  );
+end;
 
 initialization
   TestFramework.RegisterTest(TTestCaseArrayList.Suite);
