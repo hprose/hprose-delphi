@@ -140,6 +140,7 @@ type
     procedure Reverse;
     procedure Sort; overload;
     procedure Sort(CompareProc: TListCompareMethod); overload;
+    procedure Shuffle;
     procedure TrimExcess;
     property Item[Index: Integer]: Variant read Get write Put; default;
     property Capacity: Integer read GetCapacity write SetCapacity;
@@ -231,6 +232,7 @@ type
     procedure Reverse;
     procedure Sort; overload;
     procedure Sort(CompareProc: TListCompareMethod); overload;
+    procedure Shuffle;
     procedure TrimExcess;
     property Item[Index: Integer]: Variant read Get write Put; default;
   published
@@ -854,8 +856,6 @@ function WideBytesOf(const Value: WideString): TBytes;
 {$IFNDEF DELPHIXE3_UP}
 function BytesOf(const Val: Pointer; const Len: integer): TBytes; overload;
 {$ENDIF}
-
-function ShuffleStringArray(const StringArray: array of string): TStringArray;
 
 type
 
@@ -2519,6 +2519,8 @@ begin
     Reverse
   else if AName = 'SORT' then
     Sort
+  else if AName = 'SHUFFLE' then
+    Shuffle
   else if AName = 'TRIMEXCESS' then
     TrimExcess
   else
@@ -2758,6 +2760,16 @@ begin
   end;
 end;
 
+procedure TAbstractList.Shuffle;
+var
+  I: Integer;
+begin
+  if Count > 1 then begin
+    Randomize;
+    for I := 0 to Count - 1 do Exchange(I, Random(Count));
+  end;
+end;
+
 procedure TAbstractList.TrimExcess;
 begin
   SetCapacity(Count);
@@ -2823,6 +2835,7 @@ procedure TArrayList.Exchange(Index1, Index2: Integer);
 var
   Elem: Variant;
 begin
+  if Index1 = Index2 then exit;
   if (Index1 < 0) or (Index1 >= FCount) then
     raise EArrayListError.CreateResFmt(@SListIndexError, [Index1]);
   if (Index2 < 0) or (Index2 >= FCount) then
@@ -3335,15 +3348,14 @@ procedure THashedList.Exchange(Index1, Index2: Integer);
 var
   HashCode1, HashCode2: Integer;
 begin
+  if Index1 = Index2 then exit;
   inherited Exchange(Index1, Index2);
-
   HashCode1 := HashOf(FList[Index1]);
   HashCode2 := HashOf(FList[Index2]);
   if HashCode1 <> HashCode2 then begin
     FHashBucket.Modify(HashCode1, HashCode2, Index2);
     FHashBucket.Modify(HashCode2, HashCode1, Index1);
   end;
-
 end;
 
 function THashedList.HashOf(const Value: Variant): Integer;
@@ -4322,27 +4334,6 @@ begin
   if Len > 0 then Move(PByte(Val)^, Result[0], Len);
 end;
 {$ENDIF}
-
-function ShuffleStringArray(const StringArray: array of string): TStringArray;
-var
-  I, J, N: Integer;
-  Temp: string;
-begin
-  N := Length(StringArray);
-  SetLength(Result, N);
-  for I := 0 to N - 1 do Result[I] := StringArray[I];
-  if N > 1 then begin
-    Randomize;
-    for I := 0 to N - 1 do begin
-      J := Random(N);
-      if I <> J then begin
-        Temp := Result[I];
-        Result[I] := Result[J];
-        Result[J] := Temp;
-      end;
-    end;
-  end;
-end;
 
 {$IF NOT DEFINED(DELPHI2009_UP) AND NOT DEFINED(FPC)}
 const
