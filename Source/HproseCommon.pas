@@ -769,7 +769,7 @@ operator :=(const Source : TBytes) Dest : Variant; inline;
 
 function VarEquals(const Left, Right: Variant): Boolean;
 function VarRef(const Value: Variant): Variant;
-function VarUnref(const Value: Variant): Variant;
+function VarDeref(const Value: Variant): Variant;
 
 function GetPropValue(Instance: TObject; PropInfo: PPropInfo): Variant; overload;
 function GetPropValue(Instance: TObject; const Name: string): Variant; overload;
@@ -1936,7 +1936,8 @@ begin
                  varCurrency, varDate, varOleStr, varDispatch,
                  varError, varBoolean, varUnknown, varShortInt,
                  varByte ,varWord, varLongWord, varInt64
-                 {$IFDEF DELPHI2009_UP}, varUInt64{$ENDIF}] then begin
+                 {$IFDEF DELPHI2009_UP}, varUInt64{$ENDIF}
+                 {$IFDEF FPC}, varQWord{$ENDIF}] then begin
       TVarData(Result).VType := VType or varByRef;
       TVarData(Result).VPointer := @TVarData(Value).VPointer;
     end
@@ -1953,23 +1954,48 @@ begin
   end;
 end;
 
-function VarUnref(const Value: Variant): Variant;
+function VarDataDeref(const Value: TVarData): TVarData;
+begin
+  if (Value.VType and varByRef) = 0 then
+    Result := Value
+  else begin
+    Result.VType := Value.VType and (not varByRef);
+    case Result.VType of
+      varVariant: Result := PVarData(Value.VPointer)^;
+      varSmallint: Result.VSmallInt := PSmallInt(Value.VPointer)^;
+      varInteger: Result.VInteger := PInteger(Value.VPointer)^;
+      varSingle: Result.VSingle := PSingle(Value.VPointer)^;
+      varDouble: Result.VDouble := PDouble(Value.VPointer)^;
+      varCurrency: Result.VCurrency := PCurrency(Value.VPointer)^;
+      varDate: Result.VDate := PDateTime(Value.VPointer)^;
+      varOleStr: Result.VOleStr := PPWideChar(Value.VPointer)^;
+      varError: Result.VError := PError(Value.VPointer)^;
+      varBoolean: Result.VBoolean := PWordBool(Value.VPointer)^;
+      varShortInt: Result.VShortInt := PShortInt(Value.VPointer)^;
+      varByte: Result.VByte := PByte(Value.VPointer)^;
+      varWord: Result.VWord := PWord(Value.VPointer)^;
+      varLongWord: Result.VLongWord := PCardinal(Value.VPointer)^;
+      varInt64: Result.VInt64 := PInt64(Value.VPointer)^;
+{$IFDEF DELPHI2009_UP}
+      varUInt64: Result.VUInt64 := PUint64(Value.VPointer)^;
+{$ENDIF}
+{$IFDEF FPC}
+      varQWord: Result.VQWord := PQWord(Value.VPointer)^;
+{$ENDIF}
+      else
+        Result.VPointer := PPointer(Value.VPointer)^;
+    end;
+  end;
+end;
+
+function VarDeref(const Value: Variant): Variant;
 var
   P: PVarData;
 begin
   if not VarIsByRef(Value) then
     Result := Value
   else begin
-    VarClear(Result);
-    P := FindVarData(Value);
-    if (P^.VType and varByRef) = 0 then begin
-      TVarData(Result).VType := P^.VType;
-      TVarData(Result).VInt64 := P^.VInt64;
-    end
-    else begin
-      TVarData(Result).VType := P^.VType and (not varByRef);
-      TVarData(Result).VInt64 := Int64(P^.VPointer^);
-    end;
+    TVarData(Result) := VarDataDeref(TVarData(Value));
   end;
 end;
 
@@ -3766,7 +3792,10 @@ begin
   else if AName = 'DELETE' then
     Result := Delete(Args[0])
   else if AName = 'GET' then
-    Result := Get(Args[0])
+    case Length(Args) of
+      1: Result := Get(Args[0]);
+      2: Result := Get(Args[0], Args[1]);
+    end
   else if AName = 'GETKEY' then
     Result := GetKey(Args[0])
   else if AName = 'PUT' then
@@ -4689,8 +4718,10 @@ var
   Obj: TObject;
   Intf: IInvokeableVarObject;
   Args: TVarDataArray;
+  I, N: Integer;
 begin
-  if (Length(Arguments) = 1) and
+  N := Length(Arguments);
+  if (N = 1) and
      (Arguments[0].VType = varError) and
      (HRESULT(Arguments[0].VError) = -2147352572) // Parameter not found.
   then begin
@@ -4698,6 +4729,7 @@ begin
     Result := DoFunction(Dest, V, Name, Args);
     Exit;
   end;
+  for I := 0 to N - 1 do Arguments[I] := VarDataDeref(Arguments[I]);
   Obj := GetInstance(V);
   Result := True;
   if SameText(Name, 'Free') and (Length(Arguments) = 0) then
@@ -4737,7 +4769,7 @@ begin
   Obj := GetInstance(V);
   Info := GetPropInfo(PTypeInfo(Obj.ClassInfo), Name);
   Result := Assigned(Info);
-  if Result then HproseCommon.SetPropValue(Obj, Info, Variant(Value));
+  if Result then HproseCommon.SetPropValue(Obj, Info, Variant(VarDataDeref(Value)));
 end;
 
 procedure TVarObjectType.CastTo(var Dest: TVarData; const Source: TVarData;

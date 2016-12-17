@@ -36,6 +36,7 @@ type
     procedure TestReverse;
     procedure TestSort;
     procedure TestShuffle;
+    procedure TestVariantPut;
   end;
 
 implementation
@@ -372,7 +373,7 @@ begin
       M := VarToMap(Statistics[J]);
       N := M.Get(Dest[J]);
       Inc(N);
-      M.Put(Dest[J], Variant(N));
+      M.Put(Dest[J], N);
     end;
   end;
   for I := 0 to Statistics.Count - 1 do begin
@@ -381,7 +382,38 @@ begin
       Check((9500 < N) and (N < 10500), Variant(N));
     end;
   end;
+end;
 
+procedure TTestCaseArrayList.TestVariantPut;
+var
+  L: IList;
+  N: Integer;
+  V: Variant;
+begin
+  L := ArrayList([1, 'abc', 3.14, True]);
+  N := 10;
+  L.Put(3, N);
+  Check(L.Get(3) = 10);
+  N := 11;
+  Check(L.Get(3) = 10);
+
+  N := 10;
+  L.Put(3, Variant(N));
+  Check(L.Get(3) = 10);
+  N := 11;
+  Check(L.Get(3) = 10);
+
+  V := 10;
+  L.Put(3, V);
+  Check(L.Get(3) = 10);
+  V := 11;
+  Check(L.Get(3) = 10);
+
+  V := 10;
+  L.Put(3, VarRef(V));
+  Check(L.Get(3) = 10);
+  V := 11;
+  Check(L.Get(3) = 11);
 end;
 
 initialization
