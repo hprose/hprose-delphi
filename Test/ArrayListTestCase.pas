@@ -35,6 +35,7 @@ type
     procedure TestPack;
     procedure TestReverse;
     procedure TestSort;
+    procedure TestShuffle;
   end;
 
 implementation
@@ -351,6 +352,36 @@ begin
   L := ArrayList([3, 5, 1, 2, 4, 9, 7, 6, 8]);
   L.Sort;
   CheckEqualsList(L, ArrayList([1, 2, 3, 4, 5, 6, 7, 8, 9]));
+end;
+
+procedure TTestCaseArrayList.TestShuffle;
+var
+  Src, Dest: IList;
+  Statistics: IList;
+  M: IMap;
+  I, J, N: Integer;
+begin
+  Src := ArrayList([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  Statistics := TArrayList.Create(Src.Count);
+  for I := 0 to Src.Count - 1 do
+    Statistics[I] := HashMap([0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8, 0, 9, 0]);
+  for I := 0 to 99999 do begin
+    Dest := TArrayList.Create(Src);
+    Dest.Shuffle;
+    for J := 0 to Statistics.Count - 1 do begin
+      M := VarToMap(Statistics[J]);
+      N := M.Get(Dest[J]);
+      Inc(N);
+      M.Put(Dest[J], Variant(N));
+    end;
+  end;
+  for I := 0 to Statistics.Count - 1 do begin
+    for J := 0 to Statistics[I].Count - 1 do begin
+      N := Statistics[I].Values.Get(J);
+      Check((9500 < N) and (N < 10500), Variant(N));
+    end;
+  end;
+
 end;
 
 initialization
