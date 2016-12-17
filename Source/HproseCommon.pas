@@ -1356,7 +1356,6 @@ function VarToIntf(const Value: Variant; const IID: TGUID; out AIntf): Boolean;
 var
   P: PVarData;
   VType: TVarType;
-  Intf: IInterface;
 begin
   P := FindVarData(Value);
   VType := P^.VType;
