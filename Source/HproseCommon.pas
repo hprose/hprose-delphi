@@ -2762,9 +2762,16 @@ end;
 procedure TAbstractList.Shuffle;
 var
   I: Integer;
+{$J+}
+const
+  RandomInited: Boolean = False;
+{$J-}
 begin
   if Count > 1 then begin
-    Randomize;
+    if not RandomInited then begin
+      Randomize;
+      RandomInited := True;
+    end;
     for I := Count - 1 downto 0 do Exchange(I, Random(I + 1));
   end;
 end;
@@ -4823,7 +4830,7 @@ begin
   else if Assigned(OldVarDispProc) then
     OldVarDispProc(Dest, Source, CallDesc, Params)
   else
-    raise exception.Create('Variant method calls not supported');
+    raise Exception.Create('Variant method calls not supported');
 end;
 
 function ListSplit(ListClass: TListClass; Str: string;
