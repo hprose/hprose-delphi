@@ -27,13 +27,14 @@ uses
   {$ENDIF NEXTGEN}
 {$ENDIF}
   TestFramework,
-  ArrayListTestCase in 'ArrayListTestCase.pas',
-  HashedListTestCase in 'HashedListTestCase.pas',
-  CaseInsensitiveArrayListTestCase in 'CaseInsensitiveArrayListTestCase.pas',
   HproseClient in '..\Source\HproseClient.pas',
   HproseCommon in '..\Source\HproseCommon.pas',
   HproseIO in '..\Source\HproseIO.pas',
-  ObjAutoX in '..\Source\ObjAutoX.pas';
+  ObjAutoX in '..\Source\ObjAutoX.pas',
+  ArrayListTestCase in 'ArrayListTestCase.pas',
+  HashedListTestCase in 'HashedListTestCase.pas',
+  CaseInsensitiveArrayListTestCase in 'CaseInsensitiveArrayListTestCase.pas',
+  CaseInsensitiveHashedListTestCase in 'CaseInsensitiveHashedListTestCase.pas';
 
 {$R *.RES}
 
