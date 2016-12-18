@@ -7,7 +7,7 @@ uses
 
 type
 
-  TTestCaseHashedList = class(TTestCase)
+  THashedListTestCase = class(TTestCase)
   private
     procedure CheckEqualsList(Expected: IList; Actual: IList; Msg: string = '');
   published
@@ -43,9 +43,9 @@ implementation
 
 uses Variants;
 
-{ TTestCaseHashedList }
+{ THashedListTestCase }
 
-procedure TTestCaseHashedList.CheckEqualsList(Expected: IList; Actual: IList; Msg: string);
+procedure THashedListTestCase.CheckEqualsList(Expected: IList; Actual: IList; Msg: string);
 var
   I: Integer;
 begin
@@ -53,7 +53,7 @@ begin
   for I := 0 to Expected.Count - 1 do Check(Expected[I] = Actual[I], Msg);
 end;
 
-procedure TTestCaseHashedList.TestCreate;
+procedure THashedListTestCase.TestCreate;
 var
   L: IHashedList;
 begin
@@ -78,7 +78,7 @@ begin
   L.EndWrite;
 end;
 
-procedure TTestCaseHashedList.TestAdd;
+procedure THashedListTestCase.TestAdd;
 var
   L: IHashedList;
 begin
@@ -96,7 +96,7 @@ begin
   Check(L[6].Get(2) = 'c');
 end;
 
-procedure TTestCaseHashedList.TestAddAll;
+procedure THashedListTestCase.TestAddAll;
 var
   L: Variant;
 begin
@@ -114,7 +114,7 @@ begin
   Check(L.Get(8) = 3);
 end;
 
-procedure TTestCaseHashedList.TestInsert;
+procedure THashedListTestCase.TestInsert;
 var
   L: Variant;
   L2: IHashedList;
@@ -131,7 +131,7 @@ begin
   for I := 0 to 6 do Check(L.Get(I) = L2[I]);
 end;
 
-procedure TTestCaseHashedList.TestInsertRange;
+procedure THashedListTestCase.TestInsertRange;
 var
   L: Variant;
   L2: IHashedList;
@@ -144,7 +144,7 @@ begin
   for I := 0 to 6 do Check(L.Get(I) = L2[I]);
 end;
 
-procedure TTestCaseHashedList.TestMove;
+procedure THashedListTestCase.TestMove;
 var
   L: Variant;
   L2: IHashedList;
@@ -156,7 +156,7 @@ begin
   for I := 0 to 3 do Check(L.Get(I) = L2[I]);
 end;
 
-procedure TTestCaseHashedList.TestExchange;
+procedure THashedListTestCase.TestExchange;
 var
   L: Variant;
   L2: IHashedList;
@@ -168,7 +168,7 @@ begin
   for I := 0 to 3 do Check(L.Get(I) = L2[I]);
 end;
 
-procedure TTestCaseHashedList.TestContains;
+procedure THashedListTestCase.TestContains;
 var
   L: IList;
 begin
@@ -177,7 +177,7 @@ begin
   Check(L.Contains('abc') = True);
 end;
 
-procedure TTestCaseHashedList.TestIndexOf;
+procedure THashedListTestCase.TestIndexOf;
 var
   L: IList;
 
@@ -189,7 +189,7 @@ begin
   Check(L.IndexOf(False) = -1);
 end;
 
-procedure TTestCaseHashedList.TestLastIndexOf;
+procedure THashedListTestCase.TestLastIndexOf;
 var
   L: IList;
 begin
@@ -199,7 +199,7 @@ begin
   Check(L.LastIndexOf('hello') = -1);
 end;
 
-procedure TTestCaseHashedList.TestDelete;
+procedure THashedListTestCase.TestDelete;
 var
   L: IList;
 begin
@@ -208,7 +208,7 @@ begin
   Check(L.Delete(2) = True);
 end;
 
-procedure TTestCaseHashedList.TestRemove;
+procedure THashedListTestCase.TestRemove;
 var
   L: IList;
 begin
@@ -218,7 +218,7 @@ begin
   Check(L.Remove(True) = 2);
 end;
 
-procedure TTestCaseHashedList.TestClear;
+procedure THashedListTestCase.TestClear;
 var
   L: IList;
 begin
@@ -227,7 +227,7 @@ begin
   Check(L.Count = 0);
 end;
 
-procedure TTestCaseHashedList.TestAssign;
+procedure THashedListTestCase.TestAssign;
 var
   L: IList;
   L2: Variant;
@@ -239,7 +239,7 @@ begin
   for I := 0 to 3 do Check(L[I] = L2.Get(I));
 end;
 
-procedure TTestCaseHashedList.TestToArray;
+procedure THashedListTestCase.TestToArray;
 var
   L: IList;
   A: array of Integer;
@@ -251,7 +251,7 @@ begin
 end;
 
 {$IF RTLVersion >= 17.00}  // Delphi 2005 or later
-procedure TTestCaseHashedList.TestForIn;
+procedure THashedListTestCase.TestForIn;
 var
   L, L2: IList;
   V: Variant;
@@ -264,7 +264,7 @@ end;
 {$IFEND}
 
 
-procedure TTestCaseHashedList.TestSplit;
+procedure THashedListTestCase.TestSplit;
 var
   S: String;
 begin
@@ -296,7 +296,7 @@ begin
   );
 end;
 
-procedure TTestCaseHashedList.TestJoin;
+procedure THashedListTestCase.TestJoin;
 var
   S: String;
   L: IList;
@@ -307,7 +307,7 @@ begin
   Check(L.Join('", "', '["', '"]') = '["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]');
 end;
 
-procedure TTestCaseHashedList.TestItem;
+procedure THashedListTestCase.TestItem;
 var
   L: IList;
 begin
@@ -321,7 +321,7 @@ begin
   Check(VarIsEmpty(L.Get(-1)));
 end;
 
-procedure TTestCaseHashedList.TestPack;
+procedure THashedListTestCase.TestPack;
 var
   L: IList;
   N: Integer;
@@ -340,7 +340,7 @@ begin
   Check(L.Count = L.Capacity);
 end;
 
-procedure TTestCaseHashedList.TestReverse;
+procedure THashedListTestCase.TestReverse;
 var
   L: IList;
 begin
@@ -349,7 +349,7 @@ begin
   CheckEqualsList(L, HashedList([True, 3.14, 'abc', 1]));
 end;
 
-procedure TTestCaseHashedList.TestSort;
+procedure THashedListTestCase.TestSort;
 var
   L: IList;
 begin
@@ -358,7 +358,7 @@ begin
   CheckEqualsList(L, HashedList([1, 2, 3, 4, 5, 6, 7, 8, 9]));
 end;
 
-procedure TTestCaseHashedList.TestShuffle;
+procedure THashedListTestCase.TestShuffle;
 var
   Src, Dest: IList;
   Statistics: IList;
@@ -387,7 +387,7 @@ begin
   end;
 end;
 
-procedure TTestCaseHashedList.TestVariantPut;
+procedure THashedListTestCase.TestVariantPut;
 var
   L: IList;
   N: Integer;
@@ -420,6 +420,6 @@ begin
 end;
 
 initialization
-  TestFramework.RegisterTest(TTestCaseHashedList.Suite);
+  TestFramework.RegisterTest(THashedListTestCase.Suite);
 
 end.
