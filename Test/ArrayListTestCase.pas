@@ -22,6 +22,7 @@ type
     procedure TestIndexOf;
     procedure TestLastIndexOf;
     procedure TestDelete;
+    procedure TestDeleteRange;
     procedure TestRemove;
     procedure TestClear;
     procedure TestAssign;
@@ -212,6 +213,15 @@ begin
   L := ArrayList([1, 'abc', 3.14, True]);
   Check(L.Delete(2) = 3.14);
   Check(L.Delete(2) = True);
+end;
+
+procedure TArrayListTestCase.TestDeleteRange;
+var
+  L: IList;
+begin
+  L := ArrayList([1, 'abc', 3.14, True]);
+  L.DeleteRange(1, 2);
+  CheckEqualsList(L, ArrayList([1, True]));
 end;
 
 procedure TArrayListTestCase.TestRemove;
