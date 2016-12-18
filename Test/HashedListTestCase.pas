@@ -182,7 +182,7 @@ var
   L: IList;
 
 begin
-  L := HashedList([1, 'abc', Variant(3.14), True, 'abc']);
+  L := HashedList([1, 'abc', 3.14, True, 'abc']);
   Check(L.IndexOf(3.14) = 2);
   Check(L.IndexOf(False) = -1);
 end;

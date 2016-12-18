@@ -2012,6 +2012,13 @@ begin
   Result := htOleStr or (Result and $0FFFFFFF);
 end;
 
+function HashOfDouble(const Value: Double): Integer;
+var
+  I: Int64 absolute Value;
+begin
+  Result := htDouble or ((I xor (I shr 32)) and $0FFFFFFF);
+end;
+
 function HashOfVariant(const Value: Variant): Integer;
 var
   P: PVarData;
@@ -2038,11 +2045,9 @@ begin
      varQWord:   Result := htInt64 or (P^.VQWord and $0FFFFFFF)
                        xor (not (P^.VQWord shr 3) and $10000000);
 {$ENDIF}
-    varSingle:   Result := htDouble or (P^.VInteger and $0FFFFFFF);
-    varDouble:   Result := htDouble or ((P^.VInteger xor (P^.VInt64 shr 32))
-                           and $0FFFFFFF);
-    varCurrency: Result := htDouble or ((P^.VInteger xor (P^.VInt64 shr 32))
-                           and $0FFFFFFF);
+    varSingle:   Result := HashOfDouble(P^.VSingle);
+    varDouble:   Result := HashOfDouble(P^.VDouble);
+    varCurrency: Result := HashOfDouble(P^.VCurrency);
     varDate:     Result := htDate or ((P^.VInteger xor (P^.VInt64 shr 32))
                            and $0FFFFFFF);
     varUnknown:  Result := htObject or (P^.VInteger and $0FFFFFFF);
