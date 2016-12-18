@@ -7,7 +7,7 @@ uses
 
 type
 
-  TTestCaseArrayList = class(TTestCase)
+  TArrayListTestCase = class(TTestCase)
   private
     procedure CheckEqualsList(Expected: IList; Actual: IList; Msg: string = '');
   published
@@ -43,9 +43,9 @@ implementation
 
 uses Variants;
 
-{ TTestCaseArrayList }
+{ TArrayListTestCase }
 
-procedure TTestCaseArrayList.CheckEqualsList(Expected: IList; Actual: IList; Msg: string);
+procedure TArrayListTestCase.CheckEqualsList(Expected: IList; Actual: IList; Msg: string);
 var
   I: Integer;
 begin
@@ -53,7 +53,7 @@ begin
   for I := 0 to Expected.Count - 1 do Check(Expected[I] = Actual[I], Msg);
 end;
 
-procedure TTestCaseArrayList.TestCreate;
+procedure TArrayListTestCase.TestCreate;
 var
   L: IArrayList;
 begin
@@ -78,7 +78,7 @@ begin
   L.EndWrite;
 end;
 
-procedure TTestCaseArrayList.TestAdd;
+procedure TArrayListTestCase.TestAdd;
 var
   L: IArrayList;
 begin
@@ -96,7 +96,7 @@ begin
   Check(L[6].Get(2) = 'c');
 end;
 
-procedure TTestCaseArrayList.TestAddAll;
+procedure TArrayListTestCase.TestAddAll;
 var
   L: Variant;
 begin
@@ -114,7 +114,7 @@ begin
   Check(L.Get(8) = 3);
 end;
 
-procedure TTestCaseArrayList.TestInsert;
+procedure TArrayListTestCase.TestInsert;
 var
   L: Variant;
   L2: IArrayList;
@@ -131,7 +131,7 @@ begin
   for I := 0 to 6 do Check(L.Get(I) = L2[I]);
 end;
 
-procedure TTestCaseArrayList.TestInsertRange;
+procedure TArrayListTestCase.TestInsertRange;
 var
   L: Variant;
   L2: IArrayList;
@@ -144,7 +144,7 @@ begin
   for I := 0 to 6 do Check(L.Get(I) = L2[I]);
 end;
 
-procedure TTestCaseArrayList.TestMove;
+procedure TArrayListTestCase.TestMove;
 var
   L: Variant;
   L2: IArrayList;
@@ -156,7 +156,7 @@ begin
   for I := 0 to 3 do Check(L.Get(I) = L2[I]);
 end;
 
-procedure TTestCaseArrayList.TestExchange;
+procedure TArrayListTestCase.TestExchange;
 var
   L: Variant;
   L2: IArrayList;
@@ -168,7 +168,7 @@ begin
   for I := 0 to 3 do Check(L.Get(I) = L2[I]);
 end;
 
-procedure TTestCaseArrayList.TestContains;
+procedure TArrayListTestCase.TestContains;
 var
   L: IList;
 begin
@@ -177,7 +177,7 @@ begin
   Check(L.Contains('abc') = True);
 end;
 
-procedure TTestCaseArrayList.TestIndexOf;
+procedure TArrayListTestCase.TestIndexOf;
 var
   L: IList;
 begin
@@ -188,7 +188,7 @@ begin
   Check(L.IndexOf(False) = -1);
 end;
 
-procedure TTestCaseArrayList.TestLastIndexOf;
+procedure TArrayListTestCase.TestLastIndexOf;
 var
   L: IList;
 begin
@@ -198,7 +198,7 @@ begin
   Check(L.LastIndexOf('hello') = -1);
 end;
 
-procedure TTestCaseArrayList.TestDelete;
+procedure TArrayListTestCase.TestDelete;
 var
   L: IList;
 begin
@@ -207,7 +207,7 @@ begin
   Check(L.Delete(2) = True);
 end;
 
-procedure TTestCaseArrayList.TestRemove;
+procedure TArrayListTestCase.TestRemove;
 var
   L: IList;
 begin
@@ -217,7 +217,7 @@ begin
   Check(L.Remove(True) = 2);
 end;
 
-procedure TTestCaseArrayList.TestClear;
+procedure TArrayListTestCase.TestClear;
 var
   L: IList;
 begin
@@ -226,7 +226,7 @@ begin
   Check(L.Count = 0);
 end;
 
-procedure TTestCaseArrayList.TestAssign;
+procedure TArrayListTestCase.TestAssign;
 var
   L: IList;
   L2: Variant;
@@ -238,7 +238,7 @@ begin
   for I := 0 to 3 do Check(L[I] = L2.Get(I));
 end;
 
-procedure TTestCaseArrayList.TestToArray;
+procedure TArrayListTestCase.TestToArray;
 var
   L: IList;
   A: array of Integer;
@@ -250,7 +250,7 @@ begin
 end;
 
 {$IF RTLVersion >= 17.00}  // Delphi 2005 or later
-procedure TTestCaseArrayList.TestForIn;
+procedure TArrayListTestCase.TestForIn;
 var
   L, L2: IList;
   V: Variant;
@@ -263,7 +263,7 @@ end;
 {$IFEND}
 
 
-procedure TTestCaseArrayList.TestSplit;
+procedure TArrayListTestCase.TestSplit;
 var
   S: String;
 begin
@@ -295,7 +295,7 @@ begin
   );
 end;
 
-procedure TTestCaseArrayList.TestJoin;
+procedure TArrayListTestCase.TestJoin;
 var
   S: String;
   L: IList;
@@ -306,7 +306,7 @@ begin
   Check(L.Join('", "', '["', '"]') = '["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]');
 end;
 
-procedure TTestCaseArrayList.TestItem;
+procedure TArrayListTestCase.TestItem;
 var
   L: IList;
 begin
@@ -320,7 +320,7 @@ begin
   Check(VarIsEmpty(L.Get(-1)));
 end;
 
-procedure TTestCaseArrayList.TestPack;
+procedure TArrayListTestCase.TestPack;
 var
   L: IList;
   N: Integer;
@@ -339,7 +339,7 @@ begin
   Check(L.Count = L.Capacity);
 end;
 
-procedure TTestCaseArrayList.TestReverse;
+procedure TArrayListTestCase.TestReverse;
 var
   L: IList;
 begin
@@ -348,7 +348,7 @@ begin
   CheckEqualsList(L, ArrayList([True, 3.14, 'abc', 1]));
 end;
 
-procedure TTestCaseArrayList.TestSort;
+procedure TArrayListTestCase.TestSort;
 var
   L: IList;
 begin
@@ -357,7 +357,7 @@ begin
   CheckEqualsList(L, ArrayList([1, 2, 3, 4, 5, 6, 7, 8, 9]));
 end;
 
-procedure TTestCaseArrayList.TestShuffle;
+procedure TArrayListTestCase.TestShuffle;
 var
   Src, Dest: IList;
   Statistics: IList;
@@ -386,7 +386,7 @@ begin
   end;
 end;
 
-procedure TTestCaseArrayList.TestVariantPut;
+procedure TArrayListTestCase.TestVariantPut;
 var
   L: IList;
   N: Integer;
@@ -419,6 +419,6 @@ begin
 end;
 
 initialization
-  TestFramework.RegisterTest(TTestCaseArrayList.Suite);
+  TestFramework.RegisterTest(TArrayListTestCase.Suite);
 
 end.
