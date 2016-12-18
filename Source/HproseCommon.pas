@@ -645,11 +645,11 @@ type
       Sync: Boolean = True; ReadWriteSync: Boolean = False); override;
   end;
 
-  ICaseInsensitiveHashedMap = interface(IHashMap)
+  ICaseInsensitiveHashedMap = interface(IHashedMap)
   ['{839DCE08-95DE-462F-B59D-16BA89D3DC6B}']
   end;
 
-  TCaseInsensitiveHashedMap = class(THashMap, ICaseInsensitiveHashedMap)
+  TCaseInsensitiveHashedMap = class(THashedMap, ICaseInsensitiveHashedMap)
   public
     constructor Create(ACapacity: Integer = 16; Factor: Single = 0.75;
       Sync: Boolean = True; ReadWriteSync: Boolean = False); override;
