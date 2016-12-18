@@ -2514,9 +2514,17 @@ begin
   else if AName = 'GETENUMERATOR' then
     Result := GetEnumerator()
   else if AName = 'INDEXOF' then
-    Result := IndexOf(Args[0])
+    case Length(Args) of
+      1: Result := IndexOf(Args[0]);
+      2: Result := IndexOf(Args[0], Args[1]);
+      3: Result := IndexOf(Args[0], Args[1], Args[2]);
+    end
   else if AName = 'LASTINDEXOF' then
-    Result := LastIndexOf(Args[0])
+    case Length(Args) of
+      1: Result := LastIndexOf(Args[0]);
+      2: Result := LastIndexOf(Args[0], Args[1]);
+      3: Result := LastIndexOf(Args[0], Args[1], Args[2]);
+    end
   else if AName = 'INSERT' then
     Insert(Args[0], Args[1])
   else if AName = 'INSERTRANGE' then
