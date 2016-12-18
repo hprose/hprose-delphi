@@ -50,7 +50,7 @@ var
   I: Integer;
 begin
   Check(Expected.Count = Actual.Count, Msg);
-  for I := 0 to 6 do Check(Expected[I] = Actual[I], Msg);
+  for I := 0 to Expected.Count - 1 do Check(Expected[I] = Actual[I], Msg);
 end;
 
 procedure TTestCaseArrayList.TestCreate;
@@ -153,7 +153,7 @@ begin
   L := ArrayList([1, 'abc', 3.14, True]);
   L.Move(2, 0);
   L2 := ArrayList([3.14, 1, 'abc', True]);
-  for I := 0 to 6 do Check(L.Get(I) = L2[I]);
+  for I := 0 to 3 do Check(L.Get(I) = L2[I]);
 end;
 
 procedure TTestCaseArrayList.TestExchange;
@@ -165,7 +165,7 @@ begin
   L := ArrayList([1, 'abc', 3.14, True]);
   L.Exchange(2, 0);
   L2 := ArrayList([3.14, 'abc', 1, True]);
-  for I := 0 to 6 do Check(L.Get(I) = L2[I]);
+  for I := 0 to 3 do Check(L.Get(I) = L2[I]);
 end;
 
 procedure TTestCaseArrayList.TestContains;
@@ -310,12 +310,12 @@ var
 begin
   L := ArrayList([1, 'abc', 3.14, True]);
   L[10] := 'test';
-  Check(L[9] = Unassigned);
+  Check(VarIsEmpty(L[9]));
   Check(L[10] = 'test');
   L.Put(12, 'hello');
-  Check(L.Get(11) = Unassigned);
+  Check(VarIsEmpty(L.Get(11)));
   Check(L.Get(12) = 'hello');
-  Check(L.Get(-1) = Unassigned);
+  Check(VarIsEmpty(L.Get(-1)));
 end;
 
 procedure TTestCaseArrayList.TestPack;
