@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Dec 18, 2016                             *
+ * LastModified: Dec 19, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -90,8 +90,12 @@ type
     function GetCount: Integer;
     function Contains(const Value: Variant): Boolean;
     function GetEnumerator: IListEnumerator;
-    function IndexOf(const Value: Variant): Integer;
-    function LastIndexOf(const Value: Variant): Integer;
+    function IndexOf(const Value: Variant): Integer; overload;
+    function IndexOf(const Value: Variant; StartIndex: Integer): Integer; overload;
+    function IndexOf(const Value: Variant; StartIndex, ACount: Integer): Integer; overload;
+    function LastIndexOf(const Value: Variant): Integer; overload;
+    function LastIndexOf(const Value: Variant; StartIndex: Integer): Integer; overload;
+    function LastIndexOf(const Value: Variant; StartIndex, ACount: Integer): Integer; overload;
     function Join(const Glue: string = ',';
                   const LeftPad: string = '';
                   const RightPad: string = ''): string;
@@ -200,8 +204,12 @@ type
     function Get(Index: Integer): Variant; virtual; abstract;
     procedure Put(Index: Integer; const Value: Variant); virtual; abstract;
     function GetEnumerator: IListEnumerator; virtual;
-    function IndexOf(const Value: Variant): Integer; virtual; abstract;
-    function LastIndexOf(const Value: Variant): Integer; virtual; abstract;
+    function IndexOf(const Value: Variant): Integer; overload; virtual;
+    function IndexOf(const Value: Variant; StartIndex: Integer): Integer; overload; virtual;
+    function IndexOf(const Value: Variant; StartIndex, ACount: Integer): Integer; overload; virtual; abstract;
+    function LastIndexOf(const Value: Variant): Integer; overload; virtual;
+    function LastIndexOf(const Value: Variant; StartIndex: Integer): Integer; overload; virtual;
+    function LastIndexOf(const Value: Variant; StartIndex, ACount: Integer): Integer; overload; virtual; abstract;
     procedure Insert(Index: Integer; const Value: Variant); virtual; abstract;
     procedure InsertRange(Index: Integer; const AList: IImmutableList); overload; virtual; abstract;
     procedure InsertRange(Index: Integer; const Container: Variant); overload; virtual; abstract;
@@ -275,8 +283,8 @@ type
     procedure Exchange(Index1, Index2: Integer); override;
     function Get(Index: Integer): Variant; override;
     procedure Put(Index: Integer; const Value: Variant); override;
-    function IndexOf(const Value: Variant): Integer; override;
-    function LastIndexOf(const Value: Variant): Integer; override;
+    function IndexOf(const Value: Variant; StartIndex, ACount: Integer): Integer; overload; override;
+    function LastIndexOf(const Value: Variant; StartIndex, ACount: Integer): Integer; overload; override;
     procedure Insert(Index: Integer; const Value: Variant); override;
     procedure InsertRange(Index: Integer; const AList: IImmutableList); overload; override;
     procedure InsertRange(Index: Integer; const Container: Variant); overload; override;
@@ -320,9 +328,9 @@ type
     procedure Clear;
     procedure Delete(HashCode, Index: Integer);
     function IndexOf(HashCode: Integer; const Value: Variant;
-      CompareProc: TIndexCompareMethod): Integer;
+      CompareProc: TIndexCompareMethod; StartIndex, ACount: Integer): Integer;
     function LastIndexOf(HashCode: Integer; const Value: Variant;
-      CompareProc: TIndexCompareMethod): Integer;
+      CompareProc: TIndexCompareMethod; StartIndex, ACount: Integer): Integer;
     function Modify(OldHashCode, NewHashCode, Index: Integer): PHashItem;
     property Count: Integer read FCount;
     property Capacity: Integer read FCapacity write SetCapacity;
@@ -357,8 +365,8 @@ type
     procedure DeleteRange(Index, ACount: Integer); override;
     procedure Exchange(Index1, Index2: Integer); override;
     procedure Put(Index: Integer; const Value: Variant); override;
-    function IndexOf(const Value: Variant): Integer; override;
-    function LastIndexOf(const Value: Variant): Integer; override;
+    function IndexOf(const Value: Variant; StartIndex, ACount: Integer): Integer; overload; override;
+    function LastIndexOf(const Value: Variant; StartIndex, ACount: Integer): Integer; overload; override;
     procedure Insert(Index: Integer; const Value: Variant); override;
     procedure InsertRange(Index: Integer; const AList: IImmutableList); overload; override;
     procedure InsertRange(Index: Integer; const Container: Variant); overload; override;
@@ -2448,6 +2456,17 @@ begin
   inherited Destroy;
 end;
 
+function TAbstractList.IndexOf(const Value: Variant): Integer;
+begin
+  Result := IndexOf(Value, 0, Count);
+end;
+
+function TAbstractList.IndexOf(const Value: Variant;
+  StartIndex: Integer): Integer;
+begin
+  Result := IndexOf(Value, StartIndex, Count - StartIndex);
+end;
+
 procedure TAbstractList.InitLock;
 begin
   if not Assigned(FLock) then
@@ -2716,6 +2735,17 @@ begin
   Result := Get(Count - 1);
 end;
 
+function TAbstractList.LastIndexOf(const Value: Variant): Integer;
+begin
+  Result := LastIndexOf(Value, Count - 1, Count);
+end;
+
+function TAbstractList.LastIndexOf(const Value: Variant;
+  StartIndex: Integer): Integer;
+begin
+  Result := LastIndexOf(Value, StartIndex, StartIndex + 1);
+end;
+
 procedure TAbstractList.Pack;
 var
   I: Integer;
@@ -2939,23 +2969,15 @@ begin
   Result := VarEquals(FList[Index], Value);
 end;
 
-function TArrayList.IndexOf(const Value: Variant): Integer;
+function TArrayList.IndexOf(const Value: Variant; StartIndex,
+  ACount: Integer): Integer;
 var
-  I: Integer;
+  I, EndIndex: Integer;
 begin
-  for I := 0 to FCount - 1 do
-    if IndexCompare(I, Value) then begin
-      Result := I;
-      Exit;
-    end;
-  Result := -1;
-end;
-
-function TArrayList.LastIndexOf(const Value: Variant): Integer;
-var
-  I: Integer;
-begin
-  for I := FCount - 1 downto 0 do
+  if StartIndex < 0 then StartIndex := 0;
+  EndIndex := StartIndex + ACount - 1;
+  if EndIndex >= FCount then EndIndex := FCount - 1;
+  for I := StartIndex to EndIndex do
     if IndexCompare(I, Value) then begin
       Result := I;
       Exit;
@@ -3016,6 +3038,22 @@ begin
   ShiftRight(Index, N);
   for I := 0 to N - 1 do FList[Index + I] := VarRecToVar(ConstArray[I]);
   Inc(FCount, N);
+end;
+
+function TArrayList.LastIndexOf(const Value: Variant; StartIndex,
+  ACount: Integer): Integer;
+var
+  I, EndIndex: Integer;
+begin
+  if StartIndex >= FCount then StartIndex := FCount - 1;
+  EndIndex := StartIndex - ACount + 1;
+  if EndIndex < 0 then EndIndex := 0;
+  for I := StartIndex downto EndIndex do
+    if IndexCompare(I, Value) then begin
+      Result := I;
+      Exit;
+    end;
+  Result := -1;
 end;
 
 procedure TArrayList.Move(CurIndex, NewIndex: Integer);
@@ -3224,16 +3262,21 @@ begin
 end;
 
 function THashBucket.IndexOf(HashCode: Integer; const Value: Variant;
-  CompareProc: TIndexCompareMethod): Integer;
+  CompareProc: TIndexCompareMethod; StartIndex, ACount: Integer): Integer;
 var
+  EndIndex: Integer;
   HashIndex: Integer;
   Item: PHashItem;
 begin
+  if StartIndex < 0 then StartIndex := 0;
+  EndIndex := StartIndex + ACount - 1;
+  if EndIndex >= FCount then EndIndex := FCount - 1;
   Result := -1;
   HashIndex := GetHashIndex(HashCode);
   Item := FIndices[HashIndex];
   while Assigned(Item) do begin
-    if (Item^.HashCode = HashCode) and CompareProc(Item^.Index, Value) then begin
+    if Item^.Index > EndIndex then Exit;
+    if (Item^.Index >= StartIndex) and (Item^.HashCode = HashCode) and CompareProc(Item^.Index, Value) then begin
       Result := Item^.Index;
       Exit;
     end;
@@ -3242,18 +3285,23 @@ begin
 end;
 
 function THashBucket.LastIndexOf(HashCode: Integer; const Value: Variant;
-  CompareProc: TIndexCompareMethod): Integer;
+  CompareProc: TIndexCompareMethod; StartIndex, ACount: Integer): Integer;
 var
+  EndIndex: Integer;
   HashIndex: Integer;
   Item: PHashItem;
 begin
+  if StartIndex >= FCount then StartIndex := FCount - 1;
+  EndIndex := StartIndex - ACount + 1;
+  if EndIndex < 0 then EndIndex := 0;
   Result := -1;
   HashIndex := GetHashIndex(HashCode);
   Item := FIndices[HashIndex];
   if not Assigned(Item) then Exit;
   Item := Item^.Prev;
   repeat
-    if (Item^.HashCode = HashCode) and CompareProc(Item^.Index, Value) then begin
+    if Item^.Index < EndIndex then Exit;
+    if (Item^.Index <= StartIndex) and (Item^.HashCode = HashCode) and CompareProc(Item^.Index, Value) then begin
       Result := Item^.Index;
       Exit;
     end;
@@ -3401,16 +3449,6 @@ begin
     Result := HashOfVariant(Value);
 end;
 
-function THashedList.IndexOf(const Value: Variant): Integer;
-begin
-  Result := FHashBucket.IndexOf(HashOf(Value), Value, {$IFDEF FPC}@{$ENDIF}IndexCompare);
-end;
-
-function THashedList.LastIndexOf(const Value: Variant): Integer;
-begin
-  Result := FHashBucket.LastIndexOf(HashOf(Value), Value, {$IFDEF FPC}@{$ENDIF}IndexCompare);
-end;
-
 procedure THashedList.InsertHash(Index, N: Integer);
 var
   HashCode, NewHashCode, I: Integer;
@@ -3424,6 +3462,14 @@ begin
     for I := FCount - N to FCount - 1 do
       FHashBucket.Add(HashOf(FList[I]), I);
   end;
+end;
+
+function THashedList.IndexOf(const Value: Variant; StartIndex,
+  ACount: Integer): Integer;
+begin
+  Result := FHashBucket.IndexOf(HashOf(Value), Value,
+    {$IFDEF FPC}@{$ENDIF}IndexCompare, StartIndex, ACount);
+
 end;
 
 procedure THashedList.Insert(Index: Integer; const Value: Variant);
@@ -3453,6 +3499,13 @@ procedure THashedList.InsertRange(Index: Integer; const ConstArray: array of con
 begin
   inherited InsertRange(Index, ConstArray);
   InsertHash(Index, Length(ConstArray));
+end;
+
+function THashedList.LastIndexOf(const Value: Variant; StartIndex,
+  ACount: Integer): Integer;
+begin
+  Result := FHashBucket.LastIndexOf(HashOf(Value), Value,
+    {$IFDEF FPC}@{$ENDIF}IndexCompare, StartIndex, ACount);
 end;
 
 procedure THashedList.Put(Index: Integer; const Value: Variant);

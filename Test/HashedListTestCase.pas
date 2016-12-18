@@ -187,6 +187,10 @@ begin
   Check(L.IndexOf(1) = 0);
   Check(L.IndexOf(3.14) = 2);
   Check(L.IndexOf(False) = -1);
+  Check(L.IndexOf('abc') = 1);
+  Check(L.IndexOf('abc', 1) = 1);
+  Check(L.IndexOf('abc', 2) = 4);
+  Check(L.IndexOf('abc', 2, 2) = -1);
 end;
 
 procedure THashedListTestCase.TestLastIndexOf;
@@ -194,9 +198,12 @@ var
   L: IList;
 begin
   L := HashedList([1, 'abc', 3.14, True, 'abc']);
-  Check(L.LastIndexOf('abc') = 4);
   Check(L.LastIndexOf(1) = 0);
   Check(L.LastIndexOf('hello') = -1);
+  Check(L.LastIndexOf('abc') = 4);
+  Check(L.LastIndexOf('abc', 3) = 1);
+  Check(L.LastIndexOf('abc', 4) = 4);
+  Check(L.LastIndexOf('abc', 3, 2) = -1);
 end;
 
 procedure THashedListTestCase.TestDelete;
