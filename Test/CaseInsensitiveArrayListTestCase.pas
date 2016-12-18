@@ -1,0 +1,68 @@
+unit CaseInsensitiveArrayListTestCase;
+
+interface
+
+uses
+  TestFrameWork, HproseCommon;
+
+type
+
+  TCaseInsensitiveArrayListTestCase = class(TTestCase)
+  published
+    procedure TestContains;
+    procedure TestIndexOf;
+    procedure TestLastIndexOf;
+    procedure TestRemove;
+  end;
+
+implementation
+
+uses Variants;
+
+{ TCaseInsensitiveArrayListTestCase }
+
+procedure TCaseInsensitiveArrayListTestCase.TestContains;
+var
+  L: IList;
+begin
+  L := CaseInsensitiveArrayList([1, 'Abc', 3.14, True, 'ABC']);
+  Check(L.Contains('hello') = False);
+  Check(L.Contains('abc') = True);
+end;
+
+procedure TCaseInsensitiveArrayListTestCase.TestIndexOf;
+var
+  L: IList;
+begin
+  L := CaseInsensitiveArrayList([1, 'Abc', 3.14, True, 'ABC']);
+  Check(L.IndexOf(1.0) = -1);
+  Check(L.IndexOf(1) = 0);
+  Check(L.IndexOf('abc') = 1);
+  Check(L.IndexOf(3.14) = 2);
+  Check(L.IndexOf(False) = -1);
+end;
+
+procedure TCaseInsensitiveArrayListTestCase.TestLastIndexOf;
+var
+  L: IList;
+begin
+  L := CaseInsensitiveArrayList([1, 'Abc', 3.14, True, 'ABC']);
+  Check(L.LastIndexOf('abc') = 4);
+  Check(L.LastIndexOf(1) = 0);
+  Check(L.LastIndexOf('hello') = -1);
+end;
+
+procedure TCaseInsensitiveArrayListTestCase.TestRemove;
+var
+  L: IList;
+begin
+  L := CaseInsensitiveArrayList([1, 'Abc', 3.14, True, 'ABC']);
+  Check(L.Remove('abc', FromEnd) = 4);
+  Check(L.Remove('abc', FromBeginning) = 1);
+  Check(L.Remove(True) = 2);
+end;
+
+initialization
+  TestFramework.RegisterTest(TCaseInsensitiveArrayListTestCase.Suite);
+
+end.
