@@ -28,6 +28,7 @@ uses
 {$ENDIF}
   TestFramework,
   ArrayListTestCase in 'ArrayListTestCase.pas',
+  HashedListTestCase in 'HashedListTestCase.pas',
   HproseClient in '..\Source\HproseClient.pas',
   HproseCommon in '..\Source\HproseCommon.pas',
   HproseIO in '..\Source\HproseIO.pas',
