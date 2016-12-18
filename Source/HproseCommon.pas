@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Dec 16, 2016                             *
+ * LastModified: Dec 18, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -1989,8 +1989,6 @@ begin
 end;
 
 function VarDeref(const Value: Variant): Variant;
-var
-  P: PVarData;
 begin
   if not VarIsByRef(Value) then
     Result := Value
