@@ -14,7 +14,7 @@
  *                                                        *
  * hprose client unit for delphi.                         *
  *                                                        *
- * LastModified: Dec 16, 2016                             *
+ * LastModified: Dec 26, 2016                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -923,12 +923,14 @@ begin
   FHandlers := THandlerManager.Create({$IFDEF FPC}@{$ENDIF}InvokeHandler,
     {$IFDEF FPC}@{$ENDIF}BeforeFilterHandler,
     {$IFDEF FPC}@{$ENDIF}AfterFilterHandler);
+  FTopicManager := TTopicManager.Create;
 end;
 
 destructor THproseClient.Destroy;
 begin
   FreeAndNil(FFilters);
   FreeAndNil(FHandlers);
+  FreeAndNil(FTopicManager);
   inherited Destroy;
 end;
 
