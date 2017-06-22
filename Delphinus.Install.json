@@ -1,0 +1,37 @@
+{
+  "search_pathes": [{
+    "pathes": "Source",
+    "platforms": "Win32;Win64"
+  }],
+  "browsing_pathes": [{
+    "pathes": "Source",
+    "platforms": "Win32;Win64"
+  }],
+  "source_folders": [{
+    "folder": "."
+  },
+  {
+    "folder": "CppBuilder",
+    "recursive": true
+  },
+  {
+    "folder": "Icons",
+    "recursive": true
+  },
+  {
+    "folder": "Lazarus",
+    "recursive": true
+  },
+  {
+    "folder": "Packages",
+    "recursive": true
+  },
+  {
+    "folder": "Source",
+    "recursive": true
+  },
+  {
+    "folder": "Test",
+    "recursive": true
+  }]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "{0AE3CEFD-7687-4190-92F7-7940BED824C0}",
+  "name": "Hprose",
+  "picture": "Logo.png",
+  "license_type": "MIT",
+  "license_file": "LICENSE.md",
+  "platforms": "Win32;Win64",
+  "package_compiler_min": 14,
+  "package_compiler_max": 32,
+  "compiler_min": 14,
+  "compiler_max": 32
+}
