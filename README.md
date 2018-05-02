@@ -32,3 +32,6 @@ It is a modern, lightweight, cross-language, cross-platform, object-oriented, hi
 Through *Hprose*, You can conveniently and efficiently intercommunicate between those programming languages.
 
 This project is the implementation of Hprose for Delphi/Lazarus.
+
+## Miscellaneous
+You can install [Delphinus package manager](https://github.com/Memnarch/Delphinus/wiki/Installing-Delphinus) and install Hprose as a package there. (Delphinus-Support)
