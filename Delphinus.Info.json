@@ -9,5 +9,6 @@
   "package_compiler_max": 32,
   "compiler_min": 14,
   "compiler_max": 32,
-  "first_version": "2.0.1"
+  "first_version": "2.0.1",
+  "version": "2.0.1"
 }
