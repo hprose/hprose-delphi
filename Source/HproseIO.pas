@@ -14,7 +14,7 @@
  *                                                        *
  * hprose io unit for delphi.                             *
  *                                                        *
- * LastModified: Apr 30, 2018                             *
+ * LastModified: Dec 11, 2018                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -303,13 +303,13 @@ type
     procedure WriteArray(const Value: Variant); overload;
     procedure WriteArrayWithRef(const Value: Variant); overload;
     procedure WriteArray(const Value: array of const); overload;
+    procedure WriteArray(const Value: TVariants); overload;
     procedure WriteList(const AList: IList); overload;
     procedure WriteListWithRef(const AList: IList); overload;
     procedure WriteMap(const AMap: IMap); overload;
     procedure WriteMapWithRef(const AMap: IMap);
 {$IFDEF SUPPORTS_GENERICS}
     procedure Serialize<T>(const Value: T); overload;
-    procedure WriteArray(const DynArray: TVariants); overload;
     procedure WriteArray<T>(const DynArray: array of T); overload;
     procedure WriteDynArray<T>(const DynArray: TArray<T>);
     procedure WriteDynArrayWithRef<T>(const DynArray: TArray<T>); overload;
@@ -2946,6 +2946,19 @@ begin
   FStream.WriteBuffer(Bytes[0], Length(Bytes));
 end;
 
+procedure THproseWriter.WriteArray(const Value: TVariants);
+var
+  Count, I: Integer;
+begin
+  FRefer.SetRef(Null);
+  Count := Length(Value);
+  FStream.WriteBuffer(HproseTagList, 1);
+  if Count > 0 then WriteRawBytes(BytesOf(IntToStr(Count)));
+  FStream.WriteBuffer(HproseTagOpenbrace, 1);
+  for I := 0 to Count - 1 do Serialize(Value[I]);
+  FStream.WriteBuffer(HproseTagClosebrace, 1);
+end;
+
 procedure THproseWriter.WriteArray(const Value: array of const);
 var
   I, N: Integer;
@@ -4291,20 +4304,6 @@ procedure THproseWriter.Serialize<T>(const Value: T);
 begin
   Serialize(Value, TypeInfo(T));
 end;
-
-procedure THproseWriter.WriteArray(const DynArray: TVariants);
-var
-  Count, I: Integer;
-begin
-  FRefer.SetRef(Null);
-  Count := Length(DynArray);
-  FStream.WriteBuffer(HproseTagList, 1);
-  if Count > 0 then WriteRawBytes(BytesOf(IntToStr(Count)));
-  FStream.WriteBuffer(HproseTagOpenbrace, 1);
-  for I := 0 to Count - 1 do Serialize(DynArray[I]);
-  FStream.WriteBuffer(HproseTagClosebrace, 1);
-end;
-
 
 procedure THproseWriter.WriteArray<T>(const DynArray: array of T);
 var
