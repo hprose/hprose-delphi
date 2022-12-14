@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common unit for delphi.                         *
  *                                                        *
- * LastModified: Dec 19, 2016                             *
+ * LastModified: Dec 14, 2022                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -1368,7 +1368,7 @@ begin
   P := FindVarData(Value);
   VType := P^.VType;
   if (VType = varNull) or (VType = varEmpty) then
-    Result := Supports(nil, IID, AIntf)
+    Result := Supports(IInterface(nil), IID, AIntf)
   else if VType = varUnknown then
     Result := Supports(IInterface(P^.VUnknown), IID, AIntf)
   else if VType = (varUnknown or varByRef) then begin
@@ -4916,12 +4916,15 @@ var
 
 procedure IntfDispInvoke(Dest: PVariant; const Source: Variant;
       CallDesc: PCallDesc; Params: Pointer); cdecl;
+var
+  VSource: TVarData;
 begin
-  if TVarData(Source).VType=varUnknown then
+  VSource := TVarData(Source);
+  if VSource.VType = varUnknown then
 {$IFDEF DELPHI6}
-    VarObjectType.DispInvoke(PVarData(Dest)^, TVarData(Source), CallDesc, Params)
+    VarObjectType.DispInvoke(PVarData(Dest)^, VSource, CallDesc, Params)
 {$ELSE}
-    VarObjectType.DispInvoke(PVarData(Dest), TVarData(Source), CallDesc, Params)
+    VarObjectType.DispInvoke(PVarData(Dest), VSource, CallDesc, Params)
 {$ENDIF}
   else if Assigned(OldVarDispProc) then
     OldVarDispProc(Dest, Source, CallDesc, Params)
